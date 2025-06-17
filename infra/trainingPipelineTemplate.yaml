@@ -1,0 +1,162 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EEG Processing Pipeline with Upload Bucket Integration, ECS Training, Post-processing Lambda, Step Functions, and VPC Networking
+
+Parameters:
+  SharedApiId:
+    Type: String
+    Description: Existing API Gateway HTTP API ID
+
+  VpcId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /accelerator/network/vpc/IAHResearchVpc/id
+
+  SubnetAId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /accelerator/network/vpc/IAHResearchVpc/subnet/IAHResearchSubnetA/id
+
+  SubnetBId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /accelerator/network/vpc/IAHResearchVpc/subnet/IAHResearchSubnetB/id
+
+  EEGUploadBucketName:
+    Type: String
+    Default: !ImportValue EEGUploadBucketName
+
+Resources:
+
+  # --- ECS Fargate Task Execution Role
+  EEGTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: s3-access-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub arn:aws:s3:::${EEGUploadBucketName}/*
+                  - arn:aws:s3:::eeg-results-bucket-fargate/*
+
+  # --- ECS Cluster
+  EEGFargateCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: EEG-Classifier-Cluster
+
+  # --- ECS Task Definition (MATLAB container handles CSV ➜ .mat + training)
+  EEGFargateTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: EEGClassifierTask
+      Cpu: '1024'
+      Memory: '4096'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt EEGTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: eeg-classifier
+          Image: 123456789012.dkr.ecr.eu-west-2.amazonaws.com/eeg-classifier:latest
+          Essential: true
+          Environment:
+            - Name: UPLOAD_BUCKET
+              Value: !Ref EEGUploadBucketName
+            - Name: RESULTS_BUCKET
+              Value: eeg-results-bucket-fargate
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/eeg-classifier
+              awslogs-region: eu-west-2
+              awslogs-stream-prefix: fargate
+
+  # --- Post-Processing Lambda
+  EEGPostProcessingLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: arn:aws:iam::123456789012:role/LambdaExecutionRole
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              print("Post-processing: save to DB, update dashboard, etc.")
+              return {"statusCode": 200}
+      Runtime: python3.9
+      MemorySize: 256
+      Timeout: 60
+      Environment:
+        Variables:
+          DB_HOST: mydb.cluster-xxxxxxxx.eu-west-2.rds.amazonaws.com
+          DB_NAME: eeg_results
+          DB_USER: dbuser
+          DB_PASS: dbpassword
+
+  # --- Step Functions Role
+  EEGStepFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecs:RunTask
+                  - ecs:DescribeTasks
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt EEGTaskExecutionRole.Arn
+
+  # --- Step Functions State Machine
+  EEGProcessingStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      RoleArn: !GetAtt EEGStepFunctionRole.Arn
+      DefinitionUri: s3://my-bucket/path/to/EEGProcessingStateMachine.asl.json
+
+  # --- S3 VPC Endpoint for private data flow
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !Ref VpcId
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - rtb-xxxxxxxx # Update with your Transit route table ID!
+
+Outputs:
+  EEGUploadBucketNameOutput:
+    Value: !Ref EEGUploadBucketName
+    Description: Imported EEG upload bucket name
+
+  EEGResultsBucketName:
+    Value: eeg-results-bucket-fargate
+  EEGStepFunctionArn:
+    Value: !Ref EEGProcessingStateMachine

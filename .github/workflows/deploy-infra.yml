@@ -1,0 +1,57 @@
+# .github/workflows/deploy-infra.yml
+name: Deploy Infrastructure
+
+on:
+  push:
+    paths:
+      - 'templates/**'  # Assuming your CloudFormation templates are here
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-west-2
+      STACK_NAME: EEG-Training-Pipeline
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Validate CloudFormation templates
+        run: |
+          aws cloudformation validate-template --template-body file://templates/VPC.yaml
+          aws cloudformation validate-template --template-body file://templates/IAM.yaml
+          aws cloudformation validate-template --template-body file://templates/trainingPipelineTemplate.yaml
+
+      - name: Deploy VPC Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file templates/VPC.yaml \
+            --stack-name ${STACK_NAME}-VPC \
+            --capabilities CAPABILITY_IAM
+
+      - name: Deploy IAM Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file templates/IAM.yaml \
+            --stack-name ${STACK_NAME}-IAM \
+            --capabilities CAPABILITY_IAM
+
+      - name: Deploy Main Pipeline Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file templates/trainingPipelineTemplate.yaml \
+            --stack-name ${STACK_NAME}-Main \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides \
+              SharedApiId=${{ secrets.API_GATEWAY_ID }} \
+              EEGUploadBucketName=${{ secrets.EEG_UPLOAD_BUCKET }}

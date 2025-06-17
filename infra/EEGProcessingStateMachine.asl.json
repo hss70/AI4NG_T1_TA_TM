@@ -1,0 +1,38 @@
+{
+    "Comment": "EEG Processing Pipeline",
+    "StartAt": "ECSFargateProcessing",
+    "States": {
+        "ECSFargateProcessing": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {
+                "Cluster": "${EEGFargateCluster}",
+                "LaunchType": "FARGATE",
+                "TaskDefinition": "${EEGFargateTaskDefinition}",
+                "NetworkConfiguration": {
+                    "AwsvpcConfiguration": {
+                        "Subnets": [
+                            "subnet-xxxxxxxx"
+                        ],
+                        "SecurityGroups": [
+                            "sg-xxxxxxxx"
+                        ],
+                        "AssignPublicIp": "ENABLED"
+                    }
+                }
+            },
+            "Next": "PostProcessingLambda"
+        },
+        "PostProcessingLambda": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+                "FunctionName": "${EEGPostProcessingLambda}",
+                "Payload": {
+                    "Input.$": "$"
+                }
+            },
+            "End": true
+        }
+    }
+}

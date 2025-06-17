@@ -1,0 +1,54 @@
+# ./github/workflows/containerise-deploy.yml
+# This GitHub Actions workflow builds a Docker container for the EEG classifier and pushes it to Amazon ECR.
+name: Build and Push Classifier Container
+
+on:
+  push:
+    paths:
+      - 'src/classifier/**'
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: eu-west-2
+      ECR_REGISTRY: 123456789012.dkr.ecr.eu-west-2.amazonaws.com
+      ECR_REPOSITORY: eeg-classifier
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up MATLAB
+        uses: mathworks/setup-matlab@v1
+        with:
+          release: R2023b
+
+      - name: Compile MATLAB code
+        run: |
+          cd src/classifier
+          matlab -batch "mcc -m T1_TA_TM.m -o T1Trainer"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          cd src/classifier
+          docker build -t $ECR_REPOSITORY:latest .
+
+      - name: Tag and Push to ECR
+        run: |
+          docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest

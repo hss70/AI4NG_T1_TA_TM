@@ -1,0 +1,13 @@
+# --- General ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+Thumbs.db
+
+/TestData/Work/Output/
+/TestData/Work/Results/
+/TestData/Work/SourceData (EEG_rec)
+/TestData/Work/T1

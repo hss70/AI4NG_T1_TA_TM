@@ -1,0 +1,12 @@
+{
+  "EEGChannels": 8,
+  "TriggerChannels": 1,
+  "RunClassifier": false,
+  "Notch": 0,
+  "DeviceFilter": false,
+  "Resolution": 0,
+  "Frequency": 125.0,
+  "HardwareFilter": true,
+  "SquareWaveTestMode": false,
+  "Classifier": null
+}
