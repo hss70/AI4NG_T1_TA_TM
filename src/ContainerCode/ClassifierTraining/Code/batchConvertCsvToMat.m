@@ -24,8 +24,6 @@ csvRootDir = fullfile(workDir, 'CSV');
 % Root directory for the output MAT files
 matRoot = fullfile(workDir, 'SourceData (EEG_rec)');
 
-
-
 % Get list of subjects
 subjects = dir(csvRootDir);
 subjects = subjects([subjects.isdir] & ~ismember({subjects.name}, {'.', '..'}));
@@ -68,6 +66,7 @@ for i = 1:length(subjects)
         if isfield(EEGConfig, 'Frequency') && isfield(EEGConfig, 'EEGChannels')
             %set output filePath
             configFilePath = fullfile(outputSessionPath, 'EEG_config.mat');
+
             % Skip if .mat file already exists
             if exist(configFilePath, 'file')
                 fprintf('Config file already exists: %s\n', configFilePath);

@@ -1,30 +1,260 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EEG Processing Pipeline with Upload Bucket Integration, ECS Training, Post-processing Lambda, Step Functions, and VPC Networking
+Description: EEG Processing Pipeline with Mobile Status Tracking
+Transform: AWS::Serverless-2016-10-31
 
 Parameters:
   SharedApiId:
     Type: String
-    Description: Existing API Gateway HTTP API ID
-
+    Default: !ImportValue SharedApiId
   VpcId:
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /accelerator/network/vpc/IAHResearchVpc/id
-
-  SubnetAId:
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /accelerator/network/vpc/IAHResearchVpc/subnet/IAHResearchSubnetA/id
-
-  SubnetBId:
-    Type: AWS::SSM::Parameter::Value<String>
-    Default: /accelerator/network/vpc/IAHResearchVpc/subnet/IAHResearchSubnetB/id
-
+    Type: String
+    Default: !ImportValue NetworkStack-VpcId
+  PrivateSubnetIds:
+    Type: CommaDelimitedList
+    Default: !Split [",", !ImportValue NetworkStack-PrivateSubnetIds]
   EEGUploadBucketName:
     Type: String
     Default: !ImportValue EEGUploadBucketName
+  PrivateSG:
+    Type: String
+    Default: !ImportValue NetworkStack-PrivateSG
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "General Configuration"
+        Parameters:
+          - SharedApiId
+          - VpcId
+          - PrivateSubnetIds
+          - EEGUploadBucketName
+          - PrivateSG
+
+# Global tags for all resources
+Globals:
+  Function:
+    Tags:
+      - Key: AI4NG
+        Value: true
+      - Key: Training Pipeline
+        Value: true
+  Api:
+    Tags:
+      - Key: AI4NG
+        Value: true
+      - Key: Training Pipeline
+        Value: true
+  Table:
+    Tags:
+      - Key: AI4NG
+        Value: true
+      - Key: Training Pipeline
+        Value: true
+  Bucket:
+    Tags:
+      - Key: AI4NG
+        Value: true
+      - Key: Training Pipeline
+        Value: true
+  StateMachine:
+    Tags:
+      - Key: AI4NG
+        Value: true
+      - Key: Training Pipeline
+        Value: true
+  LogGroup:
+    Tags:
+      - Key: AI4NG
+        Value: true
+      - Key: Training Pipeline
+        Value: true
+  Role:
+    Tags:
+      - Key: AI4NG
+        Value: true
+      - Key: Training Pipeline
+        Value: true
+  Cluster:
+    Tags:
+      - Key: AI4NG
+        Value: true
+      - Key: Training Pipeline
+        Value: true
+  TaskDefinition:
+    Tags:
+      - Key: AI4NG
+        Value: true
+      - Key: Training Pipeline
+        Value: true
+    Type: String
+    Default: !ImportValue NetworkStack-PrivateSG
 
 Resources:
+  # --- S3 Buckets ---
+  EEGResultsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ai4ng-eeg-results-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .json
+            Function: !GetAtt ClassifierProcessorLambda.Arn
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt ResultsMetadataLambda.Arn
+          - Event: 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: 'manifest.json'
+            Function: !GetAtt ManifestProcessorLambda.Arn
 
-  # --- ECS Fargate Task Execution Role
+  # --- DynamoDB Tables ---
+  ProcessingStatusTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: EEGProcessingStatus
+      AttributeDefinitions:
+        - AttributeName: sessionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: sessionId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        AttributeName: expiry
+        Enabled: true
+
+  EEGClassifierTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: FBCSPClassifierParameters
+      AttributeDefinitions:
+        - AttributeName: sessionId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      KeySchema:
+        - AttributeName: sessionId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+
+  # --- API Gateway ---
+  StatusApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title: EEGProcessingStatusAPI
+          version: "1.0"
+        paths:
+          /status/{sessionId}:
+            get:
+              summary: Get processing status
+              parameters:
+                - name: sessionId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              responses:
+                '200':
+                  description: Status information
+                  content:
+                    application/json:
+                      schema:
+                        $ref: "#/components/schemas/StatusResponse"
+              x-amazon-apigateway-integration:
+                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetStatusLambda.Arn}/invocations
+                httpMethod: POST
+                type: aws_proxy
+        components:
+          schemas:
+            StatusResponse:
+              type: object
+              properties:
+                sessionId:
+                  type: string
+                status:
+                  type: string
+                  enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+                userId:
+                  type: string
+                startTime:
+                  type: number
+                processingDuration:
+                  type: number
+                resultsPath:
+                  type: string
+
+  # --- Lambda Functions ---
+  GetStatusLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/status_check/
+      Handler: app.handler
+      Runtime: python3.9
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          STATUS_TABLE: !Ref ProcessingStatusTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ProcessingStatusTable
+
+  ClassifierProcessorLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/classifier_processor/
+      Handler: app.handler
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          CLASSIFIER_TABLE: !Ref EEGClassifierTable
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref EEGClassifierTable
+        - S3ReadPolicy:
+            BucketName: !Ref EEGResultsBucket
+
+  ResultsMetadataLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/results_metadata/
+      Handler: app.handler
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          STATUS_TABLE: !Ref ProcessingStatusTable
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref ProcessingStatusTable
+        - S3ReadPolicy:
+            BucketName: !Ref EEGResultsBucket
+
+  # --- IAM Roles ---
   EEGTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -35,28 +265,42 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Policies:
-        - PolicyName: s3-access-policy
+        - PolicyName: S3AccessPolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
                   - s3:GetObject
+                Resource: !Sub arn:aws:s3:::${EEGUploadBucketName}/*
+              - Effect: Allow
+                Action:
                   - s3:PutObject
-                Resource:
-                  - !Sub arn:aws:s3:::${EEGUploadBucketName}/*
-                  - arn:aws:s3:::eeg-results-bucket-fargate/*
+                Resource: !GetAtt EEGResultsBucket.Arn/*
+        - PolicyName: DynamoDBStatusUpdate
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource: !GetAtt ProcessingStatusTable.Arn
 
-  # --- ECS Cluster
+  # --- ECS Resources ---
   EEGFargateCluster:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: EEG-Classifier-Cluster
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
 
-  # --- ECS Task Definition (MATLAB container handles CSV ➜ .mat + training)
+  ClassifierLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/eeg-classifier
+      RetentionInDays: 30
+
   EEGFargateTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
@@ -69,42 +313,43 @@ Resources:
       ExecutionRoleArn: !GetAtt EEGTaskExecutionRole.Arn
       ContainerDefinitions:
         - Name: eeg-classifier
-          Image: 123456789012.dkr.ecr.eu-west-2.amazonaws.com/eeg-classifier:latest
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/eeg-classifier:latest
           Essential: true
           Environment:
             - Name: UPLOAD_BUCKET
               Value: !Ref EEGUploadBucketName
             - Name: RESULTS_BUCKET
-              Value: eeg-results-bucket-fargate
+              Value: !Ref EEGResultsBucket
+            - Name: STATUS_TABLE
+              Value: !Ref ProcessingStatusTable
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: /ecs/eeg-classifier
-              awslogs-region: eu-west-2
-              awslogs-stream-prefix: fargate
+              awslogs-group: !Ref ClassifierLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: eeg-classifier
 
-  # --- Post-Processing Lambda
-  EEGPostProcessingLambda:
-    Type: AWS::Lambda::Function
+  # --- Step Functions ---
+  ProcessingStateMachine:
+    Type: AWS::Serverless::StateMachine
     Properties:
-      Handler: index.handler
-      Role: arn:aws:iam::123456789012:role/LambdaExecutionRole
-      Code:
-        ZipFile: |
-          def handler(event, context):
-              print("Post-processing: save to DB, update dashboard, etc.")
-              return {"statusCode": 200}
-      Runtime: python3.9
-      MemorySize: 256
-      Timeout: 60
-      Environment:
-        Variables:
-          DB_HOST: mydb.cluster-xxxxxxxx.eu-west-2.rds.amazonaws.com
-          DB_NAME: eeg_results
-          DB_USER: dbuser
-          DB_PASS: dbpassword
+      DefinitionUri: cloudformation/state-machine.asl.json
+      Role: !GetAtt EEGStepFunctionRole.Arn
+      Events:
+        S3UploadTrigger:
+          Type: CloudWatchEvent
+          Properties:
+            Pattern:
+              source: ["aws.s3"]
+              detail-type: ["Object Created"]
+              detail:
+                bucket:
+                  name: [!Ref EEGUploadBucketName]
+                object:
+                  key:
+                    prefix: "uploads/"
+                    suffix: ".zip"
 
-  # --- Step Functions Role
   EEGStepFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -116,47 +361,87 @@ Resources:
               Service: states.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: StepFunctionPolicy
+        - PolicyName: StepFunctionExecutionPolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
-                  - lambda:InvokeFunction
-                Resource: '*'
-              - Effect: Allow
-                Action:
                   - ecs:RunTask
+                  - ecs:StopTask
                   - ecs:DescribeTasks
                 Resource: '*'
               - Effect: Allow
                 Action:
                   - iam:PassRole
                 Resource: !GetAtt EEGTaskExecutionRole.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt ProcessingStatusTable.Arn
+              - Effect: Allow
+                Action:
+                  - events:PutTargets
+                  - events:PutRule
+                  - events:DescribeRule
+                Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForECSTaskRule
 
-  # --- Step Functions State Machine
-  EEGProcessingStateMachine:
-    Type: AWS::StepFunctions::StateMachine
+  # --- Lambda Permissions ---
+  ClassifierProcessorLambdaPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      RoleArn: !GetAtt EEGStepFunctionRole.Arn
-      DefinitionUri: s3://my-bucket/path/to/EEGProcessingStateMachine.asl.json
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ClassifierProcessorLambda
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt EEGResultsBucket.Arn
 
-  # --- S3 VPC Endpoint for private data flow
-  S3VPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
+  ResultsMetadataLambdaPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
-      VpcId: !Ref VpcId
-      VpcEndpointType: Gateway
-      RouteTableIds:
-        - rtb-xxxxxxxx # Update with your Transit route table ID!
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ResultsMetadataLambda
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt EEGResultsBucket.Arn
+
+ManifestProcessorLambda:
+  Type: AWS::Serverless::Function
+  Properties:
+    CodeUri: lambdas/manifest_processor/
+    Handler: app.handler
+    Runtime: python3.9
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        STATUS_TABLE: !Ref ProcessingStatusTable
+        SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
+    Policies:
+      - DynamoDBWritePolicy:
+          TableName: !Ref ProcessingStatusTable
+      - S3ReadPolicy:
+          BucketName: !Ref EEGResultsBucket
+      - SNSPublishPolicy:
+          TopicName: !Ref ProcessingNotificationTopic
+
+# Add permission for S3 to invoke manifest processor
+ManifestProcessorLambdaPermission:
+  Type: AWS::Lambda::Permission
+  Properties:
+    Action: lambda:InvokeFunction
+    FunctionName: !Ref ManifestProcessorLambda
+    Principal: s3.amazonaws.com
+    SourceAccount: !Ref AWS::AccountId
+    SourceArn: !GetAtt EEGResultsBucket.Arn
 
 Outputs:
-  EEGUploadBucketNameOutput:
-    Value: !Ref EEGUploadBucketName
-    Description: Imported EEG upload bucket name
-
-  EEGResultsBucketName:
-    Value: eeg-results-bucket-fargate
-  EEGStepFunctionArn:
-    Value: !Ref EEGProcessingStateMachine
+  StatusApiUrl:
+    Value: !Sub https://${StatusApi}.execute-api.${AWS::Region}.amazonaws.com/prod/status/
+    Description: URL for status checking API
+    Export:
+      Name: EEGStatusApiUrl
+  ResultsBucketName:
+    Value: !Ref EEGResultsBucket
+    Export:
+      Name: EEGResultsBucketName

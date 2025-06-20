@@ -1,35 +1,127 @@
 {
     "Comment": "EEG Processing Pipeline",
-    "StartAt": "ECSFargateProcessing",
+    "StartAt": "ExtractSessionInfo",
     "States": {
-        "ECSFargateProcessing": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::ecs:runTask.sync",
+        "ExtractSessionInfo": {
+            "Type": "Pass",
             "Parameters": {
-                "Cluster": "${EEGFargateCluster}",
-                "LaunchType": "FARGATE",
-                "TaskDefinition": "${EEGFargateTaskDefinition}",
-                "NetworkConfiguration": {
-                    "AwsvpcConfiguration": {
-                        "Subnets": [
-                            "subnet-xxxxxxxx"
-                        ],
-                        "SecurityGroups": [
-                            "sg-xxxxxxxx"
-                        ],
-                        "AssignPublicIp": "ENABLED"
+                "userId.$": "$.detail.object.key.split('/')[1]",
+                "sessionId.$": "$.detail.object.key.split('/')[2]",
+                "inputFile.$": "$.detail.object.key"
+            },
+            "ResultPath": "$.sessionInfo",
+            "Next": "RecordProcessingStart"
+        },
+        "RecordProcessingStart": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::dynamodb:updateItem",
+            "Parameters": {
+                "TableName": "${ProcessingStatusTable}",
+                "Key": {
+                    "sessionId": {
+                        "S.$": "$.sessionInfo.sessionId"
+                    }
+                },
+                "UpdateExpression": "SET #s = :status, #u = :user, #t = :time",
+                "ExpressionAttributeNames": {
+                    "#s": "status",
+                    "#u": "userId",
+                    "#t": "startTime"
+                },
+                "ExpressionAttributeValues": {
+                    ":status": {
+                        "S": "PROCESSING"
+                    },
+                    ":user": {
+                        "S.$": "$.sessionInfo.userId"
+                    },
+                    ":time": {
+                        "N": "$$.State.EnteredTime"
                     }
                 }
             },
-            "Next": "PostProcessingLambda"
+            "Next": "LaunchECSTask"
         },
-        "PostProcessingLambda": {
+        "LaunchECSTask": {
             "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
             "Parameters": {
-                "FunctionName": "${EEGPostProcessingLambda}",
-                "Payload": {
-                    "Input.$": "$"
+                "LaunchType": "FARGATE",
+                "Cluster": "${EEGFargateCluster}",
+                "TaskDefinition": "${EEGFargateTaskDefinition}",
+                "NetworkConfiguration": {
+                    "AwsvpcConfiguration": {
+                        "Subnets": "${PrivateSubnetIds}",
+                        "SecurityGroups": [
+                            "${PrivateSG}"
+                        ],
+                        "AssignPublicIp": "DISABLED"
+                    }
+                },
+                "Overrides": {
+                    "ContainerOverrides": [
+                        {
+                            "Name": "eeg-classifier",
+                            "Environment": [
+                                {
+                                    "Name": "INPUT_FILE",
+                                    "Value.$": "$.sessionInfo.inputFile"
+                                },
+                                {
+                                    "Name": "USER_ID",
+                                    "Value.$": "$.sessionInfo.userId"
+                                },
+                                {
+                                    "Name": "SESSION_ID",
+                                    "Value.$": "$.sessionInfo.sessionId"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "End": true,
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "IntervalSeconds": 30,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 2
+                }
+            ],
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "RecordFailure"
+                }
+            ]
+        },
+        "RecordFailure": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::dynamodb:updateItem",
+            "Parameters": {
+                "TableName": "${ProcessingStatusTable}",
+                "Key": {
+                    "sessionId": {
+                        "S.$": "$.sessionInfo.sessionId"
+                    }
+                },
+                "UpdateExpression": "SET #s = :status, #e = :error",
+                "ExpressionAttributeNames": {
+                    "#s": "status",
+                    "#e": "error"
+                },
+                "ExpressionAttributeValues": {
+                    ":status": {
+                        "S": "FAILED"
+                    },
+                    ":error": {
+                        "S.$": "$.error.Cause"
+                    }
                 }
             },
             "End": true

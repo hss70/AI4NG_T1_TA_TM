@@ -1,0 +1,304 @@
+% Multi-class Classification, task manager for TAv2 task manager code
+
+% Input structures
+
+% Output structures
+
+% REQUIRESTMENT: Matlab
+% Copyright(c)2020 Attila Korik, http://isrc.ulster.ac.uk/akorik/contact.html
+
+
+%% VA Setup (A1 prep)
+
+%Looks like script requires a structure like:
+% -Home
+%   -Code
+%   -Dependents
+%       -Standard-10-20-Cap81.locs
+%   -Work
+%       -CSV
+%           -SubjectName
+%               -SessionName
+%       -T1
+%       -SourceData (EEG_rec)
+%           -SubjectName
+%               -SessionName
+
+%inputDir = getenv('INPUT_DIR');   % <-- The directory containing the EEG source data
+%outputDir = getenv('OUTPUT_DIR');
+%if isempty(inputCsv) || isempty(outputDir)
+%    error('INPUT_CSV and OUTPUT_DIR environment variables must be set.');
+%end
+
+% Set directories
+dataDir = fullfile(workPath, 'SourceData (EEG_rec)');
+% Check that Data directory exists
+if ~isfolder(dataDir)
+    error('The Data directory does not exist: %s', dataDir);
+end
+
+chanlocDir = fullfile(workDir, 'Dependents');
+% Check that chanloc directory exists
+if ~isfolder(chanlocDir)
+    error('The Channel Loc directory does not exist: %s', dataDir);
+end
+
+%resultsDir = fullfile(workPath, 'Results');
+% Create Results directory if it does not exist
+if ~isfolder(resultsDir)
+    mkdir(resultsDir);
+end
+
+V1_TRANS = getV1_TRANSConfig(workDir, chanlocDir, channelNum, sampleRate, downSampleRate);
+% addpath(genpath([V1_TRANS.f.HomeDir,'\Code\Toolboxes for FBCSP\Toolbox (used elements)']));
+addpath(genpath([V1_TRANS.f.HomeDir,'\Code\Toolboxes for FBCSP\add to path']));
+
+
+%% TaskManager code for TAv2 task manager code
+
+% ______________________________
+%
+% Identify Source data structure
+% ______________________________
+
+dir0 = V1_TRANS.f.SourceDataDir;
+dir0_struct = dir(dir0);
+wm_fileID = 0;
+for wm1 = 1 : size(dir0_struct,1)
+    if dir0_struct(wm1,1).isdir == 1    % if directory
+        if sum(ismember(dir0_struct(wm1,1).name,'.')) == 0  % if the name not involves '.'
+
+            subDir1 = dir0_struct(wm1,1).name;
+            dir1 = [dir0, '\', subDir1];
+            dir1_struct = dir(dir1);
+            for wm2 = 1 : size(dir1_struct,1)
+                if dir1_struct(wm2,1).isdir == 1    % if directory
+                    if sum(ismember(dir1_struct(wm2,1).name,'.')) == 0  % if the name not involves '.'
+
+                        subDir2 = dir1_struct(wm2,1).name;
+                        dir2 = [dir1, '\', subDir2];
+                        dir2_struct = dir(dir2);
+                        for wm3 = 1 : size(dir2_struct,1)
+                            if strcmp(dir2_struct(wm3,1).name,V1_TRANS.f.SourceDataName)
+                                wm_fileID = wm_fileID +1;
+                                tr_file_list{wm_fileID} = [dir2, '\', V1_TRANS.f.SourceDataName];
+                                tr_subDir_list{wm_fileID} = [subDir1, '\', subDir2];     % this info also involved in tr_file_list{wm_fileID}
+                            end
+                        end
+
+                    end
+                end
+            end
+
+        end
+    end
+end
+V1_TRANS.tr_file_list = tr_file_list;
+V1_TRANS.tr_subDir_list = tr_subDir_list;
+clearvars -except V1_TRANS
+
+% ____________________________________________________________________________________________________________________
+%
+% Identify previously processed result structure + remove already processed options from list of data be processed now
+% ____________________________________________________________________________________________________________________
+
+if ~isempty(V1_TRANS.f.PreviousResultDir)
+    tr_file_list = V1_TRANS.tr_file_list;
+    tr_subDir_list = V1_TRANS.tr_subDir_list;
+
+    dir0 = V1_TRANS.f.PreviousResultDir;
+    dir0_struct = dir(dir0);
+    wm_fileID = 0;
+    for wm1 = 1 : size(dir0_struct,1)
+        if dir0_struct(wm1,1).isdir == 1    % if directory
+            if sum(ismember(dir0_struct(wm1,1).name,'.')) == 0  % if the name not involves '.'
+
+                subDir1 = dir0_struct(wm1,1).name;
+                dir1 = [dir0, '\', subDir1];
+                dir1_struct = dir(dir1);
+                for wm2 = 1 : size(dir1_struct,1)
+                    if dir1_struct(wm2,1).isdir == 1    % if directory
+                        if sum(ismember(dir1_struct(wm2,1).name,'.')) == 0  % if the name not involves '.'
+
+                            subDir2 = dir1_struct(wm2,1).name;
+
+                            wm = find(ismember(tr_subDir_list, [subDir1,'\',subDir2]));
+                            if ~isempty(wm)
+                                if size(tr_file_list,2) == 1
+                                    fprintf('All data has already been analysed\n');
+                                    tr_file_list = '';
+                                    tr_subDir_list = '';
+                                else
+                                    if wm ~= 1
+                                        for wm3 = 1 : wm-1
+                                            tmp.tr_file_list{wm3} = tr_file_list{wm3};
+                                            tmp.tr_subDir_list{wm3} = tr_subDir_list{wm3};
+                                        end
+                                    end
+                                    if wm ~= size(tr_file_list,2)
+                                        for wm3 = wm+1 : size(tr_file_list,2)
+                                            tmp.tr_file_list{wm3-1} = tr_file_list{wm3};
+                                            tmp.tr_subDir_list{wm3-1} = tr_subDir_list{wm3};
+
+                                        end
+                                    end
+                                    tr_file_list = tmp.tr_file_list;
+                                    tr_subDir_list = tmp.tr_subDir_list;
+                                    clearvars tmp
+                                end
+                            end
+
+                        end
+                    end
+                end
+
+            end
+        end
+    end
+    V1_TRANS.tr_file_list = tr_file_list;
+    V1_TRANS.tr_subDir_list = tr_subDir_list;
+    clearvars -except V1_TRANS
+end
+
+% ____________
+%
+% Task Manager
+% ____________
+
+if isempty(V1_TRANS.processed_taskIDs)
+    V1_TRANS.processed_taskIDs = 1 : size(V1_TRANS.tr_file_list,2);
+end
+
+tr_file_list = V1_TRANS.tr_file_list;
+tr_subDir_list = V1_TRANS.tr_subDir_list;
+for wm_taskID = 1 : size(tr_file_list,2)
+    V1_TRANS.wm_taskID = wm_taskID;
+
+    if sum(ismember(V1_TRANS.processed_taskIDs,wm_taskID))==0
+        if ~exist('T1_result_table')
+            TA_addEmpty_to_resultSummary
+            %      T1_result_table = '';
+        elseif size(T1_result_table,1) < wm_taskID
+            TA_addEmpty_to_resultSummary
+        end
+    else
+
+        % %  wm = strfind(tr_file_list{wm_taskID},'\');
+        % %  % if ~contains(lower(tr_file_list{wm_taskID}(1,wm(1,end-1)+1:wm(1,end)-1)), 'q')
+        % %  if contains(lower(tr_file_list{wm_taskID}(1,wm(1,end-1)+1:wm(1,end)-1)), 'q')
+
+        % fprintf([tr_file_list{wm_taskID}, '\',V1_TRANS.f.SourceDataName,' (',num2str(wm_taskID),'/',num2str(size(tr_file_list,2)),') ...\n']);
+        fprintf(['\n________________________\n\n']);
+        fprintf(['Processing (#',num2str(wm_taskID),'/',num2str(size(tr_file_list,2)),') ...\n']);
+
+        % copy chanlocs file
+        copyfile([V1_TRANS.f.chanlocs_dir,'\',V1_TRANS.f.chanlocs_filename], [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.chanlocs_filename]);
+
+        %import EEG config
+        configFilePath = fullfile(V1_TRANS.f.SourceDataDir, V1_TRANS.tr_subDir_list{wm_taskID}, "EEG_config.mat");
+        eegConfig = load(configFilePath);
+
+        % EEG_rec dataset tranfer (converted Source data to Work data )
+        % _____________________________________________________________
+
+        TA_Dataset_Transfer %only called here
+
+        % Try trainTest task manager code
+        % _______________________________
+
+        % Stacking all variables into STACK(1)
+        % ____________________________________
+
+        STACK_allVariables_01
+        % clearvars -except STACK
+        clearvars VA_TRANS
+        VA_TRANS.SW_T1_maxTrainTestTry = V1_TRANS.SW.T1_maxTrainTestTry;
+        VA_TRANS.subjID_text = V1_TRANS.tr_subDir_list{1,wm_taskID}(find(V1_TRANS.tr_subDir_list{1,wm_taskID}=='\')+1:end);
+        baseDir = V1_TRANS.f.BaseDir;
+
+        clearvars -except STACK VA_TRANS baseDir eegConfig
+
+        if VA_TRANS.SW_T1_maxTrainTestTry == 0
+            VA_TRANS.T1_tryCounter = 1;
+            TAv2_TrainTest
+            wm_ok = 1;
+        else
+            try
+                VA_TRANS.SW_T1_maxTrainTestTry = 1;
+                TAv2_TrainTest
+                wm_ok = 1;
+            catch
+                if VA_TRANS.SW_T1_maxTrainTestTry > 1
+                    try
+                        VA_TRANS.SW_T1_maxTrainTestTry = 2;
+                        TAv2_TrainTest
+                        wm_ok = 1;
+                    catch
+                        if VA_TRANS.SW_T1_maxTrainTestTry > 2
+                            try
+                                VA_TRANS.T1_tryCounter = 1;
+                                TAv2_TrainTest
+                                wm_ok = 1;
+                            catch
+                                wm_ok = 0;
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        if wm_ok == 1
+            % Restore variables from STACK
+            % ____________________________
+            % clearvars -except STACK VA_TRANS result
+            % clearvars -except STACK VA_TRANS
+            clearvars -except STACK
+            STACK_restore_01
+
+            % Add new line to results to summary
+            % __________________________________
+            TA_append_resultSummary
+
+            % Copy important param and result files to the final T1 sub-directories
+            % _____________________________________________________________________
+            TA_copy_T1_files
+
+            % Delete 'heatmap (Freq v4).fig'
+            % ______________________________
+            delete([V1_TRANS.f.BaseDir,'\T1\Results\',V1_TRANS.tr_subDir_list{wm_taskID},'\+ Fig\heatmap (Freq v4).fig']);
+
+            % prepare online setup file
+            % _________________________
+            if ~isempty(V1_TRANS.f.T1_param_subSubDir)
+                TC_Online_prep_func(V1_TRANS)
+                TA_copy_T1_online_files
+            end
+        else
+            % Restore variables from STACK
+            % ____________________________
+            % clearvars -except STACK VA_TRANS result
+            % clearvars -except STACK VA_TRANS
+            clearvars -except STACK
+            STACK_restore_01
+
+            % Add new line to results to summary
+            % __________________________________
+            TA_addEmpty_to_resultSummary
+        end
+
+        % Delete directories and files which used for TrainTest (important content already copied into the final (T1) directory)
+        % ______________________________________________________________________________________________________________________
+        if isdir([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_online_subSubDir])
+            rmdir([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_online_subSubDir],'s');
+        end
+        if isdir([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.DataSubDir])
+            rmdir([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.DataSubDir],'s');
+        end
+        if isdir([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.TrainTestSubDir])
+            rmdir([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.TrainTestSubDir],'s');
+        end
+        delete([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.chanlocs_filename]);
+
+    end
+end
+

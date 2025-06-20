@@ -10,8 +10,6 @@
 
 %% VA Setup (A1 prep)
 
-clear; clc;
-
 %Looks like script requires a structure like:
 % -Home
 %   -Code
@@ -32,35 +30,21 @@ clear; clc;
 %    error('INPUT_CSV and OUTPUT_DIR environment variables must be set.');
 %end
 
-%Get channel number from environment variable
-channelNum = 8;
-
-%Get sample rate from environment variable
-sampleRate = 125;
-downSampleRate = 125;
-
-% Get the WORK_DIR from environment variable
-workDir = 'C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\';
-%workDir = getenv('WORK_DIR');
-if isempty(workDir)
-    error('WORK_DIR environment variable must be set.');
-end
-% Set Data and Results directories
-dataDir = fullfile(workDir,'Work','SourceData (EEG_rec)');
-
+% Set directories
+dataDir = fullfile(workPath, 'SourceData (EEG_rec)');
 % Check that Data directory exists
 if ~isfolder(dataDir)
     error('The Data directory does not exist: %s', dataDir);
 end
 
-chanlocDir = fullfile(workDir,'Work','Dependents');
-% Check that Data directory exists
+chanlocDir = fullfile(workDir, 'Dependents');
+% Check that chanloc directory exists
 if ~isfolder(chanlocDir)
     error('The Channel Loc directory does not exist: %s', dataDir);
 end
 
 % Set Data and Results directories
-resultsDir = fullfile(workDir, 'Work','Results');
+resultsDir = fullfile(workPath, 'Results');
 % Create Results directory if it does not exist
 if ~isfolder(resultsDir)
     mkdir(resultsDir);
@@ -235,32 +219,6 @@ for wm_taskID = 1 : size(tr_file_list,2)
 
         clearvars -except STACK VA_TRANS baseDir eegConfig
 
-        % %   % try
-        % %   %   VA_TRANS.T1_tryCounter = 1;
-        % %   %   TAv2_TrainTest
-        % %   %   wm_ok = 1;
-        % %   % catch
-        % %   %   wm_ok = 0;
-        % %   % end
-        % %   try
-        % %     VA_TRANS.T1_tryCounter = 1;
-        % %     TAv2_TrainTest
-        % %     wm_ok = 1;
-        % %   catch
-        % %     try
-        % %       VA_TRANS.T1_tryCounter = 2;
-        % %       TAv2_TrainTest
-        % %       wm_ok = 1;
-        % %     catch
-        % %       try
-        % %         VA_TRANS.T1_tryCounter = 1;
-        % %         TAv2_TrainTest
-        % %         wm_ok = 1;
-        % %       catch
-        % %         wm_ok = 0;
-        % %       end
-        % %     end
-        % %   end
         if VA_TRANS.SW_T1_maxTrainTestTry == 0
             VA_TRANS.T1_tryCounter = 1;
             TAv2_TrainTest
@@ -345,61 +303,3 @@ for wm_taskID = 1 : size(tr_file_list,2)
     end
 end
 
-
-%%
-
-%{
-% ______________________________
-% 
-% Delete 'heatmap (Freq v4).fig'
-% ______________________________
-
-tr_file_list = V1_TRANS.tr_file_list;
-tr_subDir_list = V1_TRANS.tr_subDir_list;
-for wm_taskID = 1 : size(tr_file_list,2)
-  delete([V1_TRANS.f.BaseDir,'\T1\Results\',V1_TRANS.tr_subDir_list{wm_taskID},'\+ Fig\heatmap (Freq v4).fig']);
-end
-%}
-
-
-
-%% Comments
-
-%{
-addpath('C:\BCI\DCR\191217 CL\Code\Toolbox (used elements)');
-addpath('C:\BCI\DCR\191217 CL\Code\Toolbox (used elements)\from eeglab14_1_1b');
-%}
-
-%{
-addpath('D:\Csc\DCR\W Toolbox (used elements) for FBCSP');
-addpath('D:\Csc\DCR\W Toolbox (used elements) for FBCSP\from eeglab14_1_1b');
-%}
-
-%{
-addpath('T:\Brain-Computer Interface\Csc\DCR\CL\Code');
-addpath('T:\Brain-Computer Interface\Csc\DCR\CL\Code\W Toolbox (used elements) for FBCSP');
-addpath('T:\Brain-Computer Interface\Csc\DCR\CL\Code\W Toolbox (used elements) for FBCSP\from eeglab14_1_1b');
-%}
-
-%{
-addpath('\\sceis_cl1fs\shared\Brain-Computer Interface\Csc\DCR\CL\Code');
-addpath('\\sceis_cl1fs\shared\Brain-Computer Interface\Csc\DCR\CL\Code\W Toolbox (used elements) for FBCSP');
-addpath('\\sceis_cl1fs\shared\Brain-Computer Interface\Csc\DCR\CL\Code\W Toolbox (used elements) for FBCSP\from eeglab14_1_1b');
-%}
-
-%{
-addpath('\\sceis_cl1fs\shared\Brain-Computer Interface\Csc\DCR\CL\Code2');
-addpath('\\sceis_cl1fs\shared\Brain-Computer Interface\Csc\DCR\CL\Code2\W Toolbox (used elements) for FBCSP');
-addpath('\\sceis_cl1fs\shared\Brain-Computer Interface\Csc\DCR\CL\Code2\W Toolbox (used elements) for FBCSP\from eeglab14_1_1b');
-%}
-
-%{
-    delete(gcp('nocreate'))     % parpool close
-
-%     w.parCore.location = 'local';
-%     w.parCore.number = 4;
-    w.parCore.location = 'HPCServerProfile1';
-%     w.parCore.number = 8;
-    w.parCore.number = 101;
-    parpool (w.parCore.location, w.parCore.number)       % open cores
-%}

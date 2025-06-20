@@ -1,0 +1,16 @@
+%%{init: {'theme': 'default'}}%%
+sequenceDiagram
+    participant S3 as S3 Event
+    participant SF as Step Function
+    participant ECS as ECS Task
+    participant Container
+    participant S3Results as Results Bucket
+    
+    S3->>SF: Object Created Event
+    SF->>SF: Extract userId/sessionId
+    SF->>ECS: Launch Task with env vars
+    ECS->>Container: Set USER_ID, SESSION_ID
+    ECS->>Container: Set UPLOAD_BUCKET
+    ECS->>Container: Set RESULTS_BUCKET
+    Container->>Container: Construct RESULTS_PATH
+    Container->>S3Results: Upload to s3://${RESULTS_BUCKET}/${RESULTS_PATH}/

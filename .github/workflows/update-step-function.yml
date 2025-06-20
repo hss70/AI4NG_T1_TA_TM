@@ -1,10 +1,10 @@
-# .github/workflows/update-step-function.yml
 name: Update Step Function
 
 on:
+  workflow_dispatch:
   push:
     paths:
-      - 'statemachine/definition.json'  # Your Step Function definition
+      - 'infra/EEGProcessingStateMachine.asl.json'
     branches:
       - main
 
@@ -29,4 +29,4 @@ jobs:
         run: |
           aws stepfunctions update-state-machine \
             --state-machine-arn ${{ secrets.STEP_FUNCTION_ARN }} \
-            --definition file://statemachine/definition.json
+            --definition file://infra/EEGProcessingStateMachine.asl.json

@@ -1,0 +1,13 @@
+%%{init: {'theme': 'default'}}%%
+graph TD
+    A[Mobile User] -->|Upload ZIP| B(S3 Upload Bucket)
+    B -->|Event| C(Step Function)
+    C --> D[DynamoDB: Record Start]
+    C --> E[ECS Fargate Task]
+    E -->|Update Status| D
+    E --> F(S3 Results Bucket)
+    A -->|Poll Status| G(API Gateway)
+    G --> H(Status Lambda)
+    H --> D
+    F -->|Trigger| I[Classifier Lambda]
+    F -->|Trigger| J[Metadata Lambda]
