@@ -160,6 +160,26 @@ Resources:
         - DynamoDBReadPolicy:
             TableName: !Ref ProcessingStatusTable
 
+  ManifestProcessorLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/manifest_processor/
+      Handler: app.handler
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          STATUS_TABLE: !Ref ProcessingStatusTable
+          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref ProcessingStatusTable
+        - S3ReadPolicy:
+            BucketName: !Ref EEGResultsBucket
+        - SNSPublishPolicy:
+            TopicName: !Ref ProcessingNotificationTopic
+
   ClassifierProcessorLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -455,26 +475,6 @@ Resources:
       Principal: s3.amazonaws.com
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !GetAtt EEGResultsBucket.Arn
-
-  ManifestProcessorLambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: lambdas/manifest_processor/
-      Handler: app.handler
-      Runtime: python3.9
-      Timeout: 30
-      MemorySize: 256
-      Environment:
-        Variables:
-          STATUS_TABLE: !Ref ProcessingStatusTable
-          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
-      Policies:
-        - DynamoDBWritePolicy:
-            TableName: !Ref ProcessingStatusTable
-        - S3ReadPolicy:
-            BucketName: !Ref EEGResultsBucket
-        - SNSPublishPolicy:
-            TopicName: !Ref ProcessingNotificationTopic
 
   ManifestProcessorLambdaPermission:
     Type: AWS::Lambda::Permission
