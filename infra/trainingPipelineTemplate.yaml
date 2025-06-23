@@ -107,7 +107,7 @@ Resources:
     Properties:
       ApiId: !Ref SharedApiId
       IntegrationType: AWS_PROXY
-      IntegrationUri: !GetAtt GetStatusLambda.Arn
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetStatusLambda.Arn}/invocations
       PayloadFormatVersion: "2.0"
       IntegrationMethod: POST
 
@@ -120,7 +120,8 @@ Resources:
       AuthorizerId: !ImportValue SharedApiAuthorizerId
       Target: !Sub integrations/${StatusIntegration}
 
-  # --- Lambda Functions (with integrated permissions) ---
+  # --- Lambda Functions ---
+  # HTTP GET Lambda for Status Check
   GetStatusLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -141,14 +142,32 @@ Resources:
           OnSuccess:
             Type: SQS
             Destination: !GetAtt StatusQueue.Arn
-      Permissions:
-        - Principal: apigateway.amazonaws.com
-          SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/GET/api/status/*"
-          Action: lambda:InvokeFunction
 
+  GetStatusLambdaPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt GetStatusLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/GET/api/status/{sessionId}"
+
+  # S3 Event Triggered Lambdas
+  # Processes manifest.json files uploaded to the EEGResultsBucket
+  # and updates the processing status in DynamoDB
   ManifestProcessorLambda:
     Type: AWS::Serverless::Function
     Properties:
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket: !Ref EEGResultsBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: manifest.json
       CodeUri: src/lambdas/manifest_processor/
       Handler: app.handler
       Runtime: python3.9
@@ -165,16 +184,30 @@ Resources:
             BucketName: !Ref EEGResultsBucket
         - SNSPublishPolicy:
             TopicName: !Ref ProcessingNotificationTopic
-      # Integrated permission for S3
-      Permissions:
-        - Principal: s3.amazonaws.com
-          SourceAccount: !Ref AWS::AccountId
-          SourceArn: !GetAtt EEGResultsBucket.Arn
-          Action: lambda:InvokeFunction
+
+  ManifestProcessorLambdaPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ManifestProcessorLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt EEGResultsBucket.Arn
 
   ClassifierProcessorLambda:
     Type: AWS::Serverless::Function
     Properties:
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket: !Ref EEGResultsBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .json
       CodeUri: src/lambdas/classifier_processor/
       Handler: app.handler
       Runtime: python3.9
@@ -188,16 +221,30 @@ Resources:
             TableName: !Ref EEGClassifierTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
-      # Integrated permission for S3
-      Permissions:
-        - Principal: s3.amazonaws.com
-          SourceAccount: !Ref AWS::AccountId
-          SourceArn: !GetAtt EEGResultsBucket.Arn
-          Action: lambda:InvokeFunction
+
+  ClassifierProcessorLambdaPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:    
+      FunctionName: !GetAtt ResultsMetadataLambda.Arn
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt EEGResultsBucket.Arn
+      Action: lambda:InvokeFunction
 
   ResultsMetadataLambda:
     Type: AWS::Serverless::Function
     Properties:
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket: !Ref EEGResultsBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: [resultTable].json
       CodeUri: src/lambdas/results_metadata/
       Handler: app.handler
       Runtime: python3.9
@@ -212,11 +259,14 @@ Resources:
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
       # Integrated permission for S3
-      Permissions:
-        - Principal: s3.amazonaws.com
-          SourceAccount: !Ref AWS::AccountId
-          SourceArn: !GetAtt EEGResultsBucket.Arn
-          Action: lambda:InvokeFunction
+  ResultsMetadataLambdaPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ResultsMetadataLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt EEGResultsBucket.Arn
 
   # --- IAM Roles ---
   EEGTaskExecutionRole:
