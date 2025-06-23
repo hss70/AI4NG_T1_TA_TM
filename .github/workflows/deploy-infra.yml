@@ -34,9 +34,10 @@ jobs:
 
       # Install SAM CLI
       - name: Install SAM CLI
-        run: |
-          pip install aws-sam-cli
-          sam --version
+        uses: aws-actions/setup-sam@v2
+        with:
+          version: '1.85.0'
+          use-system: true
 
       # Get all required exported values
       - name: Get CloudFormation exports
@@ -47,41 +48,45 @@ jobs:
             --query "Exports[?Name=='EEGUploadBucketName'].Value" \
             --output text)
           
+          if [ -z "$BUCKET_NAME" ]; then
+            echo "::error::EEGUploadBucketName export not found"
+            exit 1
+          fi
+
           SHARED_API_ID=$(aws cloudformation list-exports \
             --query "Exports[?Name=='SharedApiId'].Value" \
             --output text)
           if [ -z "$SHARED_API_ID" ]; then
             echo "::error::SharedApiId export not found" 
-          
+          fi
+
           SG_ID=$(aws cloudformation list-exports \
             --query "Exports[?Name=='NetworkStack-PrivateSG'].Value" \
             --output text)
-          
-          SUBNETS_STRING=$(aws cloudformation list-exports \
-            --query "Exports[?Name=='NetworkStack-PrivateSubnetIds'].Value" \
-            --output text)
-          
-          SUBNET1=$(echo "$SUBNETS_STRING" | cut -d',' -f1)
-          SUBNET2=$(echo "$SUBNETS_STRING" | cut -d',' -f2)
-          
-          # Verify values
-          if [ -z "$BUCKET_NAME" ]; then
-            echo "::error::EEGUploadBucketName export not found"
-            exit 1
-          fi
+
           if [ -z "$SG_ID" ]; then
             echo "::error::NetworkStack-PrivateSG export not found"
             exit 1
           fi
+
+          SUBNETS_STRING=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='NetworkStack-PrivateSubnetIds'].Value" \
+            --output text)
+
           if [ -z "$SUBNETS_STRING" ]; then
             echo "::error::NetworkStack-PrivateSubnetIds export not found"
             exit 1
-          fi
+          fi   
+
+          SUBNET1=$(echo "$SUBNETS_STRING" | cut -d',' -f1)
+          SUBNET2=$(echo "$SUBNETS_STRING" | cut -d',' -f2)
+          
           if [ -z "$SUBNET1" ] || [ -z "$SUBNET2" ]; then
             echo "::error::Could not parse subnets from: $SUBNETS_STRING"
             exit 1
-          fi
-          
+          fi          
+
+          echo "Successfully fetched all required exports:"
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
           echo "shared_api_id=$SHARED_API_ID" >> $GITHUB_OUTPUT
           echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
