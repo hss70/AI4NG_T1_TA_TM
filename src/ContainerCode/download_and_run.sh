@@ -14,7 +14,7 @@ mkdir -p \
   "$WORK_PATH/Results"
 
 # Copy the EEG channel locations file to Dependents
-cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Dependents/"
+cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Work/Dependents/"
 
 # Download input file from S3
 echo "Downloading $INPUT_FILE from $UPLOAD_BUCKET"
@@ -50,10 +50,10 @@ else
     exit 1
 fi
 
-# Run MATLAB executable
+# Run MATLAB executable using the runner script
 echo "Running MATLAB executable"
 start_time=$(date +%s)
-./FBCSP_Training.exe || EXIT_CODE=$?
+./run_FBCSP_Training.sh ${MATLAB_RUNTIME_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/v125} || EXIT_CODE=$?
 end_time=$(date +%s)
 EXIT_CODE=${EXIT_CODE:-0}
 

@@ -13,9 +13,9 @@
 %Looks like script requires a structure like:
 % -Home
 %   -Code
-%   -Dependents
-%       -Standard-10-20-Cap81.locs
 %   -Work
+%       -Dependents
+%           -Standard-10-20-Cap81.locs
 %       -CSV
 %           -SubjectName
 %               -SessionName
@@ -31,23 +31,23 @@
 %end
 
 % Set directories
-dataDir = fullfile(workPath, 'SourceData (EEG_rec)');
+dataDir = fullfile(homeDir, 'Work', 'SourceData (EEG_rec)');
 % Check that Data directory exists
 if ~isfolder(dataDir)
     error('The Data directory does not exist: %s', dataDir);
 end
 
-chanlocDir = fullfile(workDir, 'Dependents');
+chanlocDir = fullfile(homeDir, 'Work','Dependents');
 % Check that chanloc directory exists
 if ~isfolder(chanlocDir)
     error('The Channel Loc directory does not exist: %s', dataDir);
 end
 
-%resultsDir = fullfile(workPath, 'Results');
+%resultsDir = fullfile(homeDir, 'Results');
 % Create Results directory if it does not exist
-if ~isfolder(resultsDir)
-    mkdir(resultsDir);
-end
+%if ~isfolder(resultsDir)
+%    mkdir(resultsDir);
+%end
 
 V1_TRANS = getV1_TRANSConfig(workDir, chanlocDir, channelNum, sampleRate, downSampleRate);
 % addpath(genpath([V1_TRANS.f.HomeDir,'\Code\Toolboxes for FBCSP\Toolbox (used elements)']));

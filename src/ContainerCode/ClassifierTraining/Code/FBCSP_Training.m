@@ -1,16 +1,28 @@
+% -Home
+%   -Code
+%   -Dependents
+%       -Standard-10-20-Cap81.locs
+%   -Work
+%       -CSV
+%           -SubjectName
+%               -SessionName
+%       -T1
+%       -SourceData (EEG_rec)
+%           -SubjectName
+%               -SessionName
 %Converts Csvs into .mat files and ensures they're in the right palce
-
-workDir = getenv('WORK_DIR');
+homeDir = getenv('HOME_DIR');
+%homeDir = '/home/hardeep/Dev/AI4NG/AI4NG_T1_TA_TM/TestData'
+workDir = fullfile(homeDir, 'Work');
 batchConvertCsvToMat;
 clear; clc;
 
 % Get environment variables
-workDir = getenv('WORK_DIR');
-workPath = getenv('WORK_PATH');
+homeDir = getenv('HOME_DIR'); %Work folder
 channelNum = str2double(getenv('channelNum'));
 sampleRate = str2double(getenv('sampleRate'));
 downSampleRate = str2double(getenv('downSampleRate'));
-resultsDir = genenv('RESULTS_PATH');
+resultsDir = getenv('RESULTS_PATH');
 
 % Validate environment variables
 if isempty(workDir) || isempty(workPath) || isnan(channelNum) || ...

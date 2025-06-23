@@ -17,7 +17,7 @@
 %               -SessionName
 % We provide the work directory via docker environment variables
 %workDir = getenv('WORKDIR');
-workDir = "C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work";
+%workDir = "C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work";
 
 csvRootDir = fullfile(workDir, 'CSV');
 

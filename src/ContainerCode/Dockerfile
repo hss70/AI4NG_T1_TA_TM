@@ -1,7 +1,3 @@
-# Use a standard Ubuntu base image
-FROM ubuntu:22.04
-# Use the official MATLAB Runtime dependencies base image
-FROM mathworks/matlab-runtime-deps:latest
 # Use the official MATLAB Runtime base image
 FROM containers.mathworks.com/matlab-runtime:latest
 
@@ -23,10 +19,10 @@ RUN apt-get update && \
 # Set the working directory
 WORKDIR /app
 
-# Copy the compiled MATLAB executable
-COPY src/ContainerCode/ClassifierTraining/Code/output/FBCSP_Training.exe ./
+# Copy the compiled MATLAB executables (both Windows and Linux versions)
+COPY src/ContainerCode/ClassifierTraining/Code/output/FBCSP_Training ./
 
-# Copy only the required EEG channel locations file. Need to test
+# Copy only the required EEG channel locations file
 COPY src/ContainerCode/ClassifierTraining/Code/Standard-10-20-Cap81.locs ./
 
 # Copy the helper script
