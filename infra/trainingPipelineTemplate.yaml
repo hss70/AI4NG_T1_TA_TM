@@ -3,6 +3,9 @@ Description: EEG Processing Pipeline with Mobile Status Tracking
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
+  SharedApiId:
+    Type: String
+    Description: ID of the shared API Gateway
   EEGUploadBucketName:
     Type: String
     Description: Name of the existing EEG upload bucket
@@ -19,6 +22,10 @@ Parameters:
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
+      - Label:
+          default: "API Configuration"
+        Parameters:
+          - SharedApiId
       - Label:
           default: "Network Configuration"
         Parameters:
@@ -94,61 +101,30 @@ Resources:
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
 
-  # --- API Gateway ---
-  StatusApi:
-    Type: AWS::Serverless::Api
+  # --- API Gateway Integration ---
+  StatusIntegration:
+    Type: AWS::ApiGatewayV2::Integration
     Properties:
-      StageName: prod
-      DefinitionBody:
-        openapi: 3.0.1
-        info:
-          title: EEGProcessingStatusAPI
-          version: "1.0"
-        paths:
-          /status/{sessionId}:
-            get:
-              summary: Get processing status
-              parameters:
-                - name: sessionId
-                  in: path
-                  required: true
-                  schema:
-                    type: string
-              responses:
-                '200':
-                  description: Status information
-                  content:
-                    application/json:
-                      schema:
-                        $ref: "#/components/schemas/StatusResponse"
-              x-amazon-apigateway-integration:
-                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetStatusLambda.Arn}/invocations
-                httpMethod: POST
-                type: aws_proxy
-        components:
-          schemas:
-            StatusResponse:
-              type: object
-              properties:
-                sessionId:
-                  type: string
-                status:
-                  type: string
-                  enum: [PENDING, PROCESSING, COMPLETED, FAILED]
-                userId:
-                  type: string
-                startTime:
-                  type: number
-                processingDuration:
-                  type: number
-                resultsPath:
-                  type: string
+      ApiId: !Ref SharedApiId
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt GetStatusLambda.Arn
+      PayloadFormatVersion: "2.0"
+      IntegrationMethod: POST
 
-  # --- Lambda Functions ---
+  StatusRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SharedApiId
+      RouteKey: "GET /api/status/{sessionId}"
+      AuthorizationType: JWT
+      AuthorizerId: !ImportValue SharedApiAuthorizerId
+      Target: !Sub integrations/${StatusIntegration}
+
+  # --- Lambda Functions (with integrated permissions) ---
   GetStatusLambda:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: lambdas/status_check/
+      CodeUri: src/lambdas/status_check/
       Handler: app.handler
       Runtime: python3.9
       Timeout: 10
@@ -159,11 +135,21 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ProcessingStatusTable
+      # Integrated permission for API Gateway
+      EventInvokeConfig:
+        DestinationConfig:
+          OnSuccess:
+            Type: SQS
+            Destination: !GetAtt StatusQueue.Arn
+      Permissions:
+        - Principal: apigateway.amazonaws.com
+          SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/GET/api/status/*"
+          Action: lambda:InvokeFunction
 
   ManifestProcessorLambda:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: lambdas/manifest_processor/
+      CodeUri: src/lambdas/manifest_processor/
       Handler: app.handler
       Runtime: python3.9
       Timeout: 30
@@ -179,11 +165,17 @@ Resources:
             BucketName: !Ref EEGResultsBucket
         - SNSPublishPolicy:
             TopicName: !Ref ProcessingNotificationTopic
+      # Integrated permission for S3
+      Permissions:
+        - Principal: s3.amazonaws.com
+          SourceAccount: !Ref AWS::AccountId
+          SourceArn: !GetAtt EEGResultsBucket.Arn
+          Action: lambda:InvokeFunction
 
   ClassifierProcessorLambda:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: lambdas/classifier_processor/
+      CodeUri: src/lambdas/classifier_processor/
       Handler: app.handler
       Runtime: python3.9
       Timeout: 30
@@ -196,11 +188,17 @@ Resources:
             TableName: !Ref EEGClassifierTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
+      # Integrated permission for S3
+      Permissions:
+        - Principal: s3.amazonaws.com
+          SourceAccount: !Ref AWS::AccountId
+          SourceArn: !GetAtt EEGResultsBucket.Arn
+          Action: lambda:InvokeFunction
 
   ResultsMetadataLambda:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: lambdas/results_metadata/
+      CodeUri: src/lambdas/results_metadata/
       Handler: app.handler
       Runtime: python3.9
       Timeout: 30
@@ -213,6 +211,12 @@ Resources:
             TableName: !Ref ProcessingStatusTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
+      # Integrated permission for S3
+      Permissions:
+        - Principal: s3.amazonaws.com
+          SourceAccount: !Ref AWS::AccountId
+          SourceArn: !GetAtt EEGResultsBucket.Arn
+          Action: lambda:InvokeFunction
 
   # --- IAM Roles ---
   EEGTaskExecutionRole:
@@ -235,74 +239,27 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:GetObject
-                Resource: !Sub arn:aws:s3:::${EEGUploadBucketName}/*
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                Resource: !Sub ${EEGResultsBucket.Arn}/*
-        - PolicyName: DynamoDBStatusUpdate
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: dynamodb:UpdateItem
-                Resource: !GetAtt ProcessingStatusTable.Arn
-
-  # --- ECS Task Role (for application container) ---
-  EEGTaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: EEGTaskRole
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: DataAccessPermissions
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              # S3 access for input/output data
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
                   - s3:ListBucket
                 Resource:
-                  - !Sub arn:aws:s3:::${EEGUploadBucketName}
-                  - !Sub arn:aws:s3:::${EEGUploadBucketName}/*
-                  
+                  - !Sub "arn:aws:s3:::${EEGUploadBucketName}"
+                  - !Sub "arn:aws:s3:::${EEGUploadBucketName}/*"
               - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:PutObjectAcl
                 Resource:
-                  - !Sub arn:aws:s3:::${EEGResultsBucket}
-                  - !Sub arn:aws:s3:::${EEGResultsBucket}/*
-                  
-              # DynamoDB access for status updates
+                  - !GetAtt EEGResultsBucket.Arn
+                  - !Sub "${EEGResultsBucket.Arn}/*"
+        - PolicyName: DynamoDBStatusUpdate
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
               - Effect: Allow
                 Action:
                   - dynamodb:UpdateItem
                   - dynamodb:PutItem
                   - dynamodb:GetItem
                 Resource: !GetAtt ProcessingStatusTable.Arn
-  EEGTaskExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: EEGTaskExecutionRole
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-      Policies:
         - PolicyName: ECRAccess
           PolicyDocument:
             Version: '2012-10-17'
@@ -331,28 +288,21 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # Permissions for Lambda invocation
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: 
-                  - !Ref ClassifierProcessorLambda
-                  - !Ref ResultsMetadataLambda
-                  - !Ref ManifestProcessorLambda
-                  
-              # Permissions for ECS task management
+                  - !GetAtt ClassifierProcessorLambda.Arn
+                  - !GetAtt ResultsMetadataLambda.Arn
+                  - !GetAtt ManifestProcessorLambda.Arn
               - Effect: Allow
                 Action:
                   - ecs:RunTask
                   - ecs:StopTask
                   - ecs:DescribeTasks
                 Resource: "*"
-                
-              # Permission to pass roles to ECS
               - Effect: Allow
                 Action: iam:PassRole
                 Resource: !GetAtt EEGTaskExecutionRole.Arn
-                  
-              # CloudWatch Events permissions
               - Effect: Allow
                 Action:
                   - events:PutTargets
@@ -420,7 +370,7 @@ Resources:
             - !Ref PrivateSubnetId2
       ContainerDefinitions:
         - Name: eeg-classifier
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR}:latest
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR.RepositoryName}:latest
           Essential: true
           Environment:
             - Name: UPLOAD_BUCKET
@@ -442,6 +392,9 @@ Resources:
     Properties:
       DefinitionUri: infra/state-machine.asl.json
       Role: !GetAtt EEGStepFunctionRole.Arn
+      Tags:
+        AI4NG: "true"
+        TrainingPipeline: "true"
       Events:
         S3UploadTrigger:
           Type: CloudWatchEvent
@@ -457,37 +410,9 @@ Resources:
                     prefix: "uploads/"
                     suffix: ".zip"
 
-  # --- Lambda Permissions ---
-  ClassifierProcessorLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref ClassifierProcessorLambda
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !GetAtt EEGResultsBucket.Arn
-
-  ResultsMetadataLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref ResultsMetadataLambda
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !GetAtt EEGResultsBucket.Arn
-
-  ManifestProcessorLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref ManifestProcessorLambda
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !GetAtt EEGResultsBucket.Arn
-
 Outputs:
   StatusApiUrl:
-    Value: !Sub https://${StatusApi}.execute-api.${AWS::Region}.amazonaws.com/prod/status/
+    Value: !Sub https://${SharedApiId}.execute-api.${AWS::Region}.amazonaws.com/dev/api/status/
     Description: URL for status checking API
     Export:
       Name: EEGStatusApiUrl
@@ -496,7 +421,7 @@ Outputs:
     Export:
       Name: EEGResultsBucketName
   ECRRepositoryUri:
-    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR}
+    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR.RepositoryName}
     Description: URI for the ECR repository containing the classifier image
     Export:
       Name: EEGClassifierECRUri
