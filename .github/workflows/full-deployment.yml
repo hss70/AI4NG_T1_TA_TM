@@ -1,0 +1,22 @@
+name: Full Deployment Orchestrator
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  deploy-infra:
+    uses: ./.github/workflows/deploy-infra.yml
+    secrets: inherit
+
+  build-container:
+    needs: deploy-infra
+    uses: ./.github/workflows/containerise-deploy.yml
+    secrets: inherit
+
+  update-step-function:
+    needs: build-container
+    uses: ./.github/workflows/update-step-function.yml
+    secrets: inherit

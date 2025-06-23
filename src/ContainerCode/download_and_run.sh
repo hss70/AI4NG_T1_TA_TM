@@ -5,16 +5,16 @@ set -euo pipefail
 export WORK_DIR="/app/work"
 export HOME_DIR="$WORK_DIR"  # For MATLAB compatibility
 export WORK_PATH="$WORK_DIR/Work"
-export RESULTS_PATH ="$WORK_DIR/Results"
+export RESULTS_PATH="$WORK_DIR/Results"
 
 # Create required directories
 mkdir -p \
-  "$WORK_DIR/Code" \
   "$WORK_DIR/Dependents" \
   "$WORK_PATH/CSV/$USER_ID/$SESSION_ID" \
-  "$WORK_PATH/T1" \
-  "$WORK_PATH/SourceData (EEG_rec)/$USER_ID/$SESSION_ID" \
   "$WORK_PATH/Results"
+
+# Copy the EEG channel locations file to Dependents
+cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Dependents/"
 
 # Download input file from S3
 echo "Downloading $INPUT_FILE from $UPLOAD_BUCKET"
@@ -53,7 +53,7 @@ fi
 # Run MATLAB executable
 echo "Running MATLAB executable"
 start_time=$(date +%s)
-./T1Trainer || EXIT_CODE=$?
+./FBCSP_Training.exe || EXIT_CODE=$?
 end_time=$(date +%s)
 EXIT_CODE=${EXIT_CODE:-0}
 
@@ -62,36 +62,38 @@ RESULTS_PATH="$USER_ID/$SESSION_ID/results"
 
 # Create manifest file
 MANIFEST="/app/output/manifest.json"
-echo '{' > $MANIFEST
-echo '  "userId": "'$USER_ID'",' >> $MANIFEST
-echo '  "sessionId": "'$SESSION_ID'",' >> $MANIFEST
-echo '  "inputFile": "'$INPUT_FILE'",' >> $MANIFEST
-echo '  "startTime": '$start_time',' >> $MANIFEST
-echo '  "endTime": '$end_time',' >> $MANIFEST
-echo '  "resultsPath": "'$RESULTS_PATH'",' >> $MANIFEST
-echo '  "exitCode": '$exit_code',' >> $MANIFEST
-echo '  "outputFiles": [' >> $MANIFEST
+echo '{' > "$MANIFEST"
+echo '  "userId": "'"$USER_ID"'",' >> "$MANIFEST"
+echo '  "sessionId": "'"$SESSION_ID"'",' >> "$MANIFEST"
+echo '  "inputFile": "'"$INPUT_FILE"'",' >> "$MANIFEST"
+echo '  "startTime": '"$start_time"',' >> "$MANIFEST"
+echo '  "endTime": '"$end_time"',' >> "$MANIFEST"
+echo '  "resultsPath": "'"$RESULTS_PATH"'",' >> "$MANIFEST"
+echo '  "exitCode": '"$EXIT_CODE"',' >> "$MANIFEST"
+echo '  "outputFiles": [' >> "$MANIFEST"
 
 # List all output files
 first_file=true
-for file in /app/output/*; do
-    if [ "$file" != "$MANIFEST" ]; then
+for file in "$WORK_DIR/Results"/*; do
+    if [ -f "$file" ]; then
         if [ "$first_file" = false ]; then
-            echo ',' >> $MANIFEST
+            echo ',' >> "$MANIFEST"
         fi
         filename=$(basename "$file")
-        echo -n '    "'$filename'"' >> $MANIFEST
+        echo -n '    "'"$filename"'"' >> "$MANIFEST"
+        # Move file to output directory
+        mv "$file" /app/output/
         first_file=false
     fi
 done
 
-echo '' >> $MANIFEST
-echo '  ]' >> $MANIFEST
-echo '}' >> $MANIFEST
+echo '' >> "$MANIFEST"
+echo '  ]' >> "$MANIFEST"
+echo '}' >> "$MANIFEST"
 
 # Upload results to S3
 echo "Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
 aws s3 cp /app/output/ "s3://$RESULTS_BUCKET/$RESULTS_PATH/" --recursive
 
 # Output results for Step Function
-echo '{"resultsPath": "'$RESULTS_PATH'"}'
+echo '{"resultsPath": "'"$RESULTS_PATH"'"}'

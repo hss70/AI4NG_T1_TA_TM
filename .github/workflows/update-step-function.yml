@@ -1,12 +1,13 @@
 name: Update Step Function
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
   push:
     paths:
       - 'infra/EEGProcessingStateMachine.asl.json'
-    branches:
-      - main
 
 jobs:
   update:

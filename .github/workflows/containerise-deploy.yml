@@ -1,12 +1,14 @@
 name: Build and Push Classifier Container
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'src/ClassifierTraining/**'
-    branches:
-      - main
+      - 'src/ContainerCode/**'
+      - '!**/README.md'
 
 jobs:
   build-and-push:
@@ -33,7 +35,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          cd src/ClassifierTraining
+          cd src/ContainerCode
           docker build -t $ECR_REPOSITORY:latest .
 
       - name: Tag and Push to ECR

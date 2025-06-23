@@ -1,12 +1,15 @@
 name: Deploy Infrastructure
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
   push:
     paths:
       - 'infra/**'
-    branches:
-      - main
+      - '!infra/EEGProcessingStateMachine.asl.json'
+      - '!**/*.md'
 
 jobs:
   deploy:
