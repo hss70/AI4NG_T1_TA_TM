@@ -8,7 +8,10 @@ This folder contains the **MATLAB-based classifier pipeline** and the **Dockerfi
 ## 🟩 Prerequisites
 
 ✅ **MATLAB & MATLAB Compiler**  
-- You need MATLAB and the MATLAB Compiler (`mcc`) to compile your `T1_TA_TM.m` script into a standalone executable.
+- You need MATLAB and the MATLAB Compiler (`mcc`) to compile your `FBCSP_Training.m` script into a standalone executable.
+
+✅ **MATLAB & MATLAB Compiler**  
+- You need MATLAB and the MATLAB Compiler (`mcc`) to compile your `FBCSP_Training.m` script into a standalone executable.
 
 ✅ **Docker**  
 - Install Docker Desktop or Docker Engine on your local machine.
@@ -33,14 +36,13 @@ cd('src/classifier/')
 2️⃣ Compile using `mcc`:
 
 ```matlab
-mcc -m T1_TA_TM.m -o T1Trainer
+mcc -m FBCSP_Training.m -a ./Standard-10-20-Cap81.locs -d ./output
 ```
 
 This will generate:
-- `T1Trainer` (executable)
-- `T1Trainer.ctf` (MATLAB runtime data)
+- `FBCSP_Training` (executable)
 
-✅ **Commit these new files** to the repo (`T1Trainer`, `T1Trainer.ctf`).
+✅ **Commit these new files** to the repo (`FBCSP_Training`).
 
 ---
 
@@ -98,7 +100,7 @@ In production, this container image will be **deployed to ECS Fargate** as part 
 ## 🟩 Notes & Maintenance
 
 ✅ If you **change any MATLAB code**, always:  
-1️⃣ Recompile (`mcc -m T1_TA_TM.m -o T1Trainer`)  
+1️⃣ Recompile (`mcc -m FBCSP_Training.m -a ./Standard-10-20-Cap81.locs -d ./output`)  
 2️⃣ Rebuild the Docker image (`docker build ...`)  
 3️⃣ Push to your ECR repository (`docker push ...`)  
 

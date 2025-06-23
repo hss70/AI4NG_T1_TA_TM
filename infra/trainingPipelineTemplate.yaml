@@ -301,6 +301,32 @@ Resources:
       LogGroupName: /ecs/eeg-classifier
       RetentionInDays: 30
 
+  ClassifierECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: eeg-classifier
+      ImageTagMutability: MUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": ["v"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+
+
   EEGFargateTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
@@ -313,7 +339,7 @@ Resources:
       ExecutionRoleArn: !GetAtt EEGTaskExecutionRole.Arn
       ContainerDefinitions:
         - Name: eeg-classifier
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/eeg-classifier:latest
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR}:latest
           Essential: true
           Environment:
             - Name: UPLOAD_BUCKET
