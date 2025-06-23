@@ -39,15 +39,23 @@ jobs:
             --query "Exports[?Name=='EEGUploadBucketName'].Value" \
             --output text)
           
-          # Get network configuration
+          # Get security group
           SG_ID=$(aws cloudformation list-exports \
             --query "Exports[?Name=='NetworkStack-PrivateSG'].Value" \
             --output text)
-          SUBNET1=$(aws cloudformation list-exports \
-            --query "Exports[?Name=='NetworkStack-PrivateSubnet1'].Value" \
+          
+          # Get subnet IDs from comma-separated value
+          SUBNETS_STRING=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='NetworkStack-PrivateSubnetIds'].Value" \
             --output text)
-          SUBNET2=$(aws cloudformation list-exports \
-            --query "Exports[?Name=='NetworkStack-PrivateSubnet2'].Value" \
+          
+          # Split into individual subnets
+          SUBNET1=$(echo "$SUBNETS_STRING" | cut -d',' -f1)
+          SUBNET2=$(echo "$SUBNETS_STRING" | cut -d',' -f2)
+          
+          # Get API ID (if needed elsewhere)
+          API_ID=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='SharedApiId'].Value" \
             --output text)
           
           # Verify values exist
@@ -59,12 +67,12 @@ jobs:
             echo "::error::NetworkStack-PrivateSG export not found"
             exit 1
           fi
-          if [ -z "$SUBNET1" ]; then
-            echo "::error::NetworkStack-PrivateSubnet1 export not found"
+          if [ -z "$SUBNETS_STRING" ]; then
+            echo "::error::NetworkStack-PrivateSubnetIds export not found"
             exit 1
           fi
-          if [ -z "$SUBNET2" ]; then
-            echo "::error::NetworkStack-PrivateSubnet2 export not found"
+          if [ -z "$SUBNET1" ] || [ -z "$SUBNET2" ]; then
+            echo "::error::Could not parse subnets from: $SUBNETS_STRING"
             exit 1
           fi
           
@@ -72,6 +80,7 @@ jobs:
           echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
           echo "subnet1_id=$SUBNET1" >> $GITHUB_OUTPUT
           echo "subnet2_id=$SUBNET2" >> $GITHUB_OUTPUT
+          echo "api_id=$API_ID" >> $GITHUB_OUTPUT  # Keep if needed elsewhere
 
       - name: Validate CloudFormation templates
         run: |
