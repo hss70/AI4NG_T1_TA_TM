@@ -1,5 +1,5 @@
-# Use the official MATLAB Runtime base image
-FROM containers.mathworks.com/matlab-runtime:latest
+# Use the official MATLAB Runtime base image for R2024b
+FROM containers.mathworks.com/matlab-runtime:R2024b
 
 # Install required utilities
 RUN apt-get update && \
@@ -19,13 +19,15 @@ RUN apt-get update && \
 # Set the working directory
 WORKDIR /app
 
-# Copy the compiled MATLAB executables (both Windows and Linux versions)
+# Copy the compiled MATLAB executable and its runner script
 COPY src/ContainerCode/ClassifierTraining/Code/output/FBCSP_Training ./
+COPY src/ContainerCode/ClassifierTraining/Code/output/run_FBCSP_Training.sh ./
+RUN chmod +x FBCSP_Training run_FBCSP_Training.sh
 
-# Copy only the required EEG channel locations file
+# Copy the EEG channel locations file
 COPY src/ContainerCode/ClassifierTraining/Code/Standard-10-20-Cap81.locs ./
 
-# Copy the helper script
+# Copy the main execution script
 COPY src/ContainerCode/download_and_run.sh ./
 RUN chmod +x download_and_run.sh
 
