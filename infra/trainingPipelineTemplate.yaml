@@ -471,3 +471,13 @@ Outputs:
     Value: !Ref EEGResultsBucket
     Export:
       Name: EEGResultsBucketName
+  ECRRepositoryUri:
+    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR}
+    Description: URI for the ECR repository containing the classifier image
+    Export:
+      Name: EEGClassifierECRUri
+  ProcessingStateMachineArn:
+    Value: !Ref ProcessingStateMachine
+    Description: ARN of the EEG processing state machine
+    Export:
+      Name: EEGProcessingStateMachineArn

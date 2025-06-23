@@ -29,6 +29,31 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Get exported values from CloudFormation
+      - name: Get Shared API ID from CloudFormation export
+        id: get_exports
+        run: |
+          echo "Fetching CloudFormation exports..."
+          API_ID=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='SharedApiId'].Value" \
+            --output text)
+          BUCKET_NAME=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='EEGUploadBucketName'].Value" \
+            --output text)
+          
+          # Verify values exist
+          if [ -z "$API_ID" ]; then
+            echo "::error::SharedApiId export not found"
+            exit 1
+          fi
+          if [ -z "$BUCKET_NAME" ]; then
+            echo "::error::EEGUploadBucketName export not found"
+            exit 1
+          fi
+          
+          echo "api_id=$API_ID" >> $GITHUB_OUTPUT
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+
       - name: Validate CloudFormation templates
         run: |
           aws cloudformation validate-template --template-body file://infra/IAM.yaml
@@ -46,7 +71,7 @@ jobs:
           aws cloudformation deploy \
             --template-file infra/trainingPipelineTemplate.yaml \
             --stack-name ${STACK_NAME}-Main \
-            --capabilities CAPABILITY_IAM \
+            --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides \
-              SharedApiId=${{ secrets.API_GATEWAY_ID }} \
-              EEGUploadBucketName=${{ secrets.EEG_UPLOAD_BUCKET }}
+              SharedApiId=${{ steps.get_exports.outputs.api_id }} \
+              EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}
