@@ -30,56 +30,6 @@ Metadata:
         Parameters:
           - EEGUploadBucketName
 
-Globals:
-  Function:
-    Tags:
-      - Key: AI4NG
-        Value: true
-      - Key: Training Pipeline
-        Value: true
-  Api:
-    Tags:
-      - Key: AI4NG
-        Value: true
-      - Key: Training Pipeline
-        Value: true
-  Table:
-    Tags:
-      - Key: AI4NG
-        Value: true
-      - Key: Training Pipeline
-        Value: true
-  Bucket:
-    Tags:
-      - Key: AI4NG
-        Value: true
-      - Key: Training Pipeline
-        Value: true
-  StateMachine:
-    Tags:
-      - Key: AI4NG
-        Value: true
-      - Key: Training Pipeline
-        Value: true
-  LogGroup:
-    Tags:
-      - Key: AI4NG
-        Value: true
-      - Key: Training Pipeline
-        Value: true
-  Role:
-    Tags:
-      - Key: AI4NG
-        Value: true
-      - Key: Training Pipeline
-        Value: true
-  Cluster:
-    Tags:
-      - Key: AI4NG
-        Value: true
-      - Key: Training Pipeline
-        Value: true
-
 Resources:
   # --- S3 Buckets ---
   EEGResultsBucket:
