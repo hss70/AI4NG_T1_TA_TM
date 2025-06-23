@@ -85,15 +85,7 @@ jobs:
 
       - name: Validate CloudFormation templates
         run: |
-          aws cloudformation validate-template --template-body file://infra/IAM.yaml
           aws cloudformation validate-template --template-body file://infra/trainingPipelineTemplate.yaml
-
-      - name: Deploy IAM Stack
-        run: |
-          aws cloudformation deploy \
-            --template-file infra/IAM.yaml \
-            --stack-name ${STACK_NAME}-IAM \
-            --capabilities CAPABILITY_IAM
 
       - name: Deploy Main Pipeline Stack
         run: |

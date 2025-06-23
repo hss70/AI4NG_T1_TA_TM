@@ -278,6 +278,73 @@ Resources:
                 Action: dynamodb:UpdateItem
                 Resource: !GetAtt ProcessingStatusTable.Arn
 
+  # --- ECS Task Role (for application container) ---
+  EEGTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EEGTaskRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DataAccessPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # S3 access for input/output data
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${EEGUploadBucketName}
+                  - !Sub arn:aws:s3:::${EEGUploadBucketName}/*
+                  
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                Resource:
+                  - !Sub arn:aws:s3:::${EEGResultsBucket}
+                  - !Sub arn:aws:s3:::${EEGResultsBucket}/*
+                  
+              # DynamoDB access for status updates
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                Resource: !GetAtt ProcessingStatusTable.Arn
+  EEGTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EEGTaskExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: "*"
+
   # --- Step Function Execution Role ---
   EEGStepFunctionRole:
     Type: AWS::IAM::Role
