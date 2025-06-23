@@ -36,8 +36,9 @@ jobs:
       - name: Install SAM CLI
         uses: aws-actions/setup-sam@v2
         with:
-          version: '1.85.0'
-          use-system: true
+          version: '1.94.0'  # Updated version
+          use-installer: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Get all required exported values
       - name: Get CloudFormation exports
@@ -57,7 +58,8 @@ jobs:
             --query "Exports[?Name=='SharedApiId'].Value" \
             --output text)
           if [ -z "$SHARED_API_ID" ]; then
-            echo "::error::SharedApiId export not found" 
+            echo "::error::SharedApiId export not found"
+            exit 1 
           fi
 
           SG_ID=$(aws cloudformation list-exports \
