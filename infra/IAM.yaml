@@ -1,10 +1,14 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM Roles for EEG Processing Pipeline
 Resources:
-  ECSTaskExecutionRole:
+  #IAM Roles
+  # --- ECS Task Execution Role (for ECS agent) ---
+  EEGTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: trainingTaskExecutionRole
+      RoleName: EEGTaskExecutionRole
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
@@ -13,9 +17,9 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Policies:
-        - PolicyName: ECRAccessPolicy
+        - PolicyName: ECRAccess
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
@@ -25,33 +29,58 @@ Resources:
                   - ecr:BatchGetImage
                 Resource: "*"
 
-  ECSTaskRole:
+  # --- ECS Task Role (for application container) ---
+  EEGTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: trainingAppRole
+      RoleName: EEGTaskRole
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: TrainingAppAccess
+        - PolicyName: DataAccessPermissions
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
+              # S3 access for input/output data
               - Effect: Allow
                 Action:
                   - s3:GetObject
-                  - s3:PutObject
-                Resource: "arn:aws:s3:::your-training-bucket/*"
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${EEGUploadBucketName}
+                  - !Sub arn:aws:s3:::${EEGUploadBucketName}/*
+                  
               - Effect: Allow
                 Action:
-                  - dynamodb:GetItem
-                  - dynamodb:PutItem
-                  - dynamodb:UpdateItem
-                  - dynamodb:Query
+                  - s3:PutObject
+                  - s3:PutObjectAcl
                 Resource:
-                  - arn:aws:dynamodb:us-east-1:123456789012:table/TrainingMetadata
-                  - arn:aws:dynamodb:us-east-1:123456789012:table/TrainingState
+                  - !Sub arn:aws:s3:::${EEGResultsBucket}
+                  - !Sub arn:aws:s3:::${EEGResultsBucket}/*
+                  
+              # DynamoDB access for status updates
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                Resource: !GetAtt ProcessingStatusTable.Arn
+
+Outputs:
+  EEGStepFunctionRoleArn:
+    Value: !GetAtt EEGStepFunctionRole.Arn
+    Export:
+      Name: EEGStepFunctionRoleArn
+  EEGTaskExecutionRoleArn:
+    Value: !GetAtt EEGTaskExecutionRole.Arn
+    Export:
+      Name: EEGTaskExecutionRoleArn
+  EEGTaskRoleArn:
+    Value: !GetAtt EEGTaskRole.Arn
+    Export:
+      Name: EEGTaskRoleArn

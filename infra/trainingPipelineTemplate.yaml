@@ -3,35 +3,33 @@ Description: EEG Processing Pipeline with Mobile Status Tracking
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
-  SharedApiId:
-    Type: String
-    Default: !ImportValue SharedApiId
-  VpcId:
-    Type: String
-    Default: !ImportValue NetworkStack-VpcId
-  PrivateSubnetIds:
-    Type: CommaDelimitedList
-    Default: !Split [",", !ImportValue NetworkStack-PrivateSubnetIds]
   EEGUploadBucketName:
     Type: String
-    Default: !ImportValue EEGUploadBucketName
+    Description: Name of the existing EEG upload bucket
   PrivateSG:
     Type: String
-    Default: !ImportValue NetworkStack-PrivateSG
+    Description: Security group ID for private resources
+  PrivateSubnetId1:
+    Type: String
+    Description: First private subnet ID
+  PrivateSubnetId2:
+    Type: String
+    Description: Second private subnet ID
 
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: "General Configuration"
+          default: "Network Configuration"
         Parameters:
-          - SharedApiId
-          - VpcId
-          - PrivateSubnetIds
-          - EEGUploadBucketName
           - PrivateSG
+          - PrivateSubnetId1
+          - PrivateSubnetId2
+      - Label:
+          default: "S3 Configuration"
+        Parameters:
+          - EEGUploadBucketName
 
-# Global tags for all resources
 Globals:
   Function:
     Tags:
@@ -81,14 +79,6 @@ Globals:
         Value: true
       - Key: Training Pipeline
         Value: true
-  TaskDefinition:
-    Tags:
-      - Key: AI4NG
-        Value: true
-      - Key: Training Pipeline
-        Value: true
-    Type: String
-    Default: !ImportValue NetworkStack-PrivateSG
 
 Resources:
   # --- S3 Buckets ---
@@ -265,6 +255,8 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       Policies:
         - PolicyName: S3AccessPolicy
           PolicyDocument:
@@ -277,7 +269,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource: !GetAtt EEGResultsBucket.Arn/*
+                Resource: !Sub ${EEGResultsBucket.Arn}/*
         - PolicyName: DynamoDBStatusUpdate
           PolicyDocument:
             Version: '2012-10-17'
@@ -285,6 +277,51 @@ Resources:
               - Effect: Allow
                 Action: dynamodb:UpdateItem
                 Resource: !GetAtt ProcessingStatusTable.Arn
+
+  # --- Step Function Execution Role ---
+  EEGStepFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Permissions for Lambda invocation
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: 
+                  - !Ref ClassifierProcessorLambda
+                  - !Ref ResultsMetadataLambda
+                  - !Ref ManifestProcessorLambda
+                  
+              # Permissions for ECS task management
+              - Effect: Allow
+                Action:
+                  - ecs:RunTask
+                  - ecs:StopTask
+                  - ecs:DescribeTasks
+                Resource: "*"
+                
+              # Permission to pass roles to ECS
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt EEGTaskExecutionRole.Arn
+                  
+              # CloudWatch Events permissions
+              - Effect: Allow
+                Action:
+                  - events:PutTargets
+                  - events:PutRule
+                  - events:DescribeRule
+                Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions*
 
   # --- ECS Resources ---
   EEGFargateCluster:
@@ -326,7 +363,6 @@ Resources:
             ]
           }
 
-
   EEGFargateTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
@@ -337,6 +373,14 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       ExecutionRoleArn: !GetAtt EEGTaskExecutionRole.Arn
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref PrivateSG
+          Subnets:
+            - !Ref PrivateSubnetId1
+            - !Ref PrivateSubnetId2
       ContainerDefinitions:
         - Name: eeg-classifier
           Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR}:latest
@@ -359,7 +403,7 @@ Resources:
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
-      DefinitionUri: cloudformation/state-machine.asl.json
+      DefinitionUri: infra/state-machine.asl.json
       Role: !GetAtt EEGStepFunctionRole.Arn
       Events:
         S3UploadTrigger:
@@ -375,42 +419,6 @@ Resources:
                   key:
                     prefix: "uploads/"
                     suffix: ".zip"
-
-  EEGStepFunctionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: states.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: StepFunctionExecutionPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ecs:RunTask
-                  - ecs:StopTask
-                  - ecs:DescribeTasks
-                Resource: '*'
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                Resource: !GetAtt EEGTaskExecutionRole.Arn
-              - Effect: Allow
-                Action:
-                  - dynamodb:UpdateItem
-                Resource: !GetAtt ProcessingStatusTable.Arn
-              - Effect: Allow
-                Action:
-                  - events:PutTargets
-                  - events:PutRule
-                  - events:DescribeRule
-                Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForECSTaskRule
 
   # --- Lambda Permissions ---
   ClassifierProcessorLambdaPermission:
@@ -431,35 +439,34 @@ Resources:
       SourceAccount: !Ref AWS::AccountId
       SourceArn: !GetAtt EEGResultsBucket.Arn
 
-ManifestProcessorLambda:
-  Type: AWS::Serverless::Function
-  Properties:
-    CodeUri: lambdas/manifest_processor/
-    Handler: app.handler
-    Runtime: python3.9
-    Timeout: 30
-    MemorySize: 256
-    Environment:
-      Variables:
-        STATUS_TABLE: !Ref ProcessingStatusTable
-        SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
-    Policies:
-      - DynamoDBWritePolicy:
-          TableName: !Ref ProcessingStatusTable
-      - S3ReadPolicy:
-          BucketName: !Ref EEGResultsBucket
-      - SNSPublishPolicy:
-          TopicName: !Ref ProcessingNotificationTopic
+  ManifestProcessorLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/manifest_processor/
+      Handler: app.handler
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          STATUS_TABLE: !Ref ProcessingStatusTable
+          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref ProcessingStatusTable
+        - S3ReadPolicy:
+            BucketName: !Ref EEGResultsBucket
+        - SNSPublishPolicy:
+            TopicName: !Ref ProcessingNotificationTopic
 
-# Add permission for S3 to invoke manifest processor
-ManifestProcessorLambdaPermission:
-  Type: AWS::Lambda::Permission
-  Properties:
-    Action: lambda:InvokeFunction
-    FunctionName: !Ref ManifestProcessorLambda
-    Principal: s3.amazonaws.com
-    SourceAccount: !Ref AWS::AccountId
-    SourceArn: !GetAtt EEGResultsBucket.Arn
+  ManifestProcessorLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ManifestProcessorLambda
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !GetAtt EEGResultsBucket.Arn
 
 Outputs:
   StatusApiUrl:

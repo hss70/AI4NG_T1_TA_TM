@@ -29,30 +29,49 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Get exported values from CloudFormation
-      - name: Get Shared API ID from CloudFormation export
+      # Get all required exported values
+      - name: Get CloudFormation exports
         id: get_exports
         run: |
           echo "Fetching CloudFormation exports..."
-          API_ID=$(aws cloudformation list-exports \
-            --query "Exports[?Name=='SharedApiId'].Value" \
-            --output text)
+          # Get upload bucket
           BUCKET_NAME=$(aws cloudformation list-exports \
             --query "Exports[?Name=='EEGUploadBucketName'].Value" \
             --output text)
           
+          # Get network configuration
+          SG_ID=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='NetworkStack-PrivateSG'].Value" \
+            --output text)
+          SUBNET1=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='NetworkStack-PrivateSubnet1'].Value" \
+            --output text)
+          SUBNET2=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='NetworkStack-PrivateSubnet2'].Value" \
+            --output text)
+          
           # Verify values exist
-          if [ -z "$API_ID" ]; then
-            echo "::error::SharedApiId export not found"
-            exit 1
-          fi
           if [ -z "$BUCKET_NAME" ]; then
             echo "::error::EEGUploadBucketName export not found"
             exit 1
           fi
+          if [ -z "$SG_ID" ]; then
+            echo "::error::NetworkStack-PrivateSG export not found"
+            exit 1
+          fi
+          if [ -z "$SUBNET1" ]; then
+            echo "::error::NetworkStack-PrivateSubnet1 export not found"
+            exit 1
+          fi
+          if [ -z "$SUBNET2" ]; then
+            echo "::error::NetworkStack-PrivateSubnet2 export not found"
+            exit 1
+          fi
           
-          echo "api_id=$API_ID" >> $GITHUB_OUTPUT
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
+          echo "subnet1_id=$SUBNET1" >> $GITHUB_OUTPUT
+          echo "subnet2_id=$SUBNET2" >> $GITHUB_OUTPUT
 
       - name: Validate CloudFormation templates
         run: |
@@ -73,5 +92,7 @@ jobs:
             --stack-name ${STACK_NAME}-Main \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides \
-              SharedApiId=${{ steps.get_exports.outputs.api_id }} \
-              EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}
+              EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }} \
+              PrivateSG=${{ steps.get_exports.outputs.sg_id }} \
+              PrivateSubnetId1=${{ steps.get_exports.outputs.subnet1_id }} \
+              PrivateSubnetId2=${{ steps.get_exports.outputs.subnet2_id }}
