@@ -20,6 +20,25 @@ Parameters:
     Description: Second private subnet ID
 
 Resources:
+  # S3 Event Rule to trigger Lambda on new uploads. The entry point to this pipeline, triggered when EEG data is uploaded to the S3 bucket.
+  S3UploadEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name: 
+              - !Ref EEGUploadBucketName
+          object:
+            key:
+              suffix: ['.zip']
+      Targets:
+        - Arn: !GetAtt S3EventProcessorLambda.Arn
+          Id: S3UploadEventTarget
   # --- S3 Buckets ---
   EEGResultsBucket:
     Type: AWS::S3::Bucket
@@ -116,6 +135,35 @@ Resources:
       Target: !Sub integrations/${StatusIntegration}
 
   # --- Lambda Functions ---
+  # S3 Event Processor Lambda
+  S3EventProcessorLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.handler
+      Runtime: nodejs22.x
+      CodeUri: ../src/lambdas/s3EventProcessor/
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref ProcessingStateMachine
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: states:StartExecution
+              Resource: !Ref ProcessingStateMachine
+        - S3ReadPolicy:
+            BucketName: !Ref EEGUploadBucketName
+
+# Permission for EventBridge to invoke Lambda
+  S3EventLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt S3EventProcessorLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt S3UploadEventRule.Arn
+
   GetStatusLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -193,55 +241,6 @@ Resources:
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
 
-  # S3 Event Processor Lambda
-  S3EventProcessorLambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: app.handler
-      Runtime: nodejs22.x
-      CodeUri: ../src/lambdas/s3EventProcessor/
-      Timeout: 30
-      MemorySize: 256
-      Environment:
-        Variables:
-          STATE_MACHINE_ARN: !Ref ProcessingStateMachine
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action: states:StartExecution
-              Resource: !Ref ProcessingStateMachine
-        - S3ReadPolicy:
-            BucketName: !Ref EEGUploadBucketName
-
-  # S3 Event Rule to trigger Lambda on new uploads
-  S3UploadEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      EventPattern:
-        source:
-          - aws.s3
-        detail-type:
-          - Object Created
-        detail:
-          bucket:
-            name: 
-              - !Ref EEGUploadBucketName
-          object:
-            key:
-              prefix: "uploads/"
-              suffix: ".zip"
-      Targets:
-        - Arn: !GetAtt S3EventProcessorLambda.Arn
-          Id: S3UploadEventTarget
-
-# Permission for EventBridge to invoke Lambda
-  S3EventLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt S3EventProcessorLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt S3UploadEventRule.Arn
 
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
