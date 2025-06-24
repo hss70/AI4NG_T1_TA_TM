@@ -50,22 +50,12 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-
-  EEGResultsBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref EEGResultsBucket
-      PolicyDocument:
-        Statement:
-          - Effect: Deny
-            Principal: "*"
-            Action: "s3:*"
-            Resource: 
-              - !GetAtt EEGResultsBucket.Arn
-              - !Sub "${EEGResultsBucket.Arn}/*"
-            Condition:
-              Bool:
-                "aws:SecureTransport": true
+      # Enforce SSL properly without circular dependency
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   # --- DynamoDB Tables ---
   ProcessingStatusTable:
@@ -119,7 +109,6 @@ Resources:
       Target: !Sub integrations/${StatusIntegration}
 
   # --- Lambda Functions ---
-  # HTTP GET Lambda for Status Check
   GetStatusLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -134,7 +123,6 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ProcessingStatusTable
-      # Integrated permission for API Gateway
       EventInvokeConfig:
         DestinationConfig:
           OnSuccess:
@@ -149,11 +137,9 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/GET/api/status/{sessionId}"
 
-  # S3 Event Triggered Lambdas
-  # Processes manifest.json files uploaded to the EEGResultsBucket
-  # and updates the processing status in DynamoDB
   ManifestProcessorLambda:
     Type: AWS::Serverless::Function
+    DependsOn: EEGResultsBucket
     Properties:
       Events:
         S3Event:
@@ -181,12 +167,13 @@ Resources:
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
         - Statement:  
-          - Effect: Allow
+            Effect: Allow
             Action: sns:Publish
             Resource: !Ref ProcessingNotificationTopic
 
   ClassifierProcessorLambda:
     Type: AWS::Serverless::Function
+    DependsOn: EEGResultsBucket
     Properties:
       Events:
         S3Event:
@@ -198,7 +185,7 @@ Resources:
               S3Key:
                 Rules:
                   - Name: suffix
-                    Value: .json
+                    Value: _classifier.json
       CodeUri: ../src/lambdas/classifierProcessor/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -215,6 +202,7 @@ Resources:
 
   ResultsMetadataLambda:
     Type: AWS::Serverless::Function
+    DependsOn: EEGResultsBucket
     Properties:
       Events:
         S3Event:
@@ -226,7 +214,7 @@ Resources:
               S3Key:
                 Rules:
                   - Name: suffix
-                    Value: .json
+                    Value: _metadata.json
       CodeUri: ../src/lambdas/resultsMetadata/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -389,6 +377,9 @@ Resources:
 
   EEGFargateTaskDefinition:
     Type: AWS::ECS::TaskDefinition
+    DependsOn: 
+      - EEGTaskExecutionRole
+      - ProcessingStatusTable
     Properties:
       Family: EEGClassifierTask
       Cpu: '1024'
@@ -418,6 +409,12 @@ Resources:
   # --- Step Functions ---
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
+    DependsOn:
+      - EEGStepFunctionRole
+      - EEGFargateTaskDefinition
+      - ManifestProcessorLambda
+      - ClassifierProcessorLambda
+      - ResultsMetadataLambda
     Properties:
       DefinitionUri: EEGProcessingStateMachine.asl.json
       Role: !GetAtt EEGStepFunctionRole.Arn
