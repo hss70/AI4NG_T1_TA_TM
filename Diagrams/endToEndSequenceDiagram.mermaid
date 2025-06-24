@@ -1,0 +1,56 @@
+%%{init: {'theme': 'default', 'themeVariables': { 'primaryColor': '#F5F5F5', 'edgeLabelBackground':'#FFFFFF'}}}%%
+sequenceDiagram
+    participant User as User
+    participant S3Upload as S3 Upload Bucket
+    participant S3EventLambda as S3 Event Processor Lambda
+    participant StepFunction as Step Function
+    participant DynamoDB as DynamoDB Status Table
+    participant ECS as ECS Service
+    participant Container as Classifier Container
+    participant S3Results as Results Bucket
+    participant ManifestLambda as Manifest Processor Lambda
+    participant ClassifierLambda as Classifier Processor Lambda
+    participant MetadataLambda as Metadata Processor Lambda
+
+    User->>S3Upload: Upload .zip file to<br>/uploads/userId/sessionId/
+    S3Upload->>S3EventLambda: Object Created Event
+    S3EventLambda->>StepFunction: StartExecution(s3Event)
+    
+    StepFunction->>StepFunction: ExtractSessionInfo<br>(userId, sessionId)
+    StepFunction->>DynamoDB: RecordProcessingStart<br>(status=PROCESSING)
+    StepFunction->>ECS: LaunchECSTask<br>(userId, sessionId)
+    
+    ECS->>Container: Start container with env vars:<br>- USER_ID<br>- SESSION_ID<br>- UPLOAD_BUCKET<br>- RESULTS_BUCKET
+    Container->>S3Upload: Download input .zip
+    Container->>Container: Process EEG data
+    Container->>S3Results: Upload results to<br>s3://${RESULTS_BUCKET}/${userId}/${sessionId}/
+    Container-->>ECS: Task completed
+    
+    ECS-->>StepFunction: Task status
+    StepFunction->>StepFunction: WaitForManifest<br>(30s intervals)
+    StepFunction->>S3Results: CheckManifestExists
+    S3Results-->>StepFunction: manifest.json
+    
+    StepFunction->>ManifestLambda: Invoke with manifest location
+    ManifestLambda->>S3Results: Get manifest.json
+    ManifestLambda->>DynamoDB: Update status metadata
+    ManifestLambda-->>StepFunction: Processing requirements
+    
+    alt Requires classifier
+        StepFunction->>ClassifierLambda: Invoke with classifier file
+        ClassifierLambda->>S3Results: Get classifier.json
+        ClassifierLambda->>DynamoDB: Store classifier params
+    end
+    
+    alt Has metadata
+        StepFunction->>MetadataLambda: Invoke with metadata file
+        MetadataLambda->>S3Results: Get metadata.json
+        MetadataLambda->>DynamoDB: Update status with metadata
+    end
+    
+    StepFunction->>DynamoDB: RecordSuccess<br>(status=SUCCESS)
+    
+    User->>StepFunction: GET /api/status/{sessionId}
+    StepFunction->>DynamoDB: Query status
+    DynamoDB-->>StepFunction: Status data
+    StepFunction-->>User: Return processing status

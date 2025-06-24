@@ -11,7 +11,7 @@ on:
       - 'infra/**'
       - '!infra/EEGProcessingStateMachine.asl.json'
       - '!**/*.md'
-      - 'src/PostProcessingLambdas/**'  # Include Lambda source code
+      - 'src/lambdas/**'  # Include Lambda source code
       - 'samconfig.toml'  # Include SAM configuration file
 
 jobs:

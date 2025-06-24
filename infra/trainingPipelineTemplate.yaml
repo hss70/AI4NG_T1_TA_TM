@@ -27,7 +27,6 @@ Resources:
       BucketName: !Sub ai4ng-eeg-results-${AWS::AccountId}-${AWS::Region}
       VersioningConfiguration:
         Status: Enabled
-      AccessControl: Private
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -37,6 +36,33 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+  EEGResultsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref EEGResultsBucket
+      PolicyDocument:
+        Statement:
+          - Sid: DenyUnencryptedUploads
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource: 
+              - !GetAtt EEGResultsBucket.Arn
+              - !Sub "${EEGResultsBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+          - Sid: EnforcePrivateAccess
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource: 
+              - !GetAtt EEGResultsBucket.Arn
+              - !Sub "${EEGResultsBucket.Arn}/*"
+            Condition:
+              StringNotEquals:
+                "aws:PrincipalAccount": !Ref AWS::AccountId
 
   # --- DynamoDB Tables ---
   ProcessingStatusTable:
@@ -186,17 +212,36 @@ Resources:
               Resource: !Ref ProcessingStateMachine
         - S3ReadPolicy:
             BucketName: !Ref EEGUploadBucketName
-      Events:
-        S3UploadEvent:
-          Type: S3
-          Properties:
-            Bucket: !Ref EEGUploadBucketName
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: suffix
-                    Value: .zip
+
+  # S3 Event Rule to trigger Lambda on new uploads
+  S3UploadEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+        detail:
+          bucket:
+            name: 
+              - !Ref EEGUploadBucketName
+          object:
+            key:
+              prefix: "uploads/"
+              suffix: ".zip"
+      Targets:
+        - Arn: !GetAtt S3EventProcessorLambda.Arn
+          Id: S3UploadEventTarget
+
+# Permission for EventBridge to invoke Lambda
+  S3EventLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt S3EventProcessorLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt S3UploadEventRule.Arn
 
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
@@ -389,7 +434,6 @@ Resources:
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
-      TimeoutSeconds: 3600
       DefinitionUri: EEGProcessingStateMachine.asl.json
       DefinitionSubstitutions:
         ProcessingStatusTable: !Ref ProcessingStatusTable

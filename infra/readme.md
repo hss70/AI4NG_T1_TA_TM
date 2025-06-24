@@ -64,23 +64,40 @@ Before deployment, ensure you have:
 
 2. AWS CLI installed and configured
 
-3. Node.js 22.x+ for Lambda functions
+3. AWS SAM CLI installed and configured
 
-4. Docker for building ECR image
+4. Node.js 22.x+ for Lambda functions
 
-5. GitHub repository secrets configured:
+5. Docker for building ECR image
+
+6. GitHub repository secrets configured:
 
     - AWS_ACCESS_KEY_ID
 
     - AWS_SECRET_ACCESS_KEY
 
-6. The following CloudFormation exports must exist:
+
+7. This is part of the AI4NG project. This pipeline is dependent on the following repos and the infra inside of them:
+- https://github.com/hss70/AI4NG_VPC
+- https://github.com/hss70/AI4NGUploadLambda
+You can alternatively bring in the infra from these and deploy them together if you want
+
+8. The following CloudFormation exports must exist:
     - EEGUploadBucketName
     - SharedApiId
     - NetworkStack-PrivateSG
     - NetworkStack-PrivateSubnetIds
 
 ## Deployment Instructions
+Before deploying it is useful to validate the changes locally.
+1. build the template
+`sam build --template-file .\infra\trainingPipelineTemplate.yaml --region eu-west-2`
+2. validate the template normally
+`sam validate --template-file .\infra\trainingPipelineTemplate.yaml --region eu-west-2`
+3. validate the template using --lint
+`sam validate --template-file .\infra\trainingPipelineTemplate.yaml --region eu-west-2 --lint`
+This catches most issues early on. I found that I had to run these commands on powershell in admin mode. 
+
 # Deployment Workflows
 1. Infrastructure Deployment Workflow
 This workflow deploys the CloudFormation stack when changes are made to infrastructure files or Lambda code. Located at .github/workflows/deploy-infra.yml

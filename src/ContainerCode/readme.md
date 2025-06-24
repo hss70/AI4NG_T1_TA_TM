@@ -17,7 +17,7 @@ This folder contains the **MATLAB-based classifier pipeline** and the **Dockerfi
 ### 📦 Required Software
 | Software | Purpose | Installation |
 |----------|---------|--------------|
-| **MATLAB R2023b+** | Code compilation | [Linux Download](https://www.mathworks.com/support/install/matlab.html) |
+| **MATLAB R2024b+** | Code compilation | [Linux Download](https://www.mathworks.com/support/install/matlab.html) |
 | **Docker** | Containerization | `sudo apt install docker.io` |
 | **AWS CLI** | AWS interaction | `curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && sudo ./aws/install` |
 
