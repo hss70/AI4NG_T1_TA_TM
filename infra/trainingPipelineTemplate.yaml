@@ -50,24 +50,22 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: suffix
-                    Value: .json
-            Function: !GetAtt ClassifierProcessorLambda.Arn
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ResultsMetadataLambda.Arn
-          - Event: 's3:ObjectCreated:*'
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: suffix
-                    Value: 'manifest.json'
-            Function: !GetAtt ManifestProcessorLambda.Arn
+
+  EEGResultsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref EEGResultsBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource: 
+              - !GetAtt EEGResultsBucket.Arn
+              - !Sub "${EEGResultsBucket.Arn}/*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": true
 
   # --- DynamoDB Tables ---
   ProcessingStatusTable:
@@ -125,9 +123,9 @@ Resources:
   GetStatusLambda:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/lambdas/status_check/
+      CodeUri: ../src/lambdas/statusCheck/
       Handler: app.handler
-      Runtime: python3.9
+      Runtime: nodejs22.x
       Timeout: 10
       MemorySize: 128
       Environment:
@@ -168,9 +166,9 @@ Resources:
                 Rules:
                   - Name: suffix
                     Value: manifest.json
-      CodeUri: src/lambdas/manifest_processor/
+      CodeUri: ../src/lambdas/manifestProcessor/
       Handler: app.handler
-      Runtime: python3.9
+      Runtime: nodejs22.x
       Timeout: 30
       MemorySize: 256
       Environment:
@@ -182,17 +180,10 @@ Resources:
             TableName: !Ref ProcessingStatusTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
-        - SNSPublishPolicy:
-            TopicName: !Ref ProcessingNotificationTopic
-
-  ManifestProcessorLambdaPermissions:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt ManifestProcessorLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !GetAtt EEGResultsBucket.Arn
+        - Statement:  
+          - Effect: Allow
+            Action: sns:Publish
+            Resource: !Ref ProcessingNotificationTopic
 
   ClassifierProcessorLambda:
     Type: AWS::Serverless::Function
@@ -208,9 +199,9 @@ Resources:
                 Rules:
                   - Name: suffix
                     Value: .json
-      CodeUri: src/lambdas/classifier_processor/
+      CodeUri: ../src/lambdas/classifierProcessor/
       Handler: app.handler
-      Runtime: python3.9
+      Runtime: nodejs22.x
       Timeout: 30
       MemorySize: 256
       Environment:
@@ -221,15 +212,6 @@ Resources:
             TableName: !Ref EEGClassifierTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
-
-  ClassifierProcessorLambdaPermissions:
-    Type: AWS::Lambda::Permission
-    Properties:    
-      FunctionName: !GetAtt ResultsMetadataLambda.Arn
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !GetAtt EEGResultsBucket.Arn
-      Action: lambda:InvokeFunction
 
   ResultsMetadataLambda:
     Type: AWS::Serverless::Function
@@ -244,10 +226,10 @@ Resources:
               S3Key:
                 Rules:
                   - Name: suffix
-                    Value: [resultTable].json
-      CodeUri: src/lambdas/results_metadata/
+                    Value: .json
+      CodeUri: ../src/lambdas/resultsMetadata/
       Handler: app.handler
-      Runtime: python3.9
+      Runtime: nodejs22.x
       Timeout: 30
       MemorySize: 256
       Environment:
@@ -258,16 +240,21 @@ Resources:
             TableName: !Ref ProcessingStatusTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
-      # Integrated permission for S3
-  ResultsMetadataLambdaPermissions:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt ResultsMetadataLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-      SourceArn: !GetAtt EEGResultsBucket.Arn
 
+  ProcessingNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: EEGProcessingNotifications
+      DisplayName: EEG Processing Notifications
+      Subscription:
+        - Protocol: email
+          Endpoint: 'hss70@bath.ac.uk'
+
+  StatusQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: EEG-Status-Queue
+      
   # --- IAM Roles ---
   EEGTaskExecutionRole:
     Type: AWS::IAM::Role
@@ -410,17 +397,9 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       ExecutionRoleArn: !GetAtt EEGTaskExecutionRole.Arn
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: DISABLED
-          SecurityGroups:
-            - !Ref PrivateSG
-          Subnets:
-            - !Ref PrivateSubnetId1
-            - !Ref PrivateSubnetId2
       ContainerDefinitions:
         - Name: eeg-classifier
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR.RepositoryName}:latest
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR}:latest
           Essential: true
           Environment:
             - Name: UPLOAD_BUCKET
@@ -471,7 +450,7 @@ Outputs:
     Export:
       Name: EEGResultsBucketName
   ECRRepositoryUri:
-    Value: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR.RepositoryName}
+    Value: !GetAtt ClassifierECR.RepositoryUri 
     Description: URI for the ECR repository containing the classifier image
     Export:
       Name: EEGClassifierECRUri

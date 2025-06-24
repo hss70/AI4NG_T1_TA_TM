@@ -1,0 +1,14 @@
+{
+  "name": "manifestProcessor",
+  "version": "1.0.0",
+  "description": "Processes EEG processing manifest files",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.540.0",
+    "@aws-sdk/client-s3": "^3.540.0",
+    "@aws-sdk/client-sns": "^3.540.0"
+  }
+}

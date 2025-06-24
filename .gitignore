@@ -10,3 +10,20 @@ Thumbs.db
 /TestData/Work/Results/
 /TestData/Work/SourceData (EEG_rec)
 /TestData/Work/T1
+
+# Node modules (reinstalled per deploy)
+# Ignore all node_modules folders recursively
+**/node_modules/
+
+# Optional: Ignore dependency lock files in each Lambda folder
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.aws-sam/

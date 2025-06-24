@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_REGION: eu-west-2
-      ECR_REGISTRY: 123456789012.dkr.ecr.eu-west-2.amazonaws.com
-      ECR_REPOSITORY: eeg-classifier
 
     steps:
       - name: Checkout code
@@ -29,16 +27,42 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Get ECR repository URI from CloudFormation exports
+      - name: Get ECR Repository URI
+        id: get_ecr_uri
+        run: |
+          echo "Fetching ECR repository URI..."
+          ECR_URI=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='EEGClassifierECRUri'].Value" \
+            --output text)
+          
+          if [ -z "$ECR_URI" ]; then
+            echo "::error::ECR repository URI export not found"
+            exit 1
+          fi
+          
+          # Extract registry and repository name from the URI
+          ECR_REGISTRY=$(echo "$ECR_URI" | cut -d'/' -f1)
+          ECR_REPOSITORY=$(echo "$ECR_URI" | cut -d'/' -f2)
+          
+          echo "ecr_uri=$ECR_URI" >> $GITHUB_OUTPUT
+          echo "ecr_registry=$ECR_REGISTRY" >> $GITHUB_OUTPUT
+          echo "ecr_repository=$ECR_REPOSITORY" >> $GITHUB_OUTPUT
+
       - name: Login to Amazon ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry: ${{ steps.get_ecr_uri.outputs.ecr_registry }}
 
       - name: Build Docker image
         run: |
           cd src/ContainerCode
-          docker build -t $ECR_REPOSITORY:latest .
+          docker build -t ${{ steps.get_ecr_uri.outputs.ecr_repository }}:latest .
 
       - name: Tag and Push to ECR
         run: |
-          docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker tag ${{ steps.get_ecr_uri.outputs.ecr_repository }}:latest \
+            ${{ steps.get_ecr_uri.outputs.ecr_uri }}:latest
+          
+          docker push ${{ steps.get_ecr_uri.outputs.ecr_uri }}:latest
