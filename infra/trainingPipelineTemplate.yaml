@@ -419,7 +419,7 @@ Resources:
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
-      DefinitionUri: state-machine.asl.json
+      DefinitionUri: EEGProcessingStateMachine.asl.json
       Role: !GetAtt EEGStepFunctionRole.Arn
       Tags:
         AI4NG: "true"
