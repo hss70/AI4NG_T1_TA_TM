@@ -8,7 +8,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         curl \
         jq \
-        libgl1-mesa-glx \
+        libgl1 \
         libglu1-mesa \
         libxext6 \
         libxmu6 \
