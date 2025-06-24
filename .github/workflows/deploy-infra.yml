@@ -36,7 +36,6 @@ jobs:
       - name: Install SAM CLI
         uses: aws-actions/setup-sam@v2
         with:
-          version: '1.94.0'  # Updated version
           use-installer: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
