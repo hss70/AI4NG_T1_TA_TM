@@ -1,0 +1,23 @@
+%%{init: {'theme': 'default'}}%%
+flowchart TD
+    A[S3 .zip Upload] -->|Trigger| B[S3EventProcessorLambda]
+    B -->|Start Execution| C[Step Function]
+    C --> D[ExtractSessionInfo]
+    D --> E[RecordProcessingStart]
+    E --> F[Launch ECS Task]
+    F --> G{ECS Success?}
+    G -->|Yes| H[WaitForManifest]
+    G -->|No| I[RecordFailure]
+    H --> J[CheckManifestExists]
+    J -->|Found| K[ProcessManifest]
+    J -->|Not Found| H
+    K --> L{DetermineProcessingPath}
+    L -->|Requires Classifier| M[ProcessClassifier]
+    L -->|Has Metadata| N[ProcessMetadata]
+    L -->|Neither| O[RecordSuccess]
+    M --> P{Has Metadata?}
+    P -->|Yes| N
+    P -->|No| O
+    N --> O
+    I --> Q[End]
+    O --> Q

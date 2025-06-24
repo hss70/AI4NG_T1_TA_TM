@@ -1,0 +1,25 @@
+%%{init: {'theme': 'default'}}%%
+stateDiagram-v2
+    [*] --> ExtractSessionInfo
+    ExtractSessionInfo --> RecordProcessingStart
+    RecordProcessingStart --> LaunchECSTask
+    LaunchECSTask --> WaitForManifest: On Success
+    LaunchECSTask --> RecordFailure: On Error
+    WaitForManifest --> CheckManifestExists
+    CheckManifestExists --> ProcessManifest: Found
+    CheckManifestExists --> WaitForManifest: Not Found
+    ProcessManifest --> DetermineProcessingPath
+    DetermineProcessingPath --> ProcessClassifier: requiresClassifier=true
+    DetermineProcessingPath --> ProcessMetadata: hasMetadata=true
+    DetermineProcessingPath --> RecordSuccess: Default
+    ProcessClassifier --> CheckForMetadata
+    CheckForMetadata --> ProcessMetadata: hasMetadata=true
+    CheckForMetadata --> RecordSuccess: Default
+    ProcessMetadata --> RecordSuccess
+    RecordSuccess --> [*]
+    RecordFailure --> [*]
+    
+    note right of CheckManifestExists
+        Retries every 30 seconds
+        for up to 1 hour
+    end note

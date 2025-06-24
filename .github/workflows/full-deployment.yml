@@ -15,8 +15,3 @@ jobs:
     needs: deploy-infra
     uses: ./.github/workflows/containerise-deploy.yml
     secrets: inherit
-
-  update-step-function:
-    needs: build-container
-    uses: ./.github/workflows/update-step-function.yml
-    secrets: inherit

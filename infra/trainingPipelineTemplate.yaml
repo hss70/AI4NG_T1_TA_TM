@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EEG Processing Pipeline with Mobile Status Tracking
+Description: EEG Processing Pipeline with Manifest-Driven Workflow
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
@@ -19,24 +19,6 @@ Parameters:
     Type: String
     Description: Second private subnet ID
 
-Metadata:
-  AWS::CloudFormation::Interface:
-    ParameterGroups:
-      - Label:
-          default: "API Configuration"
-        Parameters:
-          - SharedApiId
-      - Label:
-          default: "Network Configuration"
-        Parameters:
-          - PrivateSG
-          - PrivateSubnetId1
-          - PrivateSubnetId2
-      - Label:
-          default: "S3 Configuration"
-        Parameters:
-          - EEGUploadBucketName
-
 Resources:
   # --- S3 Buckets ---
   EEGResultsBucket:
@@ -50,7 +32,6 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
-      # Enforce SSL properly without circular dependency
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -123,11 +104,6 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ProcessingStatusTable
-      EventInvokeConfig:
-        DestinationConfig:
-          OnSuccess:
-            Type: SQS
-            Destination: !GetAtt StatusQueue.Arn
 
   GetStatusLambdaPermissions:
     Type: AWS::Lambda::Permission
@@ -137,21 +113,10 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/GET/api/status/{sessionId}"
 
+  # Manifest Processor Lambda
   ManifestProcessorLambda:
     Type: AWS::Serverless::Function
-    DependsOn: EEGResultsBucket
     Properties:
-      Events:
-        S3Event:
-          Type: S3
-          Properties:
-            Bucket: !Ref EEGResultsBucket
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: suffix
-                    Value: manifest.json
       CodeUri: ../src/lambdas/manifestProcessor/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -160,32 +125,16 @@ Resources:
       Environment:
         Variables:
           STATUS_TABLE: !Ref ProcessingStatusTable
-          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
       Policies:
         - DynamoDBWritePolicy:
             TableName: !Ref ProcessingStatusTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
-        - Statement:  
-            Effect: Allow
-            Action: sns:Publish
-            Resource: !Ref ProcessingNotificationTopic
 
+  # Classifier Processor Lambda
   ClassifierProcessorLambda:
     Type: AWS::Serverless::Function
-    DependsOn: EEGResultsBucket
     Properties:
-      Events:
-        S3Event:
-          Type: S3
-          Properties:
-            Bucket: !Ref EEGResultsBucket
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: suffix
-                    Value: _classifier.json
       CodeUri: ../src/lambdas/classifierProcessor/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -200,21 +149,10 @@ Resources:
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
 
+  # Results Metadata Lambda
   ResultsMetadataLambda:
     Type: AWS::Serverless::Function
-    DependsOn: EEGResultsBucket
     Properties:
-      Events:
-        S3Event:
-          Type: S3
-          Properties:
-            Bucket: !Ref EEGResultsBucket
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: suffix
-                    Value: _metadata.json
       CodeUri: ../src/lambdas/resultsMetadata/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -228,6 +166,37 @@ Resources:
             TableName: !Ref ProcessingStatusTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
+
+  # S3 Event Processor Lambda
+  S3EventProcessorLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.handler
+      Runtime: nodejs22.x
+      CodeUri: ../src/lambdas/s3EventProcessor/
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          STATE_MACHINE_ARN: !Ref ProcessingStateMachine
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: states:StartExecution
+              Resource: !Ref ProcessingStateMachine
+        - S3ReadPolicy:
+            BucketName: !Ref EEGUploadBucketName
+      Events:
+        S3UploadEvent:
+          Type: S3
+          Properties:
+            Bucket: !Ref EEGUploadBucketName
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .zip
 
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
@@ -334,6 +303,15 @@ Resources:
                   - events:PutRule
                   - events:DescribeRule
                 Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions*
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "arn:aws:s3:::${EEGUploadBucketName}/*"
+              - Effect: Allow
+                Action: s3:HeadObject
+                Resource: !Sub "${EEGResultsBucket.Arn}/*"
+              - Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource: !GetAtt ProcessingStatusTable.Arn
 
   # --- ECS Resources ---
   EEGFargateCluster:
@@ -377,9 +355,6 @@ Resources:
 
   EEGFargateTaskDefinition:
     Type: AWS::ECS::TaskDefinition
-    DependsOn: 
-      - EEGTaskExecutionRole
-      - ProcessingStatusTable
     Properties:
       Family: EEGClassifierTask
       Cpu: '1024'
@@ -399,6 +374,10 @@ Resources:
               Value: !Ref EEGResultsBucket
             - Name: STATUS_TABLE
               Value: !Ref ProcessingStatusTable
+            - Name: CLASSIFIER_TABLE
+              Value: !Ref EEGClassifierTable
+            - Name: PRIVATE_SG
+              Value: !Ref PrivateSG
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -409,32 +388,24 @@ Resources:
   # --- Step Functions ---
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
-    DependsOn:
-      - EEGStepFunctionRole
-      - EEGFargateTaskDefinition
-      - ManifestProcessorLambda
-      - ClassifierProcessorLambda
-      - ResultsMetadataLambda
     Properties:
+      TimeoutSeconds: 3600
       DefinitionUri: EEGProcessingStateMachine.asl.json
+      DefinitionSubstitutions:
+        ProcessingStatusTable: !Ref ProcessingStatusTable
+        EEGFargateCluster: !GetAtt EEGFargateCluster.Arn
+        EEGFargateTaskDefinition: !Ref EEGFargateTaskDefinition
+        PrivateSG: !Ref PrivateSG
+        PrivateSubnetId1: !Ref PrivateSubnetId1
+        PrivateSubnetId2: !Ref PrivateSubnetId2
+        ManifestProcessorLambdaArn: !GetAtt ManifestProcessorLambda.Arn
+        ClassifierProcessorLambdaArn: !GetAtt ClassifierProcessorLambda.Arn
+        ResultsMetadataLambdaArn: !GetAtt ResultsMetadataLambda.Arn
+        ResultsBucket: !Ref EEGResultsBucket
       Role: !GetAtt EEGStepFunctionRole.Arn
       Tags:
         AI4NG: "true"
         TrainingPipeline: "true"
-      Events:
-        S3UploadTrigger:
-          Type: CloudWatchEvent
-          Properties:
-            Pattern:
-              source: ["aws.s3"]
-              detail-type: ["Object Created"]
-              detail:
-                bucket:
-                  name: [!Ref EEGUploadBucketName]
-                object:
-                  key:
-                    prefix: "uploads/"
-                    suffix: ".zip"
 
 Outputs:
   StatusApiUrl:
@@ -456,3 +427,8 @@ Outputs:
     Description: ARN of the EEG processing state machine
     Export:
       Name: EEGProcessingStateMachineArn
+  S3EventProcessorLambdaName:
+    Value: !Ref S3EventProcessorLambda
+    Description: Name of S3 event processor Lambda
+    Export:
+      Name: S3EventProcessorLambdaName

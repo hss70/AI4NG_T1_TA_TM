@@ -1,0 +1,14 @@
+{
+  "name": "s3-event-processor",
+  "version": "1.0.0",
+  "description": "Triggers EEG processing workflow on S3 upload",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "AI4NG Team",
+  "license": "MIT",
+  "dependencies": {
+    "aws-sdk": "^2.1303.0"
+  }
+}
