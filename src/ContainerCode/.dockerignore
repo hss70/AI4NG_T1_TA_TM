@@ -1,0 +1,22 @@
+# Ignore Docker and git files
+.dockerignore
+Dockerfile
+.git
+.gitignore
+
+# Ignore readme files
+README.md
+readme.md
+
+# Ignore the MATLAB test directory completely
+matlabTest/
+
+# Ignore all MATLAB source, Simulink, and temp files inside ClassifierTraining
+ClassifierTraining/Code/**/*.m
+ClassifierTraining/Code/**/*.asv
+ClassifierTraining/Code/**/*.slx
+ClassifierTraining/Code/**/*.slxc
+ClassifierTraining/Code/slprj/
+
+# Ignore the Windows-specific compiled files (not needed for Linux build)
+ClassifierTraining/Code/**/*.mexw64
