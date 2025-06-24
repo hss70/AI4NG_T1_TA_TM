@@ -26,9 +26,9 @@ This folder contains the **MATLAB-based classifier pipeline** and the **Dockerfi
 ## 🟩 MATLAB Compilation (Linux Required)
 
 ### ⚠️ Critical: Must be done on Linux
-```bash
+
 # 1. Navigate to MATLAB source directory
-cd src/classifier/
+cd \src\ContainerCode\ClassifierTraining\Code
 
 # 2. Launch MATLAB (GUI or command line)
 matlab
@@ -53,3 +53,5 @@ run_FBCSP_Training.sh # Bootstrap script
 ✅ Verify Linux Compatibility:
 file output/FBCSP_Training
 # Should show: ELF 64-bit LSB executable, x86-64
+
+### Docker build
