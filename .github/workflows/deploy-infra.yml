@@ -9,7 +9,6 @@ on:
     paths:
       - '.github/workflows/deploy-infra.yml'
       - 'infra/**'
-      - '!infra/EEGProcessingStateMachine.asl.json'
       - '!**/*.md'
       - 'src/lambdas/**'  # Include Lambda source code
       - 'samconfig.toml'  # Include SAM configuration file

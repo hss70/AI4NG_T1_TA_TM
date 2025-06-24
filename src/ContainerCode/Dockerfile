@@ -16,7 +16,7 @@ RUN apt-get update && \
         python3-pip \
         unzip && \
     rm -rf /var/lib/apt/lists/* && \
-    pip3 install --no-cache-dir awscli
+    pip3 install --no-cache-dir awscli --break-system-packages
 # Set the working directory
 WORKDIR /app
 
