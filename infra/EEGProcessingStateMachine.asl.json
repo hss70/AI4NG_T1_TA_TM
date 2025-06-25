@@ -41,6 +41,7 @@
                     }
                 }
             },
+            "ResultPath": "$.dynamoResult",
             "Next": "LaunchECSTask"
         },
         "LaunchECSTask": {
