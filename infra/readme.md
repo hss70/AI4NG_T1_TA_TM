@@ -191,6 +191,67 @@ STATUS_TABLE: ProcessingStatusTable name
 - Check CloudWatch Logs for each Lambda function
 - Monitor ECS tasks in Fargate cluster
 
+## Monitoring and Troubleshooting
+
+### CloudWatch Dashboard
+Access the automatically created dashboard via the DashboardUrl output or directly at:
+`https://<region>.console.aws.amazon.com/cloudwatch/home?region=<region>#dashboards:name=<stack-name>-EEG-Processing-Pipeline`
+
+The dashboard shows:
+- Step Function execution metrics (started, succeeded, failed)
+- ECS resource utilization (CPU, memory)
+- Lambda performance (duration, errors, invocations)
+
+### CloudWatch Alarms
+Three alarms monitor critical failures and send email notifications:
+- **Step Function Failures**: Triggers on any failed executions
+- **ECS Task Failures**: Monitors stopped tasks
+- **Lambda Errors**: Alerts on high error rates (3+ errors in 10 minutes)
+
+### Where to Check for Issues
+
+#### Step Function Failures
+1. **AWS Console**: Step Functions → State machines → Select your machine → Executions
+2. **CloudWatch Logs**: `/aws/stepfunctions/<stack-name>-ProcessingStateMachine`
+3. **DynamoDB**: Check `EEGProcessingStatus` table for failed sessions
+
+#### Lambda Function Issues
+1. **CloudWatch Logs**: Each function has its own log group:
+   - `/aws/lambda/<stack-name>-S3EventProcessor`
+   - `/aws/lambda/<stack-name>-ManifestProcessor`
+   - `/aws/lambda/<stack-name>-ClassifierProcessor`
+   - `/aws/lambda/<stack-name>-ResultsMetadata`
+   - `/aws/lambda/<stack-name>-GetStatus`
+
+#### ECS Task Problems
+1. **ECS Console**: Clusters → EEG-Classifier-Cluster → Tasks
+2. **CloudWatch Logs**: `/ecs/eeg-classifier`
+3. **Task stopped reasons**: Check task details for exit codes and errors
+
+#### EventBridge Rule Issues
+1. **EventBridge Console**: Rules → Check rule metrics
+2. **CloudWatch Metrics**: AWS/Events namespace
+3. **S3 Event Processor Lambda logs**: Verify events are being received
+
+### Common Issues and Solutions
+
+#### Pipeline Not Triggering
+- Verify S3 bucket has EventBridge notifications enabled
+- Check file path format: `userId/sessionId/filename.zip`
+- Ensure file has `.zip` extension
+- Check EventBridge rule is enabled
+
+#### ECS Task Failures
+- Verify ECR image exists and is accessible
+- Check ECS task execution role permissions
+- Review container logs for application errors
+- Ensure private subnets have NAT gateway access
+
+#### Lambda Timeouts
+- Check function timeout settings (30s for processors, 10s for status)
+- Review CloudWatch logs for performance bottlenecks
+- Monitor memory usage in CloudWatch metrics
+
 ## Important Resources
 After deployment, note these outputs:
 
