@@ -11,7 +11,8 @@ export RESULTS_PATH="$WORK_DIR/Results"
 mkdir -p \
   "$WORK_DIR/Dependents" \
   "$WORK_PATH/CSV/$USER_ID/$SESSION_ID" \
-  "$WORK_PATH/Results"
+  "$WORK_PATH/Results" \
+  "/app/output"
 
 # Copy the EEG channel locations file to Dependents
 cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Dependents/"
