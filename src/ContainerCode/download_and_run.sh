@@ -14,7 +14,7 @@ mkdir -p \
   "$WORK_PATH/Results"
 
 # Copy the EEG channel locations file to Dependents
-cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Work/Dependents/"
+cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Dependents/"
 
 # Download input file from S3
 echo "Downloading $INPUT_FILE from $UPLOAD_BUCKET"
