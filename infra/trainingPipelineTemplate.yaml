@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Description: EEG Processing Pipeline with Manifest-Driven Workflow
 Transform: AWS::Serverless-2016-10-31
 
@@ -31,11 +31,11 @@ Resources:
           - Object Created
         detail:
           bucket:
-            name: 
+            name:
               - !Ref EEGUploadBucketName
           object:
             key:
-              suffix: ['.zip']
+              suffix: [".zip"]
       Targets:
         - Arn: !GetAtt S3EventProcessorLambda.Arn
           Id: S3UploadEventTarget
@@ -66,7 +66,7 @@ Resources:
             Effect: Deny
             Principal: "*"
             Action: "s3:*"
-            Resource: 
+            Resource:
               - !GetAtt EEGResultsBucket.Arn
               - !Sub "${EEGResultsBucket.Arn}/*"
             Condition:
@@ -76,7 +76,7 @@ Resources:
             Effect: Deny
             Principal: "*"
             Action: "s3:*"
-            Resource: 
+            Resource:
               - !GetAtt EEGResultsBucket.Arn
               - !Sub "${EEGResultsBucket.Arn}/*"
             Condition:
@@ -134,6 +134,37 @@ Resources:
       AuthorizerId: !ImportValue SharedApiAuthorizerId
       Target: !Sub integrations/${StatusIntegration}
 
+  # --- CloudWatch Log Groups ---
+  S3EventProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-S3EventProcessor
+      RetentionInDays: 14
+
+  GetStatusLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-GetStatus
+      RetentionInDays: 14
+
+  ManifestProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-ManifestProcessor
+      RetentionInDays: 14
+
+  ClassifierProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-ClassifierProcessor
+      RetentionInDays: 14
+
+  ResultsMetadataLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-ResultsMetadata
+      RetentionInDays: 14
+
   # --- Lambda Functions ---
   # S3 Event Processor Lambda
   S3EventProcessorLambda:
@@ -154,8 +185,12 @@ Resources:
               Resource: !Ref ProcessingStateMachine
         - S3ReadPolicy:
             BucketName: !Ref EEGUploadBucketName
+        - CloudWatchLogsFullAccess
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup: !Ref S3EventProcessorLogGroup
 
-# Permission for EventBridge to invoke Lambda
+  # Permission for EventBridge to invoke Lambda
   S3EventLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -178,6 +213,10 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ProcessingStatusTable
+        - CloudWatchLogsFullAccess
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup: !Ref GetStatusLogGroup
 
   GetStatusLambdaPermissions:
     Type: AWS::Lambda::Permission
@@ -204,6 +243,10 @@ Resources:
             TableName: !Ref ProcessingStatusTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
+        - CloudWatchLogsFullAccess
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup: !Ref ManifestProcessorLogGroup
 
   # Classifier Processor Lambda
   ClassifierProcessorLambda:
@@ -222,6 +265,10 @@ Resources:
             TableName: !Ref EEGClassifierTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
+        - CloudWatchLogsFullAccess
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup: !Ref ClassifierProcessorLogGroup
 
   # Results Metadata Lambda
   ResultsMetadataLambda:
@@ -240,7 +287,10 @@ Resources:
             TableName: !Ref ProcessingStatusTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
-
+        - CloudWatchLogsFullAccess
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup: !Ref ResultsMetadataLogGroup
 
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
@@ -249,19 +299,138 @@ Resources:
       DisplayName: EEG Processing Notifications
       Subscription:
         - Protocol: email
-          Endpoint: 'hss70@bath.ac.uk'
+          Endpoint: "hss70@bath.ac.uk"
 
   StatusQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: EEG-Status-Queue
-      
+
+  # --- CloudWatch Alarms ---
+  StepFunctionFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-StepFunction-Failures
+      AlarmDescription: Alert when Step Function executions fail
+      MetricName: ExecutionsFailed
+      Namespace: AWS/States
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref ProcessingStateMachine
+      AlarmActions:
+        - !Ref ProcessingNotificationTopic
+
+  ECSTaskFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-ECS-Task-Failures
+      AlarmDescription: Alert when ECS tasks fail
+      MetricName: TasksStoppedReason
+      Namespace: AWS/ECS
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref EEGFargateCluster
+      AlarmActions:
+        - !Ref ProcessingNotificationTopic
+
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-Lambda-Errors
+      AlarmDescription: Alert when Lambda functions error
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref ProcessingNotificationTopic
+
+  # --- CloudWatch Dashboard ---
+  EEGProcessingDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${AWS::StackName}-EEG-Processing-Pipeline
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/States", "ExecutionsStarted", "StateMachineArn", "${ProcessingStateMachine}" ],
+                  [ ".", "ExecutionsSucceeded", ".", "." ],
+                  [ ".", "ExecutionsFailed", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Step Function Executions",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/ECS", "CPUUtilization", "ClusterName", "${EEGFargateCluster}" ],
+                  [ ".", "MemoryUtilization", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "ECS Resource Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Duration", "FunctionName", "${S3EventProcessorLambda}" ],
+                  [ ".", "Errors", ".", "." ],
+                  [ ".", "Invocations", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Lambda Performance",
+                "period": 300
+              }
+            }
+          ]
+        }
+
   # --- IAM Roles ---
   EEGTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -272,7 +441,7 @@ Resources:
       Policies:
         - PolicyName: S3AccessPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -290,7 +459,7 @@ Resources:
                   - !Sub "${EEGResultsBucket.Arn}/*"
         - PolicyName: DynamoDBStatusUpdate
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -300,7 +469,7 @@ Resources:
                 Resource: !GetAtt ProcessingStatusTable.Arn
         - PolicyName: ECRAccess
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -315,7 +484,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -324,11 +493,11 @@ Resources:
       Policies:
         - PolicyName: StepFunctionExecutionPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action: lambda:InvokeFunction
-                Resource: 
+                Resource:
                   - !GetAtt ClassifierProcessorLambda.Arn
                   - !GetAtt ResultsMetadataLambda.Arn
                   - !GetAtt ManifestProcessorLambda.Arn
@@ -356,6 +525,17 @@ Resources:
               - Effect: Allow
                 Action: dynamodb:UpdateItem
                 Resource: !GetAtt ProcessingStatusTable.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: "*"
 
   # --- ECS Resources ---
   EEGFargateCluster:
@@ -365,6 +545,9 @@ Resources:
       ClusterSettings:
         - Name: containerInsights
           Value: enabled
+      Configuration:
+        ExecuteCommandConfiguration:
+          Logging: DEFAULT
 
   ClassifierLogGroup:
     Type: AWS::Logs::LogGroup
@@ -401,8 +584,8 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: EEGClassifierTask
-      Cpu: '1024'
-      Memory: '4096'
+      Cpu: "1024"
+      Memory: "4096"
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
@@ -429,6 +612,13 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: eeg-classifier
 
+  # --- CloudWatch Log Groups for Step Functions ---
+  StepFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/stepfunctions/${AWS::StackName}-ProcessingStateMachine
+      RetentionInDays: 30
+
   # --- Step Functions ---
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
@@ -446,6 +636,14 @@ Resources:
         ResultsMetadataLambdaArn: !GetAtt ResultsMetadataLambda.Arn
         ResultsBucket: !Ref EEGResultsBucket
       Role: !GetAtt EEGStepFunctionRole.Arn
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt StepFunctionLogGroup.Arn
+      Tracing:
+        Enabled: true
       Tags:
         AI4NG: "true"
         TrainingPipeline: "true"
@@ -461,7 +659,7 @@ Outputs:
     Export:
       Name: EEGResultsBucketName
   ECRRepositoryUri:
-    Value: !GetAtt ClassifierECR.RepositoryUri 
+    Value: !GetAtt ClassifierECR.RepositoryUri
     Description: URI for the ECR repository containing the classifier image
     Export:
       Name: EEGClassifierECRUri
@@ -470,6 +668,11 @@ Outputs:
     Description: ARN of the EEG processing state machine
     Export:
       Name: EEGProcessingStateMachineArn
+  DashboardUrl:
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AWS::StackName}-EEG-Processing-Pipeline
+    Description: URL to the CloudWatch Dashboard
+    Export:
+      Name: EEGProcessingDashboardUrl
   S3EventProcessorLambdaName:
     Value: !Ref S3EventProcessorLambda
     Description: Name of S3 event processor Lambda

@@ -1,1 +1,0 @@
-{"winSize":{"ms":1000},"param":{"a0":21.060007711489494,"a1N":[0.53560245236387372,0.42737733478771067,0.019825345273711215,-0.2654243584136694]},"substractedValue2_from_2ClassResults":[0,0,0],"SW_2ClassResultNorm_notUsed0_autoBaseline1_specNorm2":0,"meanCurrent":{"wSize":{"ms":200}},"gapBetweenCurrentAndRefWindows":{"wSize":{"ms":600}},"meanReference":{"wSize":{"ms":200}}}

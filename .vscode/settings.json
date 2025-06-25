@@ -15,11 +15,60 @@
         "*.s3db": "${capture}.${extname}-*"
     },
     "yaml.schemas": {
-        "file:///c%3A/Users/Hardeep/.vscode/extensions/docsmsft.docs-yaml-1.0.5/dist/toc.schema.json": "/toc\\.yml/i"
+        "https://json.schemastore.org/github-workflow.json": "/.github/workflows/*",
+        "https://raw.githubusercontent.com/awslabs/goformation/master/schema/cloudformation.schema.json": "/infra/*.yaml"
+    },
+    "[json]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[yaml]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "redhat.vscode-yaml"
     },
     "hediet.vscode-drawio.resizeImages": null,
     "terminal.integrated.commandsToSkipShell": [
         "matlab.interrupt"
     ],
-    "workbench.colorTheme": "Mermaid Dark"
+    "workbench.colorTheme": "Mermaid Dark",
+    "json.schemas": [
+        {
+            "fileMatch": [
+                "samconfig.toml"
+            ],
+            "url": "https://json.schemastore.org/samconfig.json"
+        },
+        {
+            "fileMatch": [
+                "*.github/workflows/*.json"
+            ],
+            "url": "https://json.schemastore.org/github-workflow.json"
+        },
+        {
+            "fileMatch": [
+                "*.cfn.json",
+                "template.json"
+            ],
+            "url": "https://raw.githubusercontent.com/awslabs/goformation/master/schema/cloudformation.schema.json"
+        }
+    ],
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "yaml.customTags": [
+        "!Ref",
+        "!Sub",
+        "!GetAtt",
+        "!Join",
+        "!FindInMap",
+        "!Select",
+        "!Split",
+        "!ImportValue",
+        "!Condition",
+        "!Equals",
+        "!If",
+        "!Not",
+        "!Or",
+        "!And",
+        "!Base64",
+        "!Transform"
+    ]
 }

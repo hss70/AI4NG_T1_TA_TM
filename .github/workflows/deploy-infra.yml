@@ -101,7 +101,7 @@ jobs:
       - name: SAM Deploy
         id: sam_deploy
         run: |
-          set -o pipefail # Ensures that a pipeline returns the exit status of the last command that failed.
+          set -o pipefail
 
           output=$(sam deploy \
             --parameter-overrides \
@@ -110,17 +110,14 @@ jobs:
               "PrivateSG=${{ steps.get_exports.outputs.sg_id }}" \
               "PrivateSubnetId1=${{ steps.get_exports.outputs.subnet1_id }}" \
               "PrivateSubnetId2=${{ steps.get_exports.outputs.subnet2_id }}" \
-            --no-confirm-changeset 2>&1) # Redirect stderr to stdout
+            --no-confirm-changeset 2>&1)
 
-          exit_code=$?
-          echo "$output" # Print the output so it's visible in the logs
+          echo "$output"
 
-          if [ $exit_code -ne 0 ]; then
-            if echo "$output" | grep -q "No changes to deploy. Stack ${STACK_NAME} is up to date"; then
-              echo "::notice::SAM deploy reported no changes, considering it a success."
-              exit 0 # Exit with success code
-            else
-              echo "::error::SAM deploy failed with an unexpected error."
-              exit $exit_code # Re-exit with the original error code for actual failures
-            fi
+          if echo "$output" | grep -iq "no changes to deploy"; then
+            echo "::notice::SAM deploy reported no changes — treating as success."
+            exit 0
           fi
+
+          echo "::error::SAM deploy failed."
+          exit 1
