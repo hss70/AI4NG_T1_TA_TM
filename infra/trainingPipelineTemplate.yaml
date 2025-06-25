@@ -654,6 +654,11 @@ Outputs:
     Description: URL for status checking API
     Export:
       Name: EEGStatusApiUrl
+  ProcessingStatusTable:
+    Value: !Ref ProcessingStatusTable
+    Description: Name of the processing status DynamoDB table
+    Export:
+      Name: ProcessingStatusTableName
   ResultsBucketName:
     Value: !Ref EEGResultsBucket
     Export:
