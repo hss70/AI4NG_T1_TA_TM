@@ -28,14 +28,11 @@ Resources:
         source:
           - aws.s3
         detail-type:
-          - Object Created
+          - "Object Created"
         detail:
           bucket:
             name:
               - !Ref EEGUploadBucketName
-          object:
-            key:
-              suffix: [".zip"]
       Targets:
         - Arn: !GetAtt S3EventProcessorLambda.Arn
           Id: S3UploadEventTarget
