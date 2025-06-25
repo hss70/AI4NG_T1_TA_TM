@@ -285,7 +285,7 @@
                         "S": "SUCCESS"
                     },
                     ":endTime": {
-                        "N.$": "$$.Execution.StartTime"
+                        "N.$": "$$.State.EnteredTime"
                     }
                 }
             },

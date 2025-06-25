@@ -63,9 +63,33 @@ jobs:
 
       - name: Update Step Function Definition
         run: |
-          # Substitute variables in ASL file
-          sed -e 's/${ProcessingStatusTable}/${{ steps.get_outputs.outputs.status_table }}/g' \
-              -e 's/${ResultsBucket}/${{ steps.get_outputs.outputs.results_bucket }}/g' \
+          # Get additional required values
+          STACK_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name ${{ env.STACK_NAME }})
+          ECS_CLUSTER_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="EEGFargateCluster") | .PhysicalResourceId')
+          TASK_DEF_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="EEGFargateTaskDefinition") | .PhysicalResourceId')
+          
+          # Get Lambda ARNs
+          MANIFEST_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="ManifestProcessorLambda") | .PhysicalResourceId')
+          CLASSIFIER_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="ClassifierProcessorLambda") | .PhysicalResourceId')
+          METADATA_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="ResultsMetadataLambda") | .PhysicalResourceId')
+          
+          # Get network info
+          PRIVATE_SG=$(aws cloudformation list-exports --query "Exports[?Name=='NetworkStack-PrivateSG'].Value" --output text)
+          SUBNETS=$(aws cloudformation list-exports --query "Exports[?Name=='NetworkStack-PrivateSubnetIds'].Value" --output text)
+          SUBNET1=$(echo "$SUBNETS" | cut -d',' -f1)
+          SUBNET2=$(echo "$SUBNETS" | cut -d',' -f2)
+          
+          # Substitute all variables in ASL file
+          sed -e "s/\${ProcessingStatusTable}/${{ steps.get_outputs.outputs.status_table }}/g" \
+              -e "s/\${ResultsBucket}/${{ steps.get_outputs.outputs.results_bucket }}/g" \
+              -e "s/\${EEGFargateCluster}/arn:aws:ecs:${{ env.AWS_REGION }}:$(aws sts get-caller-identity --query Account --output text):cluster\/$ECS_CLUSTER_ARN/g" \
+              -e "s/\${EEGFargateTaskDefinition}/$TASK_DEF_ARN/g" \
+              -e "s/\${ManifestProcessorLambdaArn}/$MANIFEST_ARN/g" \
+              -e "s/\${ClassifierProcessorLambdaArn}/$CLASSIFIER_ARN/g" \
+              -e "s/\${ResultsMetadataLambdaArn}/$METADATA_ARN/g" \
+              -e "s/\${PrivateSG}/$PRIVATE_SG/g" \
+              -e "s/\${PrivateSubnetId1}/$SUBNET1/g" \
+              -e "s/\${PrivateSubnetId2}/$SUBNET2/g" \
               infra/EEGProcessingStateMachine.asl.json > /tmp/stepfunction-definition.json
           
           # Update the state machine
