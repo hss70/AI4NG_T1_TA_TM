@@ -1,4 +1,4 @@
-### AI4NG T1_TA_TM training pipeline
+# AI4NG T1_TA_TM training pipeline
 ## For use with the FBCSP classifier
 This repository contains the infrastructure code for the AI4NG EEG Processing Pipeline, which automates the processing of EEG data files, tracks processing status, and provides a REST API for status checks.
 
@@ -23,19 +23,19 @@ flowchart TD
     O --> P
 
 ## Key Components
-# S3 Buckets
+### S3 Buckets
 
 - Upload Bucket: Receives user-uploaded EEG data (.zip files)
 
 - Results Bucket: Stores processed EEG results
 
-# AWS Step Function
+### AWS Step Function
 
 - Orchestrates the entire processing workflow
 
 - Coordinates between ECS, Lambda, and DynamoDB
 
-# AWS Lambda Functions
+### AWS Lambda Functions
 
 - S3 Event Processor: Triggers processing pipeline
 
@@ -47,11 +47,11 @@ flowchart TD
 
 - Status Check: Provides API for status queries
 
-# Amazon ECS
+### Amazon ECS
 
 Runs EEG classification tasks in Fargate containers
 
-# DynamoDB Tables
+### DynamoDB Tables
 
 - ProcessingStatusTable: Tracks session processing status
 
@@ -98,19 +98,19 @@ Before deploying it is useful to validate the changes locally.
 `sam validate --template-file .\infra\trainingPipelineTemplate.yaml --region eu-west-2 --lint`
 This catches most issues early on. I found that I had to run these commands on powershell in admin mode. 
 
-# Deployment Workflows
+### Deployment Workflows
 1. Infrastructure Deployment Workflow
 This workflow deploys the CloudFormation stack when changes are made to infrastructure files or Lambda code. Located at .github/workflows/deploy-infra.yml
 2. Container Deployment Workflow
 This workflow builds and pushes the classifier Docker container when changes are made to the container code. Located at .github/workflows/containerise-deploy.yml
 
-# Manual Deployment (via GitHub Actions)
+### Manual Deployment (via GitHub Actions)
 1. Navigate to your GitHub repository
 2. Go to "Actions" tab
 3. Run the "Deploy Infrastructure" workflow
 4. After infrastructure deployment, run the "Build and Push Classifier Container" workflow
 
-# Trigger-based Deployment
+### Trigger-based Deployment
 The workflows are automatically triggered when changes are pushed to relevant paths:
 
 Infrastructure changes: infra/** or src/PostProcessingLambdas/**
@@ -118,7 +118,7 @@ Infrastructure changes: infra/** or src/PostProcessingLambdas/**
 Container changes: src/ContainerCode/**
 
 ## Lambda Function Details
-# S3 Event Processor Lambda
+### S3 Event Processor Lambda
 Path: lambdas/s3EventProcessor/
 
 Purpose: Triggers processing pipeline on .zip upload
@@ -127,7 +127,7 @@ Environment Variables:
 
 STATE_MACHINE_ARN: ARN of processing state machine
 
-# Manifest Processor Lambda
+### Manifest Processor Lambda
 Path: lambdas/manifestProcessor/
 
 Purpose: Processes manifest JSON files
@@ -136,7 +136,7 @@ Environment Variables:
 
 STATUS_TABLE: ProcessingStatusTable name
 
-# Classifier Processor Lambda
+### Classifier Processor Lambda
 Path: lambdas/classifierProcessor/
 
 Purpose: Processes classifier JSON files
@@ -145,7 +145,7 @@ Environment Variables:
 
 CLASSIFIER_TABLE: EEGClassifierTable name
 
-# Results Metadata Lambda
+### Results Metadata Lambda
 Path: lambdas/resultsMetadata/
 
 Purpose: Processes metadata JSON files
@@ -175,14 +175,14 @@ STATUS_TABLE: ProcessingStatusTable name
     To find it.
 
 2. Check Processing Status
-# Get API endpoint from CloudFormation outputs
+### Get API endpoint from CloudFormation outputs
 `
     ENDPOINT=$(aws cloudformation describe-stacks \
     --stack-name AI4NG-EEG-Pipeline \
     --query "Stacks[0].Outputs[?OutputKey=='StatusApiUrl'].OutputValue" \
     --output text)
 `
-# Call status API
+### Call status API
 `
     curl -H "Authorization: Bearer YOUR_TOKEN" $ENDPOINT/session456
 `
@@ -219,7 +219,7 @@ Delete CloudFormation stack:
 bash
 aws cloudformation delete-stack --stack-name AI4NG-EEG-Pipeline
 ## Troubleshooting
-# Deployment failures:
+### Deployment failures:
 
 - Check CloudFormation events for error details
 
@@ -227,7 +227,7 @@ aws cloudformation delete-stack --stack-name AI4NG-EEG-Pipeline
 
 - Ensure ECR image exists before deployment
 
-# Processing failures:
+### Processing failures:
 
 - Check Step Function execution history
 
@@ -235,7 +235,7 @@ aws cloudformation delete-stack --stack-name AI4NG-EEG-Pipeline
 
 - Verify ECS task has necessary permissions
 
-# API issues:
+### API issues:
 
 - Validate JWT token in API requests
 

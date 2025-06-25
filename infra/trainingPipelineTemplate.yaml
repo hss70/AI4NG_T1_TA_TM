@@ -33,6 +33,9 @@ Resources:
           bucket:
             name:
               - !Ref EEGUploadBucketName
+          object:
+            key:
+              - suffix: [".zip"]
       Targets:
         - Arn: !GetAtt S3EventProcessorLambda.Arn
           Id: S3UploadEventTarget

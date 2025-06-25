@@ -5,8 +5,8 @@
         "ExtractSessionInfo": {
             "Type": "Pass",
             "Parameters": {
-                "userId.$": "$.detail.object.key.split('/')[1]",
-                "sessionId.$": "$.detail.object.key.split('/')[2]",
+                "userId.$": "$.detail.object.key.split('/')[0]",
+                "sessionId.$": "$.detail.object.key.split('/')[1]",
                 "inputFile.$": "$.detail.object.key"
             },
             "ResultPath": "$.sessionInfo",
