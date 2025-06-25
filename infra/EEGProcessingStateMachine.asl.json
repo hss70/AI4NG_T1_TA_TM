@@ -85,6 +85,7 @@
                     ]
                 }
             },
+            "ResultPath": "$.ecsResult",
             "Next": "WaitForManifest",
             "Retry": [
                 {
@@ -101,6 +102,7 @@
                     "ErrorEquals": [
                         "States.ALL"
                     ],
+                    "ResultPath": "$.error",
                     "Next": "RecordFailure"
                 }
             ]
@@ -302,17 +304,21 @@
                         "S.$": "$.sessionInfo.sessionId"
                     }
                 },
-                "UpdateExpression": "SET #s = :status, #e = :error",
+                "UpdateExpression": "SET #s = :status, #e = :error, #t = :time",
                 "ExpressionAttributeNames": {
                     "#s": "status",
-                    "#e": "error"
+                    "#e": "error",
+                    "#t": "endTime"
                 },
                 "ExpressionAttributeValues": {
                     ":status": {
                         "S": "FAILED"
                     },
                     ":error": {
-                        "S.$": "$.error.Cause"
+                        "S.$": "States.JsonToString($.error)"
+                    },
+                    ":time": {
+                        "S.$": "$$.State.EnteredTime"
                     }
                 }
             },
