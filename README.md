@@ -90,27 +90,33 @@ You can alternatively bring in the infra from these and deploy them together if 
 
 ## Deployment Instructions
 Before deploying it is useful to validate the changes locally.
+You can do this using the InfraChecks.ps1 script if on windows.
+simply run
+`.\InfraChecks.ps1` from the project root
+
+alternatively you can do the following checks:
+
 1. build the template
 `sam build --template-file .\infra\trainingPipelineTemplate.yaml --region eu-west-2`
 2. validate the template normally
 `sam validate --template-file .\infra\trainingPipelineTemplate.yaml --region eu-west-2`
 3. validate the template using --lint
 `sam validate --template-file .\infra\trainingPipelineTemplate.yaml --region eu-west-2 --lint`
-This catches most issues early on. I found that I had to run these commands on powershell in admin mode. 
+This catches most issues early on. I found that I had to run these commands on powershell in admin mode due to the telemetry. A fix for this was adding permissions to access C:\Users\$User$\AppData\Roaming\AWS SAM for my current user. 
 
-# Deployment Workflows
+### Deployment Workflows
 1. Infrastructure Deployment Workflow
 This workflow deploys the CloudFormation stack when changes are made to infrastructure files or Lambda code. Located at .github/workflows/deploy-infra.yml
 2. Container Deployment Workflow
 This workflow builds and pushes the classifier Docker container when changes are made to the container code. Located at .github/workflows/containerise-deploy.yml
 
-# Manual Deployment (via GitHub Actions)
+### Manual Deployment (via GitHub Actions)
 1. Navigate to your GitHub repository
 2. Go to "Actions" tab
 3. Run the "Deploy Infrastructure" workflow
 4. After infrastructure deployment, run the "Build and Push Classifier Container" workflow
 
-# Trigger-based Deployment
+### Trigger-based Deployment
 The workflows are automatically triggered when changes are pushed to relevant paths:
 
 Infrastructure changes: infra/** or src/PostProcessingLambdas/**
