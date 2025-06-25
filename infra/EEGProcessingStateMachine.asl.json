@@ -5,8 +5,9 @@
         "ExtractSessionInfo": {
             "Type": "Pass",
             "Parameters": {
-                "userId.$": "$.detail.object.key.split('/')[0]",
-                "sessionId.$": "$.detail.object.key.split('/')[1]",
+                "pathParts.$": "States.StringSplit($.detail.object.key, '/')",
+                "userId.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 0)",
+                "sessionId.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1)",
                 "inputFile.$": "$.detail.object.key"
             },
             "ResultPath": "$.sessionInfo",

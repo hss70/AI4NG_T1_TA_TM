@@ -1,0 +1,76 @@
+name: Update Step Function Only
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'infra/EEGProcessingStateMachine.asl.json'
+
+jobs:
+  update-stepfunction:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-west-2
+      STACK_NAME: AI4NG-T1-Training-dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get State Machine ARN
+        id: get_arn
+        run: |
+          STATE_MACHINE_ARN=$(aws cloudformation list-exports \
+            --query "Exports[?Name=='EEGProcessingStateMachineArn'].Value" \
+            --output text)
+          
+          if [ -z "$STATE_MACHINE_ARN" ]; then
+            echo "::error::State machine ARN export not found"
+            exit 1
+          fi
+          
+          echo "state_machine_arn=$STATE_MACHINE_ARN" >> $GITHUB_OUTPUT
+
+      - name: Get CloudFormation outputs for substitutions
+        id: get_outputs
+        run: |
+          OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --query 'Stacks[0].Outputs' \
+            --output json)
+          
+          # Extract required values for substitutions
+          STATUS_TABLE=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ProcessingStatusTable") | .OutputValue // empty')
+          RESULTS_BUCKET=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ResultsBucketName") | .OutputValue // empty')
+          
+          if [ -z "$STATUS_TABLE" ] || [ -z "$RESULTS_BUCKET" ]; then
+            echo "::error::Required stack outputs not found"
+            exit 1
+          fi
+          
+          echo "status_table=$STATUS_TABLE" >> $GITHUB_OUTPUT
+          echo "results_bucket=$RESULTS_BUCKET" >> $GITHUB_OUTPUT
+
+      - name: Update Step Function Definition
+        run: |
+          # Substitute variables in ASL file
+          sed -e 's/${ProcessingStatusTable}/${{ steps.get_outputs.outputs.status_table }}/g' \
+              -e 's/${ResultsBucket}/${{ steps.get_outputs.outputs.results_bucket }}/g' \
+              infra/EEGProcessingStateMachine.asl.json > /tmp/stepfunction-definition.json
+          
+          # Update the state machine
+          aws stepfunctions update-state-machine \
+            --state-machine-arn ${{ steps.get_arn.outputs.state_machine_arn }} \
+            --definition file:///tmp/stepfunction-definition.json
+          
+          echo "::notice::Step Function definition updated successfully"
