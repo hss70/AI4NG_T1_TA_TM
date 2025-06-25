@@ -37,7 +37,7 @@
                         "S.$": "$.sessionInfo.userId"
                     },
                     ":time": {
-                        "N.$": "$$.Execution.StartTime"
+                        "S.$": "$$.Execution.StartTime"
                     }
                 }
             },
@@ -285,7 +285,7 @@
                         "S": "SUCCESS"
                     },
                     ":endTime": {
-                        "N.$": "$$.State.EnteredTime"
+                        "S.$": "$$.State.EnteredTime"
                     }
                 }
             },
