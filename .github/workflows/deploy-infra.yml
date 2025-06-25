@@ -110,14 +110,18 @@ jobs:
               "PrivateSG=${{ steps.get_exports.outputs.sg_id }}" \
               "PrivateSubnetId1=${{ steps.get_exports.outputs.subnet1_id }}" \
               "PrivateSubnetId2=${{ steps.get_exports.outputs.subnet2_id }}" \
-            --no-confirm-changeset 2>&1)
+            --no-confirm-changeset 2>&1 || true)
 
           echo "$output"
 
-          if echo "$output" | grep -iq "no changes to deploy"; then
-            echo "::notice::SAM deploy reported no changes — treating as success."
+          # Check for successful deployment patterns
+          if echo "$output" | grep -q "Successfully created/updated stack"; then
+            echo "::notice::Stack deployment completed successfully"
             exit 0
+          elif echo "$output" | grep -iq "no changes to deploy"; then
+            echo "::notice::No changes detected - stack is up to date"
+            exit 0
+          else
+            echo "::error::SAM deploy failed or produced unexpected output"
+            exit 1
           fi
-
-          echo "::error::SAM deploy failed."
-          exit 1
