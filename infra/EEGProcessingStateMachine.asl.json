@@ -301,7 +301,7 @@
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
                     "sessionId": {
-                        "S.$": "$.sessionInfo.sessionId"
+                        "S.$": "States.ArrayGetItem(States.StringSplit($$.Execution.Input.detail.object.key, '/'), 1)"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :error, #t = :time",
