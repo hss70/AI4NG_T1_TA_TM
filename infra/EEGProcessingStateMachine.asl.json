@@ -93,7 +93,7 @@
                         "States.ALL"
                     ],
                     "IntervalSeconds": 30,
-                    "MaxAttempts": 3,
+                    "MaxAttempts": 1,
                     "BackoffRate": 2
                 }
             ],
@@ -301,7 +301,7 @@
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
                     "sessionId": {
-                        "S.$": "States.ArrayGetItem(States.StringSplit($$.Execution.Input.detail.object.key, '/'), 1)"
+                        "S.$": "$.sessionInfo.sessionId"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :error, #t = :time",
