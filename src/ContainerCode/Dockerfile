@@ -28,11 +28,11 @@ ENV AGREE_TO_MATLAB_RUNTIME_LICENSE=yes
 
 # CRITICAL: Your MATLAB application must be compiled on a Linux system
 # to work in this container. Copy the artifacts from your LINUX build.
-COPY ClassifierTraining/Code/output/FBCSP_Training ./FBCSP_Training
-COPY ClassifierTraining/Code/output/run_FBCSP_Training.sh ./run_FBCSP_Training.sh
+COPY ClassifierTraining/output/FBCSP_Training ./FBCSP_Training
+COPY ClassifierTraining/output/run_FBCSP_Training.sh ./run_FBCSP_Training.sh
 
 # Copy required data files. Ensure your MATLAB code knows to look for this in the current directory (/app).
-COPY ClassifierTraining/Code/Standard-10-20-Cap81.locs ./Standard-10-20-Cap81.locs
+COPY ClassifierTraining/Standard-10-20-Cap81.locs ./Standard-10-20-Cap81.locs
 
 # Copy the main execution script that orchestrates the download and run process.
 COPY download_and_run.sh ./download_and_run.sh

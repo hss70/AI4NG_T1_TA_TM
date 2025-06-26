@@ -19,13 +19,14 @@ clear; clc;
 
 % Get environment variables
 homeDir = getenv('HOME_DIR'); %Work folder
+workDir = fullfile(homeDir, 'Work');
 channelNum = str2double(getenv('channelNum'));
 sampleRate = str2double(getenv('sampleRate'));
 downSampleRate = str2double(getenv('downSampleRate'));
 resultsDir = getenv('RESULTS_PATH');
 
 % Validate environment variables
-if isempty(workDir) || isempty(workPath) || isnan(channelNum) || ...
+if isempty(homeDir) || isempty(workDir) || isempty(workPath) || isnan(channelNum) || ...
    isnan(sampleRate) || isnan(downSampleRate)
     error('Required environment variables not set properly');
 end
