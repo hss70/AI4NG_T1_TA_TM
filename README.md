@@ -251,3 +251,7 @@ aws cloudformation delete-stack --stack-name AI4NG-EEG-Pipeline
 
 ## Support
 For assistance, contact the AI4NG team at hss70@bath.ac.uk
+
+
+nvidia-smi
+glxinfo | grep "OpenGL renderer"
