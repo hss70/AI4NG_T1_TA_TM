@@ -51,6 +51,9 @@ else
     exit 1
 fi
 
+# Set MATLAB Runtime library path
+export LD_LIBRARY_PATH="/usr/local/MATLAB/MATLAB_Runtime/v125/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/sys/os/glnxa64:$LD_LIBRARY_PATH"
+
 # Run MATLAB executable using the runner script
 echo "Running MATLAB executable"
 start_time=$(date +%s)
