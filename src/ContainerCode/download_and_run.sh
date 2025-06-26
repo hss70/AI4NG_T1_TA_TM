@@ -43,7 +43,7 @@ if [[ -f "$METADATA_FILE" ]]; then
         key="${key//[^a-zA-Z0-9_]/_}"  # Sanitize key
         if [[ ! $key =~ ^(USER_ID|SESSION_ID|INPUT_FILE|UPLOAD_BUCKET|RESULTS_BUCKET)$ ]]; then
             export "$key"="$value"
-            echo "Set env: $key"
+            echo "Set env: $key : $value"
         fi
     done < <(jq -r 'to_entries[] | "\(.key)=\(.value | tostring)"' "$METADATA_FILE")
 else
