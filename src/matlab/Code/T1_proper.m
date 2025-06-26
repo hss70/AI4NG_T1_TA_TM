@@ -40,7 +40,7 @@ end
 chanlocDir = fullfile(homeDir,'Dependents')
 % Check that chanloc directory exists
 if ~isfolder(chanlocDir)
-    error('The Channel Loc directory does not exist: %s', dataDir);
+    error('The Channel Loc directory does not exist: %s', chanlocDir);
 end
 
 %resultsDir = fullfile(homeDir, 'Results');
