@@ -159,7 +159,7 @@
                 "manifest.$": "$.Payload"
             },
             "ResultPath": "$.manifestOutput",
-            "Next": "DetermineProcessingPath",
+            "Next": "CheckClassifierExists",
             "Retry": [
                 {
                     "ErrorEquals": [
@@ -179,21 +179,28 @@
                 }
             ]
         },
-        "DetermineProcessingPath": {
-            "Type": "Choice",
-            "Choices": [
+        "CheckClassifierExists": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
+            "Parameters": {
+                "Bucket": "${ResultsBucket}",
+                "Key.$": "States.Format('{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionId)"
+            },
+            "Next": "ProcessClassifier",
+            "Catch": [
                 {
-                    "Variable": "$.manifestOutput.manifest.requiresClassifier",
-                    "BooleanEquals": true,
-                    "Next": "ProcessClassifier"
+                    "ErrorEquals": [
+                        "S3.NotFound"
+                    ],
+                    "Next": "RecordFailure"
                 },
                 {
-                    "Variable": "$.manifestOutput.manifest.hasMetadata",
-                    "BooleanEquals": true,
-                    "Next": "ProcessMetadata"
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "RecordFailure"
                 }
-            ],
-            "Default": "RecordSuccess"
+            ]
         },
         "ProcessClassifier": {
             "Type": "Task",
@@ -202,7 +209,7 @@
                 "FunctionName": "${ClassifierProcessorLambdaArn}",
                 "Payload": {
                     "s3Bucket": "${ResultsBucket}",
-                    "s3Key.$": "States.Format('{}/{}/{}', $.sessionInfo.userId, $.sessionInfo.sessionId, $.manifestOutput.manifest.classifierFile)"
+                    "s3Key.$": "States.Format('{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionId)"
                 }
             },
             "ResultPath": "$.classifierResult",
