@@ -37,7 +37,7 @@ if ~isfolder(dataDir)
     error('The Data directory does not exist: %s', dataDir);
 end
 
-chanlocDir = fullfile(homeDir, 'Work','Dependents')
+chanlocDir = fullfile(homeDir,'Dependents')
 % Check that chanloc directory exists
 if ~isfolder(chanlocDir)
     error('The Channel Loc directory does not exist: %s', dataDir);
