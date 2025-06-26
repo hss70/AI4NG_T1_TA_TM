@@ -19,15 +19,14 @@ clear; clc;
 
 % Get environment variables
 homeDir = getenv('HOME_DIR'); %Work folder
-workDir = fullfile(homeDir, 'Work');
 channelNum = str2double(getenv('channelNum'));
 sampleRate = str2double(getenv('sampleRate'));
 downSampleRate = str2double(getenv('downSampleRate'));
 resultsDir = getenv('RESULTS_PATH');
 
 % Validate environment variables
-if isempty(homeDir) || isempty(workDir) || isempty(workPath) || isnan(channelNum) || ...
-   isnan(sampleRate) || isnan(downSampleRate)
+if isempty(homeDir) || isnan(channelNum) || ...
+        isnan(sampleRate) || isnan(downSampleRate)
     error('Required environment variables not set properly');
 end
 
@@ -37,4 +36,4 @@ T1_proper;
 %outputDir = GetEnv
 %reorganiseFiles(T1ResultsDir, outputDir);
 reorganiseFiles('C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work\T1', ...
-                 'C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work\Output');
+    'C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work\Output');

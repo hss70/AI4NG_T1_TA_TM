@@ -31,13 +31,13 @@
 %end
 
 % Set directories
-dataDir = fullfile(homeDir, 'Work', 'SourceData (EEG_rec)');
+dataDir = fullfile(homeDir, 'Work', 'SourceData (EEG_rec)')
 % Check that Data directory exists
 if ~isfolder(dataDir)
     error('The Data directory does not exist: %s', dataDir);
 end
 
-chanlocDir = fullfile(homeDir, 'Work','Dependents');
+chanlocDir = fullfile(homeDir, 'Work','Dependents')
 % Check that chanloc directory exists
 if ~isfolder(chanlocDir)
     error('The Channel Loc directory does not exist: %s', dataDir);
@@ -49,7 +49,7 @@ end
 %    mkdir(resultsDir);
 %end
 
-V1_TRANS = getV1_TRANSConfig(workDir, chanlocDir, channelNum, sampleRate, downSampleRate);
+V1_TRANS = getV1_TRANSConfig(homeDir, chanlocDir, channelNum, sampleRate, downSampleRate);
 % addpath(genpath([V1_TRANS.f.HomeDir,'\Code\Toolboxes for FBCSP\Toolbox (used elements)']));
 addpath(genpath([V1_TRANS.f.HomeDir,'\Code\Toolboxes for FBCSP\add to path']));
 
@@ -67,14 +67,14 @@ wm_fileID = 0;
 for wm1 = 1 : size(dir0_struct,1)
     if dir0_struct(wm1,1).isdir == 1    % if directory
         if sum(ismember(dir0_struct(wm1,1).name,'.')) == 0  % if the name not involves '.'
-
+            
             subDir1 = dir0_struct(wm1,1).name;
             dir1 = [dir0, '\', subDir1];
             dir1_struct = dir(dir1);
             for wm2 = 1 : size(dir1_struct,1)
                 if dir1_struct(wm2,1).isdir == 1    % if directory
                     if sum(ismember(dir1_struct(wm2,1).name,'.')) == 0  % if the name not involves '.'
-
+                        
                         subDir2 = dir1_struct(wm2,1).name;
                         dir2 = [dir1, '\', subDir2];
                         dir2_struct = dir(dir2);
@@ -85,11 +85,11 @@ for wm1 = 1 : size(dir0_struct,1)
                                 tr_subDir_list{wm_fileID} = [subDir1, '\', subDir2];     % this info also involved in tr_file_list{wm_fileID}
                             end
                         end
-
+                        
                     end
                 end
             end
-
+            
         end
     end
 end
@@ -105,23 +105,23 @@ clearvars -except V1_TRANS
 if ~isempty(V1_TRANS.f.PreviousResultDir)
     tr_file_list = V1_TRANS.tr_file_list;
     tr_subDir_list = V1_TRANS.tr_subDir_list;
-
+    
     dir0 = V1_TRANS.f.PreviousResultDir;
     dir0_struct = dir(dir0);
     wm_fileID = 0;
     for wm1 = 1 : size(dir0_struct,1)
         if dir0_struct(wm1,1).isdir == 1    % if directory
             if sum(ismember(dir0_struct(wm1,1).name,'.')) == 0  % if the name not involves '.'
-
+                
                 subDir1 = dir0_struct(wm1,1).name;
                 dir1 = [dir0, '\', subDir1];
                 dir1_struct = dir(dir1);
                 for wm2 = 1 : size(dir1_struct,1)
                     if dir1_struct(wm2,1).isdir == 1    % if directory
                         if sum(ismember(dir1_struct(wm2,1).name,'.')) == 0  % if the name not involves '.'
-
+                            
                             subDir2 = dir1_struct(wm2,1).name;
-
+                            
                             wm = find(ismember(tr_subDir_list, [subDir1,'\',subDir2]));
                             if ~isempty(wm)
                                 if size(tr_file_list,2) == 1
@@ -139,7 +139,7 @@ if ~isempty(V1_TRANS.f.PreviousResultDir)
                                         for wm3 = wm+1 : size(tr_file_list,2)
                                             tmp.tr_file_list{wm3-1} = tr_file_list{wm3};
                                             tmp.tr_subDir_list{wm3-1} = tr_subDir_list{wm3};
-
+                                            
                                         end
                                     end
                                     tr_file_list = tmp.tr_file_list;
@@ -147,11 +147,11 @@ if ~isempty(V1_TRANS.f.PreviousResultDir)
                                     clearvars tmp
                                 end
                             end
-
+                            
                         end
                     end
                 end
-
+                
             end
         end
     end
@@ -173,7 +173,7 @@ tr_file_list = V1_TRANS.tr_file_list;
 tr_subDir_list = V1_TRANS.tr_subDir_list;
 for wm_taskID = 1 : size(tr_file_list,2)
     V1_TRANS.wm_taskID = wm_taskID;
-
+    
     if sum(ismember(V1_TRANS.processed_taskIDs,wm_taskID))==0
         if ~exist('T1_result_table')
             TA_addEmpty_to_resultSummary
@@ -182,42 +182,42 @@ for wm_taskID = 1 : size(tr_file_list,2)
             TA_addEmpty_to_resultSummary
         end
     else
-
+        
         % %  wm = strfind(tr_file_list{wm_taskID},'\');
         % %  % if ~contains(lower(tr_file_list{wm_taskID}(1,wm(1,end-1)+1:wm(1,end)-1)), 'q')
         % %  if contains(lower(tr_file_list{wm_taskID}(1,wm(1,end-1)+1:wm(1,end)-1)), 'q')
-
+        
         % fprintf([tr_file_list{wm_taskID}, '\',V1_TRANS.f.SourceDataName,' (',num2str(wm_taskID),'/',num2str(size(tr_file_list,2)),') ...\n']);
         fprintf(['\n________________________\n\n']);
         fprintf(['Processing (#',num2str(wm_taskID),'/',num2str(size(tr_file_list,2)),') ...\n']);
-
+        
         % copy chanlocs file
         copyfile([V1_TRANS.f.chanlocs_dir,'\',V1_TRANS.f.chanlocs_filename], [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.chanlocs_filename]);
-
+        
         %import EEG config
         configFilePath = fullfile(V1_TRANS.f.SourceDataDir, V1_TRANS.tr_subDir_list{wm_taskID}, "EEG_config.mat");
         eegConfig = load(configFilePath);
-
+        
         % EEG_rec dataset tranfer (converted Source data to Work data )
         % _____________________________________________________________
-
+        
         TA_Dataset_Transfer %only called here
-
+        
         % Try trainTest task manager code
         % _______________________________
-
+        
         % Stacking all variables into STACK(1)
         % ____________________________________
-
+        
         STACK_allVariables_01
         % clearvars -except STACK
         clearvars VA_TRANS
         VA_TRANS.SW_T1_maxTrainTestTry = V1_TRANS.SW.T1_maxTrainTestTry;
         VA_TRANS.subjID_text = V1_TRANS.tr_subDir_list{1,wm_taskID}(find(V1_TRANS.tr_subDir_list{1,wm_taskID}=='\')+1:end);
         baseDir = V1_TRANS.f.BaseDir;
-
+        
         clearvars -except STACK VA_TRANS baseDir eegConfig
-
+        
         if VA_TRANS.SW_T1_maxTrainTestTry == 0
             VA_TRANS.T1_tryCounter = 1;
             TAv2_TrainTest
@@ -254,19 +254,19 @@ for wm_taskID = 1 : size(tr_file_list,2)
             % clearvars -except STACK VA_TRANS
             clearvars -except STACK
             STACK_restore_01
-
+            
             % Add new line to results to summary
             % __________________________________
             TA_append_resultSummary
-
+            
             % Copy important param and result files to the final T1 sub-directories
             % _____________________________________________________________________
             TA_copy_T1_files
-
+            
             % Delete 'heatmap (Freq v4).fig'
             % ______________________________
             delete([V1_TRANS.f.BaseDir,'\T1\Results\',V1_TRANS.tr_subDir_list{wm_taskID},'\+ Fig\heatmap (Freq v4).fig']);
-
+            
             % prepare online setup file
             % _________________________
             if ~isempty(V1_TRANS.f.T1_param_subSubDir)
@@ -280,12 +280,12 @@ for wm_taskID = 1 : size(tr_file_list,2)
             % clearvars -except STACK VA_TRANS
             clearvars -except STACK
             STACK_restore_01
-
+            
             % Add new line to results to summary
             % __________________________________
             TA_addEmpty_to_resultSummary
         end
-
+        
         % Delete directories and files which used for TrainTest (important content already copied into the final (T1) directory)
         % ______________________________________________________________________________________________________________________
         if isdir([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_online_subSubDir])
@@ -298,7 +298,7 @@ for wm_taskID = 1 : size(tr_file_list,2)
             rmdir([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.TrainTestSubDir],'s');
         end
         delete([V1_TRANS.f.BaseDir,'\',V1_TRANS.f.chanlocs_filename]);
-
+        
     end
 end
 
