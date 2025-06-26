@@ -52,12 +52,12 @@ else
 fi
 
 # Set MATLAB Runtime library path
-export LD_LIBRARY_PATH="/usr/local/MATLAB/MATLAB_Runtime/v125/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/sys/os/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/sys/opengl/lib/glnxa64:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="/opt/matlabruntime/R2024b/runtime/glnxa64:/opt/matlabruntime/R2024b/bin/glnxa64:/opt/matlabruntime/R2024b/sys/os/glnxa64:/opt/matlabruntime/R2024b/sys/opengl/lib/glnxa64:/opt/matlabruntime/R2024b/extern/bin/glnxa64:${LD_LIBRARY_PATH:-}"
 
 # Run MATLAB executable using the runner script
 echo "Running MATLAB executable"
 start_time=$(date +%s)
-./run_FBCSP_Training.sh ${MATLAB_RUNTIME_ROOT:-/usr/local/MATLAB/MATLAB_Runtime/v125} || EXIT_CODE=$?
+./run_FBCSP_Training.sh ${MATLAB_RUNTIME_ROOT:-/opt/matlabruntime/R2024b} || EXIT_CODE=$?
 end_time=$(date +%s)
 EXIT_CODE=${EXIT_CODE:-0}
 
