@@ -52,7 +52,7 @@ else
 fi
 
 # Set MATLAB Runtime library path
-export LD_LIBRARY_PATH="/usr/local/MATLAB/MATLAB_Runtime/v125/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/sys/os/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/sys/opengl/lib/glnxa64:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="/usr/local/MATLAB/MATLAB_Runtime/v125/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/sys/os/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v125/sys/opengl/lib/glnxa64:${LD_LIBRARY_PATH:-}"
 
 # Run MATLAB executable using the runner script
 echo "Running MATLAB executable"
