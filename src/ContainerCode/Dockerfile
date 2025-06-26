@@ -20,6 +20,9 @@ RUN apt-get update && \
 # Set the working directory
 WORKDIR /app
 
+# Accept MATLAB Runtime license
+ENV AGREE_TO_MATLAB_RUNTIME_LICENSE=yes
+
 # --- Application and Dependencies ---
 # The paths below are relative to the 'src/ContainerCode' build context.
 
