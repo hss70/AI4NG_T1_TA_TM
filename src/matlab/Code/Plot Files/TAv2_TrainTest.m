@@ -1,6 +1,7 @@
 % Multi-class Classification, task manager 
 
 % Input structures
+% To do: Make crossplatform compatible
 
 % Output structures
 
@@ -36,7 +37,7 @@ cf_TAv2_TrainTest_A1_prep
 %% TaskManager code
 
   % Delete TrainTest dir with subdirs if exists
-  if isdir(VA_TRANS.f.baseDir)
+  if isfolder(VA_TRANS.f.baseDir)
     rmdir(VA_TRANS.f.baseDir,'s');
   end
   
@@ -53,9 +54,10 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
     VA.set.w.switch.ch.allValid = 1;    % =1: all EEG ch valid, =0: EEG ch validation will be called 
     
     % VA.set.autorun.f.load.path = [VA_TRANS.f.dataDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.load.path = [VA_TRANS.f.dataDir,'\']; VA.w.wm_subDirID = wm_subDirID;
+    VA.set.autorun.f.load.path = [VA_TRANS.f.dataDir,'\']; 
+    VA.w.wm_subDirID = wm_subDirID;
     VA.set.autorun.f.save.path = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    if ~isdir(VA.set.autorun.f.save.path)
+    if ~isfolder(VA.set.autorun.f.save.path)
       mkdir(VA.set.autorun.f.save.path)
     end
 
@@ -77,7 +79,7 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
     VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir,'\']; VA.w.wm_subDirID = wm_subDirID;
     VA.set.autorun.f.load.path.validation = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
     VA.set.autorun.f.save.path = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A10_offlineClass_prep.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    if ~isdir(VA.set.autorun.f.save.path)
+    if ~isfolder(VA.set.autorun.f.save.path)
       mkdir(VA.set.autorun.f.save.path)
     end
     

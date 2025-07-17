@@ -1,7 +1,7 @@
 % ... - Dataset transfer
 
 % Input structures
-
+% To do: Make crossplatform compatible
 % Output structures
 
 % REQUIRESTMENT: Matlab
@@ -122,7 +122,7 @@ subplot(2,1,2); plot(EEG_rec(end,:));
   
   % Delete Output Data dir with subdirs if exists
   tmp = [V1_TRANS.f.BaseDir, '\', V1_TRANS.f.DataSubDir];
-  if isdir(tmp)
+  if isfolder(tmp)
     rmdir(tmp,'s');
   end
   clearvars tmp

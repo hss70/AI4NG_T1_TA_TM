@@ -29,14 +29,7 @@ end
 if VA.SW
     w.switch.tr.allValid = VA.set.w.switch.tr.allValid;
 else
-    % % w.switch.tr.allValid = 0;
-    % w.switch.tr.allValid = 1;
-    w.m = questdlg('Setup','Setup','trial validation','all valid','trial validation');
-    if strcmp(w.m,'all valid')
-        w.switch.tr.allValid = 1;
-    else
-        w.switch.tr.allValid = 0;
-    end
+    error('Manual setup is not implemented yet. Please set VA.SW to true.');
 end
 
 % % % ______
@@ -78,31 +71,7 @@ if VA.SW
     autorun.file.load.path.offlineClass_prep = VA.set.autorun.f.load.path.offlineClass_prep;
     autorun.file.load.nameBasis1.offlineClass_prep = 'A10_offlineClass_prep_01';
 else
-    %This bit looks quite manual, maybe can delete?
-    w.m = questdlg('Do you want to load input datasets ?','Setup','Select input directory','Continue without loading','Select input directory');
-    if strcmp(w.m,'Select input directory')
-        autorun.file.load.autoload = 1;
-
-        if w.switch.tr.allValid == 0
-            % EEG_rec
-            autorun.file.load.path.EEG_rec = uigetdir('','Select input directory (EEG_rec)');
-            % autorun.file.load.path.EEG_rec = [autorun.file.load.path.EEG_rec,'\'];
-                VA.w.wm_subDirID = 1;
-                VA.f.classSubDir{VA.w.wm_subDirID} = autorun.file.load.path.EEG_rec( max(find(autorun.file.load.path.EEG_rec(1,:)=='\'))+1 : size(autorun.file.load.path.EEG_rec,2));
-                autorun.file.load.path.EEG_rec = autorun.file.load.path.EEG_rec( 1 : max(find(autorun.file.load.path.EEG_rec(1,:)=='u'))-2);
-            autorun.file.load.nameBasis.EEG_rec_fileName = 'EEG_rec.mat';
-
-            % A09_EEG_validation_01
-            [autorun.file.load.nameBasis.EEG_validation, autorun.file.load.path.EEG_validation] = uigetfile(strcat('A09_EEG_validation_01 [config].mat'),'Load input dataset');
-            autorun.file.load.nameBasis1.EEG_validation = autorun.file.load.nameBasis.EEG_validation( 1 : max(find(autorun.file.load.nameBasis.EEG_validation(1,:)=='['))-2);
-        end
-
-        % A10_offlineClass_prep_01
-        [autorun.file.load.nameBasis.offlineClass_prep, autorun.file.load.path.offlineClass_prep] = uigetfile(strcat('A10_offlineClass_prep_01 [config].mat'),'Load input dataset');
-        autorun.file.load.nameBasis1.offlineClass_prep = autorun.file.load.nameBasis.offlineClass_prep( 1 : max(find(autorun.file.load.nameBasis.offlineClass_prep(1,:)=='['))-2);
-    else
-        autorun.file.load.autoload = 0;
-    end
+    error('Manual setup is not implemented yet. Please set VA.SW to true.');
 end
 if autorun.file.load.autoload == 1
     autorun.file.load.nameBasis1.offlineClass_prep_tr = 'tr';
@@ -117,19 +86,7 @@ if VA.SW
     autorun.file.save.autosave = 1;
     autorun.file.save.path = VA.set.autorun.f.save.path;
 else
-    w.m = questdlg('Do you want to save result files ?','Setup','Auto save','Not save','Auto save');
-    if strcmp(w.m,'Auto save')
-        % [autorun.file.save.nameBasis, autorun.file.save.path] = uiputfile(strcat('D4_31_EEG_Bandpower_09.mat'),'Set up result directory and filename');
-        % autorun.file.save.nameBasis1 = autorun.file.save.nameBasis( 1 : max(find(autorun.file.save.nameBasis(1,:)=='.'))-1);
-        autorun.file.save.autosave = 1;
-
-        autorun.file.save.path = uigetdir('','Set directory for the result');
-        autorun.file.save.path = [autorun.file.save.path,'\'];
-
-    % %     autorun.file.save.nameBasis.trial_validation = 'Shape5B_SC10_trial_validation_01';
-    else
-        autorun.file.save.autosave = 0;
-    end
+    error('Manual setup is not implemented yet. Please set VA.SW to true.');
 end
 
 
@@ -261,11 +218,13 @@ for autorun_subjID2 = TRANS.autorun.prep.prep.used.subjects
 
         % EEG record
         % w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj 0',num2str(autorun_subjID2),'\Session 0',num2str(autorun_sessionID2),'\01 Rec\'];
-        % w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),'\01 Rec\'];
-        w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),'\',VA.f.classSubDir{VA.w.wm_subDirID},'\'];
+        % w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),'\01 Rec\'];        
+        subjectPath = [autorun.prep.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2)];
+        sessionPath =['Session ',subFunc_num2str_2digit(autorun_sessionID2)];
+        w.file.load.path.EEG_rec = fullfile(subjectPath,sessionPath,VA.f.classSubDir{VA.w.wm_subDirID});
         fprintf(['Loading EEG_rec dataset ...\n']);
         w.file.load.name = autorun.file.load.nameBasis.EEG_rec_fileName;
-        load([w.file.load.path,w.file.load.name]);
+        load(fullfile(w.file.load.path,w.file.load.name));
         w.import.EEG_rec = EEG_rec;
         clear EEG_rec
 
@@ -430,18 +389,8 @@ end
 
 
 %% Comments
-
+% Edited by Hardeep to make platform independent.
 % Left arrow  (<-) : valid
 % Right arrow (->) : invalid
 
 % ESC: break with NaN
-
-
-
-
-
-
-
-
-
-

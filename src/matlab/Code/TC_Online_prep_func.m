@@ -26,7 +26,7 @@ function TC_Online_prep_func(V1_TRANS)
  % VA_TRANS.f.baseDir = 'Q:\BCI\DCR\FBCSP 2019\Work';   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! % =1: task VS relax classification pair used      
  VA_TRANS.f.baseDir = [V1_TRANS.f.BaseDir];   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! % =1: task VS relax classification pair used      
 %  VA_TRANS.f.load.baseDir_FBCSP = [V1_TRANS.f.BaseDir,'\TrainTest\+ FBCSP']; 
- VA_TRANS.f.load.baseDir_FBCSP = [V1_TRANS.f.BaseDir,'\TrainTest\+ FBCSP0'];
+ VA_TRANS.f.load.baseDir_FBCSP = fullfile(V1_TRANS.f.BaseDir,'TrainTest','+ FBCSP0');
  % % % % VA_TRANS.f.classSubDir{1} = '01 LR';
  % % % % VA_TRANS.f.classSubDir{2} = '02 FR';
  % % % % VA_TRANS.f.classSubDir{3} = '03 LF';
@@ -38,7 +38,7 @@ function TC_Online_prep_func(V1_TRANS)
  % % % % end
  VA_TRANS.f.load.nameBasis1_FBCSP = 'FBCSP_offline_trainTest_01'; 
  
- VA_TRANS.f.save.baseDir = [VA_TRANS.f.baseDir,'\Online'];
+ VA_TRANS.f.save.baseDir = fullfile(VA_TRANS.f.baseDir,'Online');
  VA_TRANS.f.save.nameBasis1 = 'FBCSP_online_setup_prep_01';
  
  VA_TRANS.c.SW.CFx = 1;      % =1:Classification use 1 CF lane (target vs others),  =2:Classification use difference of 2 CF lanes (target vs others - others vs target) 
@@ -58,7 +58,7 @@ function TC_Online_prep_func(V1_TRANS)
    % VA_TRANS.c.eval.FBCSP_option_wt_taskOnset_cfWinOffset_ms = T1_result_table(V1_TRANS.wm_taskID,1).taskPeak_ms;
 % % % %    tmp = load([V1_TRANS.f.Input_T1_BaseDir,'\T1\Param\',V1_TRANS.tr_subDir_list{V1_TRANS.wm_taskID},'\TAv2_TrainTest [result].mat']);
    V1_TRANS.f.Input_T1_BaseDir = V1_TRANS.f.BaseDir;
-   tmp = load([V1_TRANS.f.Input_T1_BaseDir,'\T1\Param\',V1_TRANS.tr_subDir_list{V1_TRANS.wm_taskID},'\TAv2_TrainTest [result].mat']);
+   tmp = load(fullfile(V1_TRANS.f.Input_T1_BaseDir,'T1','Param',V1_TRANS.tr_subDir_list{V1_TRANS.wm_taskID},'TAv2_TrainTest [result].mat'));
    % VA_TRANS.c.eval.FBCSP_option_wt_taskOnset_cfWinOffset_ms = tmp.result.orig.timeInfo.ms_from_PRE_point.opt_peakDAPoint_task - tmp.result.orig.timeInfo.ms_from_PRE_point.trig;
    VA_TRANS.c.eval.FBCSP_option_wt_taskOnset_cfWinOffset_ms = tmp.result.orig.timeInfo.ms_fromTrig.opt_peakDAPoint_task;
    clearvars tmp
@@ -67,14 +67,7 @@ function TC_Online_prep_func(V1_TRANS)
  %% TaskManager code
  
  VA = VA_TRANS;
- CrossRun_VC_FBCSP_online_setup_prep_01
- 
- 
- 
- 
- 
- 
- 
+ CrossRun_VC_FBCSP_online_setup_prep_01 
 end
 
 

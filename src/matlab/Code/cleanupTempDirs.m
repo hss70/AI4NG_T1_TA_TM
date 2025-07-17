@@ -10,5 +10,13 @@ function cleanupTempDirs(V1_TRANS)
             rmdir(dirsToDelete{i}, 's');
         end
     end
+
+    pathsToCheck = [dirsToDelete, {fullfile(V1_TRANS.f.BaseDir, V1_TRANS.f.chanlocs_filename)}];
+    for i = 1:numel(pathsToCheck)
+        if not (exist(pathsToCheck{i}, 'file') || isfolder(pathsToCheck{i}))
+            fprintf('Temp folder doesnt exist: %s\n', pathsToCheck{i});
+        end
+    end
+
     delete(fullfile(V1_TRANS.f.BaseDir, V1_TRANS.f.chanlocs_filename));
 end

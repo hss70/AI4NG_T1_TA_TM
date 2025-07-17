@@ -94,12 +94,7 @@ end
 if VA.SW
     w.switch.tr.allValid = VA.set.w.switch.tr.allValid;
 else
-    w.m = questdlg('Used trials','Setup','valid trials','all trials','valid trials');
-    if strcmp(w.m,'all trials')
-        w.switch.tr.allValid = 1;
-    else
-        w.switch.tr.allValid = 0;
-    end
+    error('Manual setup is not implemented yet. Please set VA.SW to true.');
 end
 
 % ______________
@@ -132,26 +127,7 @@ else
     % %     % % autorun.classSetup.file.load.path.EEG_validation = 'Q:\BCI\Results\Shape 5B SC\SC09 EEG ch validation\allValid\';
     % %     % % % autorun.classSetup.file.load.path.EEG_validation = 'Q:\BCI\Results\Shape 5B SC\SC09 EEG ch validation\validEEG\';
     % % elseif strcmp(w.m,'Select input directory')
-    w.m = questdlg('Do you want to load input datasets ?','Setup','Select input directory','Continue without loading','Select input directory');
-    if strcmp(w.m,'Select input directory')
-        autorun.classSetup.file.load.autoload = 1;
-
-        % A10_offlineClass_prep_01
-        [autorun.classSetup.file.load.nameBasis.offlineClass_prep, autorun.classSetup.file.load.path.offlineClass_prep] = uigetfile(strcat('A10_offlineClass_prep_01 [config].mat'),'Load input dataset');
-        autorun.classSetup.file.load.nameBasis1.offlineClass_prep = autorun.classSetup.file.load.nameBasis.offlineClass_prep( 1 : max(find(autorun.classSetup.file.load.nameBasis.offlineClass_prep(1,:)=='['))-2);
-
-        if w.switch.tr.allValid == 0
-            % A10B_offlineTrial_validation_01
-            [autorun.classSetup.file.load.nameBasis.tr_validMask, autorun.classSetup.file.load.path.tr_validMask] = uigetfile(strcat('tr_validMask.mat'),'Load input dataset');
-            autorun.classSetup.file.load.nameBasis1.tr_validMask = autorun.classSetup.file.load.nameBasis.tr_validMask;
-        end
-
-        % % % A09_EEG_validation_01
-        % % [autorun.classSetup.file.load.nameBasis.EEG_validation, autorun.classSetup.file.load.path.EEG_validation] = uigetfile(strcat('A09_EEG_validation_01 [config].mat'),'Load input dataset');
-        % % autorun.classSetup.file.load.nameBasis1.EEG_validation = autorun.classSetup.file.load.nameBasis.EEG_validation( 1 : max(find(autorun.classSetup.file.load.nameBasis.EEG_validation(1,:)=='['))-2);
-    else
-        autorun.classSetup.file.load.autoload = 0;
-    end
+    error('Manual setup is not implemented yet. Please set VA.SW to true.');
 end
 if autorun.classSetup.file.load.autoload == 1
     autorun.classSetup.file.load.nameBasis1.offlineClass_prep_tr = 'tr';
@@ -188,19 +164,7 @@ if VA.SW
     autorun.classSetup.file.save.nameBasis.A11_offlineClass_classSetup = 'A11_offlineClass_classSetup_01';
     autorun.classSetup.file.save.nameBasis.A11_offlineClass_classSetup__classTrials = 'classTrials';
 else
-    w.m = questdlg('Do you want to save result files ?','Setup','Auto save','Not save','Auto save');
-    if strcmp(w.m,'Auto save')
-        autorun.classSetup.file.save.autosave = 1;
-
-        autorun.classSetup.file.save.path = uigetdir('','Set directory for the result');
-        autorun.classSetup.file.save.path = [autorun.classSetup.file.save.path,'\'];
-
-        autorun.classSetup.file.save.nameBasis.A11_offlineClass_classSetup = 'A11_offlineClass_classSetup_01';
-
-        autorun.classSetup.file.save.nameBasis.A11_offlineClass_classSetup__classTrials = 'classTrials';
-    else
-        autorun.classSetup.file.save.autosave = 0;
-    end
+    error('Manual setup is not implemented yet. Please set VA.SW to true.');
 end
 
 
@@ -355,8 +319,8 @@ for autorun_subjID2 = TRANS.autorun.classSetup.used.subjects
   else
    for wm_classID = 1 : size(c.classSetup.class.targetIDs_linkedTo_classID,1)
     for wm_bandID = c.classSetup.band.usedIDs
-      classTrials_validTrials{wm_subjID2,wm_sessionID2}{wm_classID, wm_bandID} = ...
-          classTrials_allTrials{wm_subjID2,wm_sessionID2}{wm_classID, wm_bandID}( tr_validMask{wm_subjID2,wm_sessionID2}(wm_classID,:)==1, :, : );
+        classTrials_validTrials{wm_subjID2,wm_sessionID2}{wm_classID, wm_bandID} = ...
+        classTrials_allTrials{wm_subjID2,wm_sessionID2}{wm_classID, wm_bandID}( tr_validMask{wm_subjID2,wm_sessionID2}(wm_classID,:)==1, :, : );
     end
    end
   end

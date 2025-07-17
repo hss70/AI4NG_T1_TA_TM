@@ -1,0 +1,56 @@
+%%{init: {'theme': 'default'}}%%
+graph TD
+    AAA(cf_TAv2_TrainTest_A1_prep.m)
+    BBB( STACK_allVariables_01.m)
+    CCC( STACK_restore_01.m)
+    DDD(cf_TAv2_TrainTest_A2_FBCSP.m)
+    EEE(VAv2_FBCSP_trainTest_coreFunct_01.m)
+    FFF(extractCSPFeatures.m)
+
+
+    A[Start] -->|Upload ZIP| B(FBCSP_Training)
+    B --> B1(1 - batchConvertCsvToMat.m)
+
+    B ---> D(2 T1_proper.m)
+    B --> B2(3 - reorganiseFiles.m)
+
+
+    D --> E(1 getV1_TRANSConfig)
+    D ---> F(2 TA_addEmpty_to_resultSummary.m)
+    F --> BBB
+    F --> AAA
+    F --> CCC
+
+
+    D --> G(3 TA_Dataset_Transfer.m)
+    G --> AAA
+
+    D --> BBB
+    D ----> I(5 TAv2_TrainTest)
+    I --> AAA(cf_TAv2_TrainTest_A1_prep.m)
+    I --> I2(VA_A09_EEI_validation_01.m)
+    I --> I3(VA_A10_offlineClass_prep_01.m)
+    I --> I4(VA_A10B_offlineTrial_validation_01.m)
+    I --> I5(VA_A11_offlineClass_classSetup_01.m)
+    I --> DDD
+    
+    I ---> I7(VAv2_FBCSP_offline_trainTest_taskManager_func_01.m)
+    I7 --> DDD
+    I7 --> I7b(VAv2_FBCSP_trainTest_func_01.m)
+    I7 --> I7c(VB_FBCSP_eval_figures_func_01.m)
+    I7 --> I7d(VPlus_FBCSP_collectDAPlots_from_trainTest_01.m)
+    
+    I --> I8(VAv2_Spec_shaded_DA_plot.m)
+    I --> I9(subFunc_num2str_2digit.m)
+    I --> I10(VAv2_Hacked_VB_FBCSP_eval_figures_func_01.m)
+
+    D --> CCC
+    D --> K(7 TA_append_resultSummary)
+    D --> L(8 TA_copy_T1_files)
+    D --> M(9 TC_Online_prep_func)
+    D --> N(10 TA_copy_T1_online_files)
+
+
+
+M(VAv2_FBCSP_trainTest_coreFunct_01.m) --> FFF
+EEE --> FFF

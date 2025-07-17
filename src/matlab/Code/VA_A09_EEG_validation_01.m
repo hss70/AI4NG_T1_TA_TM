@@ -42,14 +42,7 @@ end
 if VA.SW
     w.switch.ch.allValid = VA.set.w.switch.ch.allValid;
 else
-    % % w.switch.ch.allValid = 0;
-    % w.switch.ch.allValid = 1;
-    w.m = questdlg('Do you want to load input datasets ?','Setup','EEG validation','all valid','EEG validation');
-    if strcmp(w.m,'all valid')
-        w.switch.ch.allValid = 1;
-    else
-        w.switch.ch.allValid = 0;
-    end
+    error('VA is not defined. Please define VA before running this function. Manual setup is not supported.');
 end
 
 % % % w.switch.task.allValid = 0;
@@ -106,25 +99,12 @@ c.EEG.rec.ch.ID = 1 : size(c.EEG.rec.ch.name,1);
 % Setup for load
 % ______________
 
-if VA.SW
-    % autorun.file.load.autoload = VA.set.autorun.f.load.autoload;
+if VA.SWd.autoload;
     autorun.file.load.autoload = 1;
+    % autorun.file.load.autoload = VA.set.autorun.f.loa
     autorun.file.load.path = VA.set.autorun.f.load.path;
 else
-    w.m = questdlg('Do you want to load input datasets ?','Setup','Select input directory','Load from default directory','Continue without loading','Load from default directory');
-    if strcmp(w.m,'Load from default directory')
-        autorun.file.load.autoload = 1;
-        autorun.file.load.path = 'Q:\BCI\Data\Data Shape 01\- Work (doubled2)\';
-    elseif strcmp(w.m,'Select input directory')
-        autorun.file.load.autoload = 1;
-        autorun.file.load.path = uigetdir('','Select input directory');
-        % autorun.file.load.path = [autorun.file.load.path,'\'];
-            VA.w.wm_subDirID = 1;
-            VA.f.classSubDir{VA.w.wm_subDirID} = autorun.file.load.path( max(find(autorun.file.load.path(1,:)=='\'))+1 : size(autorun.file.load.path,2));
-            autorun.file.load.path = autorun.file.load.path( 1 : max(find(autorun.file.load.path(1,:)=='u'))-2);
-    else
-        autorun.file.load.autoload = 0;
-    end
+    error('VA.SWd.autoload is not defined. Please define VA.SWd.autoload before running this function. Manual setup is not supported.');
 end
 if autorun.file.load.autoload == 1
     autorun.file.load.nameBasis.EEG_rec_fileName = 'EEG_rec.mat';
@@ -141,19 +121,7 @@ if VA.SW
     autorun.file.save.path = VA.set.autorun.f.save.path;
     autorun.file.save.nameBasis.A09_EEG_validation = 'A09_EEG_validation_01';
 else
-    w.m = questdlg('Do you want to save result files ?','Setup','Auto save','Not save','Auto save');
-    if strcmp(w.m,'Auto save')
-        % [autorun.file.save.nameBasis, autorun.file.save.path] = uiputfile(strcat('D4_31_EEG_Bandpower_09.mat'),'Set up result directory and filename');
-        % autorun.file.save.nameBasis1 = autorun.file.save.nameBasis( 1 : max(find(autorun.file.save.nameBasis(1,:)=='.'))-1);
-        autorun.file.save.autosave = 1;
-
-        autorun.file.save.path = uigetdir('','Set directory for the result');
-        autorun.file.save.path = [autorun.file.save.path,'\'];
-
-        autorun.file.save.nameBasis.A09_EEG_validation = 'A09_EEG_validation_01';
-    else
-        autorun.file.save.autosave = 0;
-    end
+    error('VA is not defined. Please define VA before running this function. Manual setup is not supported. Manual setup is not supported.');
 end
 
 
@@ -197,12 +165,14 @@ for autorun_subjID2 = TRANS.c.autorun.used.subjects
     
     % w.file.load.path = [autorun.file.load.path,'Subj 0',num2str(autorun_subjID2),'\Session 0',num2str(autorun_sessionID2),'\01 Rec\'];
     % w.file.load.path = [autorun.file.load.path,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),'\01 Rec\'];
-    w.file.load.path = [autorun.file.load.path,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),'\',VA.f.classSubDir{VA.w.wm_subDirID},'\'];
-    
+    %w.file.load.path = [autorun.file.load.path,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\', 'Session ',subFunc_num2str_2digit(autorun_sessionID2),'\',VA.f.classSubDir{VA.w.wm_subDirID},'\'];
+    subjectFolder = ['Subj ', subFunc_num2str_2digit(autorun_subjID2)];
+    sessionRelativePathFolder = ['Session ', subFunc_num2str_2digit(autorun_sessionID2)];
+    w.file.load.path = fullfile(autorun.file.load.path, subjectFolder, sessionRelativePathFolder, VA.f.classSubDir{VA.w.wm_subDirID});
     % EEG record
     fprintf(['Loading EEG_rec dataset ...\n']);
     w.file.load.name = autorun.file.load.nameBasis.EEG_rec_fileName;
-    TMP = load([w.file.load.path,w.file.load.name]);
+    TMP = load(fullfile(w.file.load.path, w.file.load.name));
     w.import.EEG_rec = TMP.EEG_rec;
     clear TMP
     

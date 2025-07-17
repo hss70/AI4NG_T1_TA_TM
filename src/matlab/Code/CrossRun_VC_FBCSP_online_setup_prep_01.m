@@ -42,12 +42,7 @@ end
 
 if VA.SW
 else
-    w.m = questdlg('Task vs Relax included?','Setup','T123 (only)','T123+R','T123+R');
-    if strcmp(w.m,'T123 (only)')
-        VA.f.SW.task_vs_relax_CP_used = 0;
-    else
-        VA.f.SW.task_vs_relax_CP_used = 1;
-    end
+    error('Manual setup required: Task vs Relax used?');
 end
 
 % ________________
@@ -65,42 +60,7 @@ if VA.SW
         w.file.load_CP(wm_subDirID).nameBasis1 = VA.f.load.nameBasis1_FBCSP;
     end
 else
-    w.m = questdlg('Do you want to load required input datasets ?','Setup','Load input datasets','Continue without loading','Load input datasets');
-    if strcmp(w.m,'Load input datasets')
-
-        fprintf('\n');
-        % fprintf('Loading input dataset (it may take some minutes):\n\n');
-
-            % % FBCSP_MCC15_offline_trainTest_01 [config]
-            % [w.file.load.nameBasis, w.file.load.path] = uigetfile(strcat('FBCSP_MCC15_offline_trainTest_01 [config].mat'),'Load input dataset');
-            % w.file.load.nameBasis1 = w.file.load.nameBasis( 1 : max(find(w.file.load.nameBasis(1,:)=='['))-2);
-
-            % ClassPair1
-            % FBCSP_offline_trainTest_01 [config]
-            [w.file.load_CP(1).nameBasis, w.file.load_CP(1).path] = uigetfile(strcat('FBCSP_offline_trainTest_01 [config].mat'),'Load input dataset');
-            w.file.load_CP(1).nameBasis1 = w.file.load_CP(1).nameBasis( 1 : max(find(w.file.load_CP(1).nameBasis(1,:)=='['))-2);
-
-            % ClassPair2
-            % FBCSP_offline_trainTest_01 [config]
-            [w.file.load_CP(2).nameBasis, w.file.load_CP(2).path] = uigetfile(strcat('FBCSP_offline_trainTest_01 [config].mat'),'Load input dataset');
-            w.file.load_CP(2).nameBasis1 = w.file.load_CP(2).nameBasis( 1 : max(find(w.file.load_CP(2).nameBasis(1,:)=='['))-2);
-
-            % ClassPair3
-            % FBCSP_offline_trainTest_01 [config]
-            [w.file.load_CP(3).nameBasis, w.file.load_CP(3).path] = uigetfile(strcat('FBCSP_offline_trainTest_01 [config].mat'),'Load input dataset');
-            w.file.load_CP(3).nameBasis1 = w.file.load_CP(3).nameBasis( 1 : max(find(w.file.load_CP(3).nameBasis(1,:)=='['))-2);
-
-            if VA.f.SW.task_vs_relax_CP_used
-                % ClassPair4 (Task vs Relax)
-                % FBCSP_offline_trainTest_01 [config]
-                [w.file.load_CP(4).nameBasis, w.file.load_CP(4).path] = uigetfile(strcat('FBCSP_offline_trainTest_01 [config].mat'),'Load input dataset');
-                w.file.load_CP(4).nameBasis1 = w.file.load_CP(4).nameBasis( 1 : max(find(w.file.load_CP(4).nameBasis(1,:)=='['))-2);
-            end
-            
-        w.file.load.autoload = 1;
-    else
-        w.file.load.autoload = 0;
-    end
+    error('Manual setup required, not yet supported');
 end
 
 if w.file.load.autoload == 1
@@ -116,113 +76,6 @@ if w.file.load.autoload == 1
         EEG_validation = copy_of_EEG_validation;
         clear copy_of_EEG_validation
 
-% % % %         % Load [autorun]
-% % % %         % ______________
-% % % %         
-% % % %         % ClassPair1
-% % % %         fprintf('Loading autorun ...\n');
-% % % %         w.file.load.name = strcat(w.file.load_CP(1).nameBasis1,' [autorun].mat');
-% % % %         load([w.file.load_CP(1).path,w.file.load.name]);
-% % % %         autorun_CP(1) = copy_of_autorun;
-% % % %         clear copy_of_autorun
-% % % % 
-% % % %         % ClassPair2
-% % % %         fprintf('Loading autorun ...\n');
-% % % %         w.file.load.name = strcat(w.file.load_CP(2).nameBasis1,' [autorun].mat');
-% % % %         load([w.file.load_CP(2).path,w.file.load.name]);
-% % % %         autorun_CP(2) = copy_of_autorun;
-% % % %         clear copy_of_autorun
-% % % % 
-% % % %         % ClassPair3
-% % % %         fprintf('Loading autorun ...\n');
-% % % %         w.file.load.name = strcat(w.file.load_CP(3).nameBasis1,' [autorun].mat');
-% % % %         load([w.file.load_CP(3).path,w.file.load.name]);
-% % % %         autorun_CP(3) = copy_of_autorun;
-% % % %         clear copy_of_autorun
-% % % % 
-% % % %         if VA.f.SW.task_vs_relax_CP_used
-% % % %             % ClassPair4 (Task vs Relax)
-% % % %             fprintf('Loading autorun ...\n');
-% % % %             w.file.load.name = strcat(w.file.load_CP(4).nameBasis1,' [autorun].mat');
-% % % %             load([w.file.load_CP(4).path,w.file.load.name]);
-% % % %             autorun_CP(4) = copy_of_autorun;
-% % % %             clear copy_of_autorun
-% % % %         end
-% % % % 
-% % % %         % Load [config]
-% % % %         % _____________
-% % % %         
-% % % %         % ClassPair1
-% % % %         fprintf('Loading config ...\n');
-% % % %         w.file.load.name = strcat(w.file.load_CP(1).nameBasis1,' [config].mat');
-% % % %         load([w.file.load_CP(1).path,w.file.load.name]);
-% % % %         c_CP(1) = copy_of_c;
-% % % %         clear copy_of_c
-% % % %         
-% % % %         % For common part of c
-% % % %         c = c_CP(1);
-% % % % 
-% % % %         % ClassPair2
-% % % %         fprintf('Loading config ...\n');
-% % % %         w.file.load.name = strcat(w.file.load_CP(2).nameBasis1,' [config].mat');
-% % % %         load([w.file.load_CP(2).path,w.file.load.name]);
-% % % %         c_CP(2) = copy_of_c;
-% % % %         clear copy_of_c
-% % % % 
-% % % %         % ClassPair3
-% % % %         fprintf('Loading config ...\n');
-% % % %         w.file.load.name = strcat(w.file.load_CP(3).nameBasis1,' [config].mat');
-% % % %         load([w.file.load_CP(3).path,w.file.load.name]);
-% % % %         c_CP(3) = copy_of_c;
-% % % %         clear copy_of_c
-% % % % 
-% % % %         if VA.f.SW.task_vs_relax_CP_used
-% % % %             % ClassPair4 (Task vs Relax)
-% % % %             fprintf('Loading config ...\n');
-% % % %             w.file.load.name = strcat(w.file.load_CP(4).nameBasis1,' [config].mat');
-% % % %             load([w.file.load_CP(4).path,w.file.load.name]);
-% % % %             c_CP(4) = copy_of_c;
-% % % %             clear copy_of_c
-% % % %         end
-% % % % 
-% % % %         % Load w0_matrix
-% % % %         % ______________
-% % % %         
-% % % %         % fprintf('Loading w0_matrix ...\n');
-% % % %         % w.file.load.name = strcat(w.file.load.nameBasis1,' [w0_matrix].mat');
-% % % %         % load([w.file.load.path,w.file.load.name]);
-% % % %         % w0_matrix = copy_of_w0_matrix;
-% % % %         % clear copy_of_w0_matrix
-% % % % 
-% % % %         % ClassPair1
-% % % %         fprintf('Loading w0_matrix for ClassPair1 ...\n');
-% % % %         w.file.load.name = strcat(w.file.load_CP(1).nameBasis1,' [w0_matrix].mat');
-% % % %         load([w.file.load_CP(1).path,w.file.load.name]);
-% % % %         w0_matrix(1) = copy_of_w0_matrix;
-% % % %         clear copy_of_w0_matrix
-% % % % 
-% % % %         % ClassPair2
-% % % %         fprintf('Loading w0_matrix for ClassPair2 ...\n');
-% % % %         w.file.load.name = strcat(w.file.load_CP(2).nameBasis1,' [w0_matrix].mat');
-% % % %         load([w.file.load_CP(2).path,w.file.load.name]);
-% % % %         w0_matrix(2) = copy_of_w0_matrix;
-% % % %         clear copy_of_w0_matrix
-% % % % 
-% % % %         % ClassPair3
-% % % %         fprintf('Loading w0_matrix for ClassPair3 ...\n');
-% % % %         w.file.load.name = strcat(w.file.load_CP(3).nameBasis1,' [w0_matrix].mat');
-% % % %         load([w.file.load_CP(3).path,w.file.load.name]);
-% % % %         w0_matrix(3) = copy_of_w0_matrix;
-% % % %         clear copy_of_w0_matrix
-% % % % 
-% % % %         if VA.f.SW.task_vs_relax_CP_used
-% % % %             % ClassPair4 (Task vs Relax)
-% % % %             fprintf('Loading w0_matrix for ClassPair4 ...\n');
-% % % %             w.file.load.name = strcat(w.file.load_CP(4).nameBasis1,' [w0_matrix].mat');
-% % % %             load([w.file.load_CP(4).path,w.file.load.name]);
-% % % %             w0_matrix(4) = copy_of_w0_matrix;
-% % % %             clear copy_of_w0_matrix
-% % % %         end
         for wm_subDirID = 1 : size(VA.f.classSubDir,2)
             
             % Load [autorun]
@@ -268,19 +121,11 @@ end
 
 if VA.SW
      w.file.save.autosave = 1;
-     w.file.save.path = [VA.f.save.baseDir,'\'];
+     w.file.save.path = fullfile(VA.f.save.baseDir, filesep);
      mkdir(w.file.save.path);
      w.file.save.nameBasis1 = VA.f.save.nameBasis1;
 else
-    w.m = questdlg('Do you want automatic save of result ?','Setup','Auto save','Not save','Auto save');
-    if strcmp(w.m,'Auto save')
-        [w.file.save.nameBasis, w.file.save.path] = uiputfile(strcat('FBCSP_online_setup_prep_01.mat'),'Set up result directory and filename');
-        w.file.save.nameBasis1 = w.file.save.nameBasis( 1 : max(find(w.file.save.nameBasis(1,:)=='.'))-1);
-
-        w.file.save.autosave = 1;
-    else
-        w.file.save.autosave = 0;
-    end
+    error('Manual setup required, not yet supported');
 end
 
 
@@ -482,37 +327,6 @@ FUNC_IN.EEG_validation = EEG_validation;
 FUNC_IN.wm_subjID2 = c.online.subject;      % !!! the called function handle only for one subject !!!
 FUNC_IN.wm_sessionID2 = c.online.session;   % !!! the called function handle only for one session !!!
 
-% % % % FUNC_IN.c_outerFoldID_or_lastOuterFold999_or_allMergedOuterFolds0 = c.online.outerFoldID_or_lastOuterFold999_or_allMergedOuterFolds0;
-% % % % if FUNC_IN.c_outerFoldID_or_lastOuterFold999_or_allMergedOuterFolds0 ~= 0
-% % % % % % % % % %     FUNC_IN.w0_matrix.outer_OR_outer_merged = w0_matrix.outer;
-% % % %     FUNC_IN.w0_matrix(1).outer_OR_outer_merged = w0_matrix(1).outer;
-% % % %     FUNC_IN.w0_matrix(2).outer_OR_outer_merged = w0_matrix(2).outer;
-% % % %     FUNC_IN.w0_matrix(3).outer_OR_outer_merged = w0_matrix(3).outer;
-% % % %     if VA.f.SW.task_vs_relax_CP_used
-% % % %         FUNC_IN.w0_matrix(4).outer_OR_outer_merged = w0_matrix(4).outer;
-% % % %     end
-% % % % else
-% % % % % % % % % %     FUNC_IN.w0_matrix.outer_OR_outer_merged = w0_matrix.outer_merged;
-% % % %     FUNC_IN.w0_matrix(1).outer_OR_outer_merged = w0_matrix(1).outer_merged;
-% % % %     FUNC_IN.w0_matrix(2).outer_OR_outer_merged = w0_matrix(2).outer_merged;
-% % % %     FUNC_IN.w0_matrix(3).outer_OR_outer_merged = w0_matrix(3).outer_merged;
-% % % %     if VA.f.SW.task_vs_relax_CP_used
-% % % %         FUNC_IN.w0_matrix(4).outer_OR_outer_merged = w0_matrix(4).outer_merged;
-% % % %     end
-% % % % end
-% % % % if FUNC_IN.c_outerFoldID_or_lastOuterFold999_or_allMergedOuterFolds0 == 0
-% % % %     FUNC_IN.autorun_outerFoldID = 1;
-% % % % elseif FUNC_IN.c_outerFoldID_or_lastOuterFold999_or_allMergedOuterFolds0 == 999
-% % % % % % % % % %     FUNC_IN.autorun_outerFoldID = size(w0_matrix.outer.tt_param,3);
-% % % %     FUNC_IN.autorun_outerFoldID(1) = size(w0_matrix(1).outer.tt_param,3);
-% % % %     FUNC_IN.autorun_outerFoldID(2) = size(w0_matrix(2).outer.tt_param,3);
-% % % %     FUNC_IN.autorun_outerFoldID(3) = size(w0_matrix(3).outer.tt_param,3);
-% % % %     if VA.f.SW.task_vs_relax_CP_used
-% % % %         FUNC_IN.autorun_outerFoldID(4) = size(w0_matrix(4).outer.tt_param,3);
-% % % %     end
-% % % % else
-% % % %     FUNC_IN.autorun_outerFoldID = FUNC_IN.c_outerFoldID_or_lastOuterFold999_or_allMergedOuterFolds0;
-% % % % end
 FUNC_IN.c_outerFoldID_or_lastOuterFold999_or_allMergedOuterFolds0 = c.online.outerFoldID_or_lastOuterFold999_or_allMergedOuterFolds0;
 if FUNC_IN.c_outerFoldID_or_lastOuterFold999_or_allMergedOuterFolds0 ~= 0
 % % % % % %     FUNC_IN.w0_matrix.outer_OR_outer_merged = w0_matrix.outer;
@@ -537,29 +351,9 @@ else
 end
 
 FUNC_IN.c_wt_taskOnset_cfWinOffset_ms = c.online.wt_taskOnset_cfWinOffset_ms;
-% FUNC_IN.c_wt_taskOnset_cfWinOffset_ms(1,1) = c.online.wt_taskOnset_cfWinOffset_ms(1,1);
-% FUNC_IN.c_wt_taskOnset_cfWinOffset_ms(2,1) = c.online.wt_taskOnset_cfWinOffset_ms(2,1);
-% FUNC_IN.c_wt_taskOnset_cfWinOffset_ms(3,1) = c.online.wt_taskOnset_cfWinOffset_ms(3,1);
-% % % % w.wt0ID = ((-c.prep.trial.trig_PRE_ms-c.tt.cf.p.winSize.ms)/c.tt.cf.p.winStep.ms) +1;
-% % % % % w.wtID_used = w.wt0ID + fix(FUNC_IN.c_wt_taskOnset_cfWinOffset_ms/c.tt.cf.p.winStep.ms);
-% % % % % FUNC_IN.wtID = w.wtID_used;
-% % % % FUNC_IN.wtID = w.wt0ID + fix(FUNC_IN.c_wt_taskOnset_cfWinOffset_ms/c.tt.cf.p.winStep.ms);
-% % % % % FUNC_IN.wtID(1,1) = w.wt0ID + fix(FUNC_IN.c_wt_taskOnset_cfWinOffset_ms(1,1)/c.tt.cf.p.winStep.ms);
-% % % % % FUNC_IN.wtID(2,1) = w.wt0ID + fix(FUNC_IN.c_wt_taskOnset_cfWinOffset_ms(2,1)/c.tt.cf.p.winStep.ms);
-% % % % % FUNC_IN.wtID(3,1) = w.wt0ID + fix(FUNC_IN.c_wt_taskOnset_cfWinOffset_ms(3,1)/c.tt.cf.p.winStep.ms);
 
-% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-% for wm_subDirID = 1 : size(VA.f.classSubDir,2)
-%     w.wt0ID_CP(wm_subDirID) = ((-c_CP(wm_subDirID).prep.trial.trig_PRE_ms-c_CP(wm_subDirID).tt.cf.p.winSize.ms)/c_CP(wm_subDirID).tt.cf.p.winStep.ms) +1;
-%     FUNC_IN.wtID(wm_subDirID) = w.wt0ID_CP(wm_subDirID) + fix(FUNC_IN.c_wt_taskOnset_cfWinOffset_ms(wm_subDirID)/c_CP(wm_subDirID).tt.cf.p.winStep.ms);
-% end
-% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-  % Load TAv2_TrainTest [result].mat and denote FUNC_IN.wtID(wm_subDirID)
-  % _____________________________________________________________________
-  
-  % VA_TRANS.c.eval.FBCSP_option_wt_taskOnset_cfWinOffset_ms = T1_result_table(V1_TRANS.wm_taskID,1).taskPeak_ms;
-  tmp = load([V1_TRANS.f.Input_T1_BaseDir,'\T1\Param\',V1_TRANS.tr_subDir_list{V1_TRANS.wm_taskID},'\TAv2_TrainTest [result].mat']);
+tmp = load(fullfule(V1_TRANS.f.Input_T1_BaseDir,'T1','Param',V1_TRANS.tr_subDir_list{V1_TRANS.wm_taskID},'TAv2_TrainTest [result].mat'));
+%  tmp = load([V1_TRANS.f.Input_T1_BaseDir,'\T1\Param\',V1_TRANS.tr_subDir_list{V1_TRANS.wm_taskID},'\TAv2_TrainTest [result].mat']);
   wm_subDirID = 1;
   FUNC_IN.wtID(wm_subDirID) = tmp.result.orig.opt_tt.task_wtID;
   clearvars tmp
@@ -627,6 +421,7 @@ end
 
 
 %% Comments
+% Edited by Hardeep to make platform independent
 
 % w0_matrix(1)
 % w0_matrix(2)

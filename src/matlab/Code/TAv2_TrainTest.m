@@ -18,7 +18,7 @@
 % % % % STACK_allVariables_01
 % % % % % clearvars -except STACK 
 % % % %     clearvars VA_TRANS
-% % % %     VA_TRANS.subjID_text = V1_TRANS.tr_subDir_list{1,wm_taskID}(find(V1_TRANS.tr_subDir_list{1,wm_taskID}=='\')+1:end);
+% % % %     VA_TRANS.subjID_text = V1_TRANS.tr_subDir_list{1,wm_taskID}(find(V1_TRANS.tr_subDir_list{1,wm_taskID}==filesep)+1:end);
 % % % %     clearvars -except STACK VA_TRANS attempt
 % % % % 
 % % % % 
@@ -36,7 +36,7 @@ cf_TAv2_TrainTest_A1_prep
 %% TaskManager code
 
   % Delete TrainTest dir with subdirs if exists
-  if isdir(VA_TRANS.f.baseDir)
+  if isfolder(VA_TRANS.f.baseDir)
     rmdir(VA_TRANS.f.baseDir,'s');
   end
   
@@ -53,9 +53,9 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
     VA.set.w.switch.ch.allValid = 1;    % =1: all EEG ch valid, =0: EEG ch validation will be called 
     
     % VA.set.autorun.f.load.path = [VA_TRANS.f.dataDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.load.path = [VA_TRANS.f.dataDir,'\']; VA.w.wm_subDirID = wm_subDirID;
-    VA.set.autorun.f.save.path = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    if ~isdir(VA.set.autorun.f.save.path)
+    VA.set.autorun.f.load.path = [VA_TRANS.f.dataDir, filesep]; VA.w.wm_subDirID = wm_subDirID;
+    VA.set.autorun.f.save.path = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A09_EEG_validation.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    if ~isfolder(VA.set.autorun.f.save.path)
       mkdir(VA.set.autorun.f.save.path)
     end
 
@@ -74,10 +74,10 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
     fprintf([VA_TRANS.f.A10_offlineClass_prep.subDir,' (',VA_TRANS.f.classSubDir{wm_subDirID},'):\n\n']);
     
     % VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir,'\']; VA.w.wm_subDirID = wm_subDirID;
-    VA.set.autorun.f.load.path.validation = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.save.path = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A10_offlineClass_prep.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    if ~isdir(VA.set.autorun.f.save.path)
+    VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir, filesep]; VA.w.wm_subDirID = wm_subDirID;
+    VA.set.autorun.f.load.path.validation = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A09_EEG_validation.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    VA.set.autorun.f.save.path = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A10_offlineClass_prep.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    if ~isfolder(VA.set.autorun.f.save.path)
       mkdir(VA.set.autorun.f.save.path)
     end
     
@@ -96,11 +96,11 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
     fprintf([VA_TRANS.f.A10B_offlineTrial_validation.subDir,' (',VA_TRANS.f.classSubDir{wm_subDirID},'):\n\n']);
     
     % VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir,'\']; VA.w.wm_subDirID = wm_subDirID;
-    VA.set.autorun.f.load.path.EEG_validation = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.load.path.offlineClass_prep = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A10_offlineClass_prep.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.save.path = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A10B_offlineTrial_validation.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    if ~isdir(VA.set.autorun.f.save.path)
+    VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir, filesep]; VA.w.wm_subDirID = wm_subDirID;
+    VA.set.autorun.f.load.path.EEG_validation = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A09_EEG_validation.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    VA.set.autorun.f.load.path.offlineClass_prep = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A10_offlineClass_prep.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    VA.set.autorun.f.save.path = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A10B_offlineTrial_validation.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    if ~isfolder(VA.set.autorun.f.save.path)
       mkdir(VA.set.autorun.f.save.path)
     end
     
@@ -118,10 +118,10 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
     VA = VA_TRANS;
     fprintf([VA_TRANS.f.A11_offlineClass_classSetup.subDir,' (',VA_TRANS.f.classSubDir{wm_subDirID},'):\n\n']);
     
-    VA.set.autorun.f.load.path.offlineClass_prep = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A10_offlineClass_prep.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.load.path.tr_validMask = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A10B_offlineTrial_validation.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.save.path = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    if ~isdir(VA.set.autorun.f.save.path)
+    VA.set.autorun.f.load.path.offlineClass_prep = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A10_offlineClass_prep.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    VA.set.autorun.f.load.path.tr_validMask = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A10B_offlineTrial_validation.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    VA.set.autorun.f.save.path = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A11_offlineClass_classSetup.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    if ~isfolder(VA.set.autorun.f.save.path)
       mkdir(VA.set.autorun.f.save.path)
     end
     
@@ -724,6 +724,7 @@ end
 
 
 %% Comments
+%% Edited by Hardeep to make platform independent
 
     % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
     % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
@@ -747,7 +748,7 @@ shadedErrorBar([],mean(result.perm{1, 1}.eval{1, 1}.DA.testFold_DA_Plots',2)*100
 %}
 
 
-%{
+%{ 
 
 clearvars plotData
 plotData = result.orig{1, 1}.DA.testFold_DA_Plots(:,:);

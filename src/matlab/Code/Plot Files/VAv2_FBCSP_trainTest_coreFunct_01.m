@@ -1,7 +1,7 @@
 % FilterBankCSP Multi-class Classification, offline EEG trainTest: parfor function
 
 % Input structures
-
+% To do: Make crossplatform compatible
 % Output structures
 
 % REQUIRESTMENT: Matlab
