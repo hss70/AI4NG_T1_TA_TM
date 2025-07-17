@@ -99,9 +99,9 @@ c.EEG.rec.ch.ID = 1 : size(c.EEG.rec.ch.name,1);
 % Setup for load
 % ______________
 
-if VA.SWd.autoload;
+if VA.SW;
+    % autorun.file.load.autoload = VA.set.autorun.f.load.autoload
     autorun.file.load.autoload = 1;
-    % autorun.file.load.autoload = VA.set.autorun.f.loa
     autorun.file.load.path = VA.set.autorun.f.load.path;
 else
     error('VA.SWd.autoload is not defined. Please define VA.SWd.autoload before running this function. Manual setup is not supported.');

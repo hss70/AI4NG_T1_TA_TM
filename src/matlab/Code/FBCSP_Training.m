@@ -23,13 +23,13 @@ homeDir = getenv('HOME_DIR'); %Work folder
 %homeDir = '/home/hardeep/Dev/AI4NG/AI4NG_T1_TA_TM/TestData'
 
 channelNum = str2double(getenv('channelNum'));
-channelNum = 8
+%channelNum = 8
 sampleRate = str2double(getenv('sampleRate'));
-sampleRate = 125
+%sampleRate = 125
 downSampleRate = str2double(getenv('downSampleRate'));
-downSampleRate = sampleRate
+%downSampleRate = sampleRate
 resultsDir = getenv('RESULTS_PATH');
-resultsDir = fullfile(homeDir,'Results')
+%resultsDir = fullfile(homeDir,'Results')
 % Validate environment variables
 if isempty(homeDir) || isnan(channelNum) || ...
         isnan(sampleRate) || isnan(downSampleRate)
