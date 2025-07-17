@@ -84,7 +84,7 @@ for wm1 = 1 : size(dir0_struct,1)
                                 wm_fileID = wm_fileID +1;
                                 tr_file_list{wm_fileID} = fullfile(dir2, V1_TRANS.f.SourceDataName);  % Use fullfile
                                 % Use filesep for consistent path separator in the subDir list
-                                tr_subDir_list{wm_fileID} = [subDir1, filesep, subDir2];
+                                tr_subDir_list{wm_fileID} = fullfile(subDir1, subDir2);
                             end
                         end
                         
@@ -197,7 +197,7 @@ for wm_taskID = 1 : size(tr_file_list,2)
         
         % fprintf([tr_file_list{wm_taskID}, '\',V1_TRANS.f.SourceDataName,' (',num2str(wm_taskID),'/',num2str(size(tr_file_list,2)),') ...\n']);
         fprintf(['\n________________________\n\n']);
-        fprintf(['Processing (#',num2str(wm_taskID),'/',num2str(size(tr_file_list,2)),') ...\n']);
+        fprintf(['Processing (#',fullfile(num2str(wm_taskID),num2str(size(tr_file_list,2))),') ...\n']);
         
         % copy chanlocs file
         copyfile(fullfile(V1_TRANS.f.chanlocs_dir,V1_TRANS.f.chanlocs_filename), fullfile(V1_TRANS.f.BaseDir,V1_TRANS.f.chanlocs_filename));
@@ -221,7 +221,8 @@ for wm_taskID = 1 : size(tr_file_list,2)
         % clearvars -except STACK
         clearvars VA_TRANS
         VA_TRANS.SW_T1_maxTrainTestTry = V1_TRANS.SW.T1_maxTrainTestTry;
-        VA_TRANS.subjID_text = V1_TRANS.tr_subDir_list{1,wm_taskID}(find(V1_TRANS.tr_subDir_list{1,wm_taskID}==filesep)+1:end);
+        fileSepLocation = find(V1_TRANS.tr_subDir_list{1,wm_taskID}==filesep);
+        VA_TRANS.subjID_text = V1_TRANS.tr_subDir_list{1,wm_taskID}(fileSepLocation+1:end);
         baseDir = V1_TRANS.f.BaseDir;
         
         clearvars -except STACK VA_TRANS baseDir eegConfig

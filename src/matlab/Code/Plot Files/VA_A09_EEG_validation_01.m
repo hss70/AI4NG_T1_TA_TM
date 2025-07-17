@@ -1,7 +1,7 @@
 % Multi-class Classification, offline EEG channel validation 
 
 % Input structures
-
+% To do: Make crossplatform compatible
 % Output structures
 
 % REQUIRESTMENT: Matlab
@@ -111,21 +111,9 @@ if VA.SW
     autorun.file.load.autoload = 1;
     autorun.file.load.path = VA.set.autorun.f.load.path;
 else
-    w.m = questdlg('Do you want to load input datasets ?','Setup','Select input directory','Load from default directory','Continue without loading','Load from default directory');
-    if strcmp(w.m,'Load from default directory')
-        autorun.file.load.autoload = 1;
-        autorun.file.load.path = 'Q:\BCI\Data\Data Shape 01\- Work (doubled2)\';
-    elseif strcmp(w.m,'Select input directory')
-        autorun.file.load.autoload = 1;
-        autorun.file.load.path = uigetdir('','Select input directory');
-        % autorun.file.load.path = [autorun.file.load.path,'\'];
-            VA.w.wm_subDirID = 1;
-            VA.f.classSubDir{VA.w.wm_subDirID} = autorun.file.load.path( max(find(autorun.file.load.path(1,:)=='\'))+1 : size(autorun.file.load.path,2));
-            autorun.file.load.path = autorun.file.load.path( 1 : max(find(autorun.file.load.path(1,:)=='u'))-2);
-    else
-        autorun.file.load.autoload = 0;
-    end
+    error('This code is not designed to run without VA.SW = true');
 end
+
 if autorun.file.load.autoload == 1
     autorun.file.load.nameBasis.EEG_rec_fileName = 'EEG_rec.mat';
 end
@@ -141,19 +129,7 @@ if VA.SW
     autorun.file.save.path = VA.set.autorun.f.save.path;
     autorun.file.save.nameBasis.A09_EEG_validation = 'A09_EEG_validation_01';
 else
-    w.m = questdlg('Do you want to save result files ?','Setup','Auto save','Not save','Auto save');
-    if strcmp(w.m,'Auto save')
-        % [autorun.file.save.nameBasis, autorun.file.save.path] = uiputfile(strcat('D4_31_EEG_Bandpower_09.mat'),'Set up result directory and filename');
-        % autorun.file.save.nameBasis1 = autorun.file.save.nameBasis( 1 : max(find(autorun.file.save.nameBasis(1,:)=='.'))-1);
-        autorun.file.save.autosave = 1;
-
-        autorun.file.save.path = uigetdir('','Set directory for the result');
-        autorun.file.save.path = [autorun.file.save.path,'\'];
-
-        autorun.file.save.nameBasis.A09_EEG_validation = 'A09_EEG_validation_01';
-    else
-        autorun.file.save.autosave = 0;
-    end
+    error('This code is not designed to run without VA.SW = true');
 end
 
 
@@ -339,15 +315,6 @@ for autorun_subjID2 = TRANS.c.autorun.used.subjects
   % task validation
   % _______________
   
-  % !!!!!!!!!!!!! task validation code: N/A !!!!!!!!!!!!!!! 
-  
-  
-  
-  
-  
-  
-  
-  
  end
 end
 
@@ -385,8 +352,6 @@ end
 fprintf('\n');
 fprintf('Running: Finished\n\n');
 
-% toc
-
 
 %% Functions
 
@@ -399,16 +364,3 @@ function wf_out_str = subFunc_num2str_2digit(wf_in_num)
         wf_out_str = num2str(wf_in_num);
     end
 end
-
-
-% % % % %% Function end
-% % % % end
-
-
-%% Comments
-
-% EEG_rec([2:18],:) = rundat(:,1:17)';
-% EEG_rec(1,:) = 0:0.008:((size(EEG_rec,2)-1)/125);
-
-
-

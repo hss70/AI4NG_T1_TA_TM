@@ -76,8 +76,8 @@ w.parCore = TM.parfor.core;
     else
       wm_parDir_txt = '';
     end
-    VA.set.autorun.f.load.path.EEG_validation = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,wm_parDir_txt,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.load.path.offlineClass_classSetup = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,wm_parDir_txt,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
+    VA.set.autorun.f.load.path.EEG_validation = fullfile(VA_TRANS.f.baseDir, [VA_TRANS.f.A09_EEG_validation.subDir, wm_parDir_txt], VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
+    VA.set.autorun.f.load.path.offlineClass_classSetup = fullfile(VA_TRANS.f.baseDir, [VA_TRANS.f.A11_offlineClass_classSetup.subDir, wm_parDir_txt], VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
     
     TM = func_FBCSP_tt_basis_setup(VA, wm_subDirID, w);
     TM = func_FBCSP_tt_option_setup(VA_TRANS, TM);
@@ -121,7 +121,7 @@ w.parCore = TM.parfor.core;
     if perm_ID == 0
       fprintf(['Copy: ',VA_TRANS.f.chanlocs_filename,' ...\n'])
       % copyfile([VA_TRANS.f.chanlocs_path,'\',VA_TRANS.f.chanlocs_filename], [VA_TRANS.f.baseDir,'\',VA_TRANS.f.chanlocs_filename]);
-      copyfile([VA_TRANS.f.workDir,'\',VA_TRANS.f.chanlocs_filename], [VA_TRANS.f.baseDir,'\',VA_TRANS.f.chanlocs_filename]);
+      copyfile(fullfile(VA_TRANS.f.workDir, VA_TRANS.f.chanlocs_filename), fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.chanlocs_filename));
       fprintf('DONE.\n')
     end
     
@@ -413,10 +413,6 @@ end
 
 function func_FBCSP_tt_call(TM, perm_ID)
 
-% % for wm_taskID = 1 : size(TM.taskParam,1)
-% %     fprintf(['taskManager run: ',num2str(wm_taskID),'/',num2str(size(TM.taskParam,1)),'\n'])
-% %     VAv2_FBCSP_trainTest_func_01(TM.taskParam{wm_taskID,1, perm_ID});
-% % end
 for wm_taskID = 1 : size(TM.taskParam,1)
     
     % trainTest:
@@ -667,8 +663,8 @@ subplot(2,2,4); shadedErrorBar([], mean(plotDataSmooth{opt_tt.optionID},1)*100, 
   % [h,p_tt] = ttest(plotData{opt_tt.optionID}(:, opt_tt.smooth_ref_wtID), plotData{opt_tt.optionID}(:, opt_tt.smooth_task_wtID));
   % [p_wilc,h] = signrank(plotData{opt_tt.optionID}(:, opt_tt.smooth_ref_wtID), plotData{opt_tt.optionID}(:, opt_tt.smooth_task_wtID));
   
-  % If your hypothesis is ‘greater than’ or ‘less than’, use a one-tailed test. If your hypothesis is ‘different than’, use a two-tailed test.
-  % The way to code it (for ttest2), is for example to test that the mean of ‘x’ is less than the mean of ‘y’:
+  % If your hypothesis is ï¿½greater thanï¿½ or ï¿½less thanï¿½, use a one-tailed test. If your hypothesis is ï¿½different thanï¿½, use a two-tailed test.
+  % The way to code it (for ttest2), is for example to test that the mean of ï¿½xï¿½ is less than the mean of ï¿½yï¿½:
   % [h,p,ci,stats] = ttest2(x, y, 'Tail','left');
   
  

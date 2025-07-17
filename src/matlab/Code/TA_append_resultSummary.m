@@ -7,11 +7,11 @@
     % _________________
     
       % w.file.load.path = [V1_TRANS.f.BaseDir_for_trainTest,'\TrainTest\'];
-      w.file.load.path = [V1_TRANS.f.BaseDir,'\TrainTest\'];
+      w.file.load.path = fullfile(V1_TRANS.f.BaseDir,'TrainTest');
       w.file.load.name = 'TAv2_TrainTest [result].mat';
       % fprintf(['Loading ',w.file.load.name,' ...\n']);
       % tmp = load([w.file.load.path, w.file.load.name]);
-      load([w.file.load.path, w.file.load.name]);
+      load(fullfile(w.file.load.path, w.file.load.name));
     
 % %     % Load T1 results and result_summary files (if stored yet)
 % %     % ________________________________________________________
@@ -141,11 +141,11 @@ end
         % Creat T1 dir if not exists
         % __________________________
         
-        w.f.save.dir = [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_subDir];
+        w.f.save.dir = fullfile(V1_TRANS.f.BaseDir,V1_TRANS.f.T1_subDir);
         if ~isdir(w.f.save.dir)
           mkdir(w.f.save.dir)
         end
-        w.f.save.path = [w.f.save.dir,'\'];
+        w.f.save.path = w.f.save.dir;
         
         % Save files
         % __________
@@ -171,14 +171,14 @@ end
           fprintf('Saving T1_results ...\n');
           % w.f.save.path = [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_subDir];
           w.f.save.name = w.T1_results_fileName;
-          save([w.f.save.path,w.f.save.name],'T1_results','-v7.3');
+          save(fullfile(w.f.save.path,w.f.save.name),'T1_results','-v7.3');
         end
         clearvars tmp
     
         fprintf('Saving T1_result_table ...\n');
         % w.f.save.path = [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_subDir];
         w.f.save.name = w.T1_result_table_fileName;
-        save([w.f.save.path,w.f.save.name],'T1_result_table','-v7.3');
+        save(fullfile(w.f.save.path,w.f.save.name),'T1_result_table','-v7.3');
 
 
 

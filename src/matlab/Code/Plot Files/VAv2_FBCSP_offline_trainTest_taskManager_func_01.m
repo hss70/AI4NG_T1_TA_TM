@@ -2,7 +2,7 @@
 
 % Input structures
 % VA_TRANS
-
+% To do: Make crossplatform compatible
 % Output structures
 
 % REQUIRESTMENT: Matlab
@@ -667,8 +667,8 @@ subplot(2,2,4); shadedErrorBar([], mean(plotDataSmooth{opt_tt.optionID},1)*100, 
   % [h,p_tt] = ttest(plotData{opt_tt.optionID}(:, opt_tt.smooth_ref_wtID), plotData{opt_tt.optionID}(:, opt_tt.smooth_task_wtID));
   % [p_wilc,h] = signrank(plotData{opt_tt.optionID}(:, opt_tt.smooth_ref_wtID), plotData{opt_tt.optionID}(:, opt_tt.smooth_task_wtID));
   
-  % If your hypothesis is ‘greater than’ or ‘less than’, use a one-tailed test. If your hypothesis is ‘different than’, use a two-tailed test.
-  % The way to code it (for ttest2), is for example to test that the mean of ‘x’ is less than the mean of ‘y’:
+  % If your hypothesis is ï¿½greater thanï¿½ or ï¿½less thanï¿½, use a one-tailed test. If your hypothesis is ï¿½different thanï¿½, use a two-tailed test.
+  % The way to code it (for ttest2), is for example to test that the mean of ï¿½xï¿½ is less than the mean of ï¿½yï¿½:
   % [h,p,ci,stats] = ttest2(x, y, 'Tail','left');
   
  
