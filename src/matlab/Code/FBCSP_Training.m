@@ -11,8 +11,8 @@
 %           -SubjectName
 %               -SessionName
 %Converts Csvs into .mat files and ensures they're in the right palce
-%homeDir = getenv('HOME_DIR');
-homeDir = '/home/hardeep/Dev/AI4NG/AI4NG_T1_TA_TM/TestData'
+homeDir = getenv('HOME_DIR');
+%homeDir = '/home/hardeep/Dev/AI4NG/AI4NG_T1_TA_TM/TestData'
 
 workDir = fullfile(homeDir, 'Work');
 batchConvertCsvToMat;
@@ -20,7 +20,7 @@ clear; clc;
 
 % Get environment variables
 homeDir = getenv('HOME_DIR'); %Work folder
-homeDir = '/home/hardeep/Dev/AI4NG/AI4NG_T1_TA_TM/TestData'
+%homeDir = '/home/hardeep/Dev/AI4NG/AI4NG_T1_TA_TM/TestData'
 
 channelNum = str2double(getenv('channelNum'));
 channelNum = 8
@@ -40,6 +40,5 @@ T1_proper;
 
 %T1ResultsDir = GetEnv()
 %outputDir = GetEnv
-%reorganiseFiles(T1ResultsDir, outputDir);
-reorganiseFiles('C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work\T1', ...
-    'C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work\Output');
+reorganiseFiles(T1ResultsDir, outputDir);
+%reorganiseFiles('C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work\T1','C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work\Output');
