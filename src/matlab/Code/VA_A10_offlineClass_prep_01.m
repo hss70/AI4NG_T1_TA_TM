@@ -349,6 +349,7 @@ if autorun.prep.file.load.autoload == 1
     % fprintf('A09_EEG_validation_01 [EEG_validation].mat ...\n');
     w.file.load.name = [autorun.prep.file.load.nameBasis.EEG_validation_fileName, ' [EEG_validation].mat'];
     fprintf(['Loading ',w.file.load.name,' ...\n']);
+    fprintf(['At ',[autorun.prep.file.load.path.validation,w.file.load.name],' ...\n']);
     TMP = load([autorun.prep.file.load.path.validation,w.file.load.name]);
     EEG_validation = TMP.copy_of_EEG_validation;
     clear TMP
@@ -419,6 +420,9 @@ for autorun_subjID2 = TRANS.autorun.prep.used.subjects
     % EEG record
     fprintf(['Loading EEG_rec dataset ...\n']);
     w.file.load.name = autorun.prep.file.load.nameBasis.EEG_rec_fileName;
+    if(exist(fullfile(w.file.load.path.EEG_rec,w.file.load.name),'file') ~= 2)
+        error(['File not found: ',fullfile(w.file.load.path.EEG_rec,w.file.load.name)]);
+    end
     TMP = load(fullfile(w.file.load.path.EEG_rec,w.file.load.name));
     w.import.EEG_rec = TMP.EEG_rec;
     clear TMP

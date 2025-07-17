@@ -15,6 +15,10 @@ cf_TAv2_TrainTest_A1_prep
 % __________________________________
 
 if strcmp(V1_TRANS.f.SourceDataName, 'EEG_rec.mat')
+    disp(["loading ",V1_TRANS.tr_file_list{wm_taskID}])
+    if(exist(V1_TRANS.tr_file_list{wm_taskID}, 'file') ~= 2)
+        error('EEG_rec.mat file not found in the specified directory');
+    end
     load(V1_TRANS.tr_file_list{wm_taskID});
 elseif strcmp(V1_TRANS.f.SourceDataName, 'tr.mat')
     % Load tr.mat and convert rundat to EEG_rec
