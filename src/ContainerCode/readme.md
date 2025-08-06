@@ -89,6 +89,12 @@ docker run --rm \
   eeg-classifier:latest
 ```
 
+Alternatively, you can use
+```bash 
+./test_with_localstack.sh
+```
+
+
 ### Deploy to AWS ECR
 ```bash
 # Get ECR login token

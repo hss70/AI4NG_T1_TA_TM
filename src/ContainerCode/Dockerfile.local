@@ -30,7 +30,6 @@ COPY ClassifierTraining/Standard-10-20-Cap81.locs ./Standard-10-20-Cap81.locs
 # Copy the compiled MATLAB application (if available)
 COPY ClassifierTraining/output/FBCSP_Training ./FBCSP_Training
 COPY ClassifierTraining/output/run_FBCSP_Training.sh ./run_FBCSP_Training.sh
-COPY ClassifierTraining/output/sim_bandpass_singleBand.slx ./sim_bandpass_singleBand.slx
 
 # Copy the local test execution script
 COPY download_and_run_local.sh ./download_and_run.sh

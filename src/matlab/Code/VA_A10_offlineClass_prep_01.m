@@ -512,33 +512,13 @@ end
 %    assignin('base',"sm_EEG_data",sm_EEG_data);
     
     if c.prep.EEG.filt.bandFilt.usedFeature_bandpass1_bandpower2 == 1
-        mdl = 'sim_bandpass_singleBand';
+        Bandpass_singleBand = bandpass_singleBand(sm_EEG_data,sm);
     else
+        error("sim_bandpower_singleBand doesn't exist at the moment")
 
         mdl = 'sim_bandpower_singleBand';
-
         sm.p.EEG.FFT.wSize = c.prep.EEG.filt.bandPower.windowSizeInSamples;  % only for bandpower
-        error("sim_bandpower_singleBand doesn't exist at the moment")
     end
-
-    t = (0:size(sm_EEG_data,1)-1)' / sm.p.EEG.sr;
-    ts = timeseries(sm_EEG_data, t);
-    
-    in = Simulink.SimulationInput(mdl);
-    in = in.setExternalInput(ts);
-    in = in.setVariable('sm', sm);
-    in = in.setModelParameter('SimulationMode', 'normal');
-    in = in.setModelParameter('StopTime', num2str(ref_t(end)));
-
-
-    if isdeployed
-        disp('configuring simulink for container');
-        % 👇 This is essential for compiled/deployment use:
-        in = simulink.compiler.configureForDeployment(in);
-    end 
-
-    simOut = sim(in);        
-    Bandpass_singleBand = simOut.get('yout');
     
     w_bandFiltOut = transpose(Bandpass_singleBand);
     clearvars Bandpass_singleBand mdl

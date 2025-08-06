@@ -68,6 +68,18 @@ fi
 # Set MATLAB Runtime library path
 export LD_LIBRARY_PATH="/opt/matlabruntime/R2024b/runtime/glnxa64:/opt/matlabruntime/R2024b/bin/glnxa64:/opt/matlabruntime/R2024b/sys/os/glnxa64:/opt/matlabruntime/R2024b/sys/opengl/lib/glnxa64:/opt/matlabruntime/R2024b/extern/bin/glnxa64:${LD_LIBRARY_PATH:-}"
 
+# Debug: Show file paths for MATLAB debugging
+echo "=== DEBUG: File Paths ==="
+echo "WORK_DIR: $WORK_DIR"
+echo "WORK_PATH: $WORK_PATH"
+echo "RESULTS_PATH: $RESULTS_PATH"
+echo "Current directory: $(pwd)"
+echo "MATLAB executable: $(ls -la /app/FBCSP_Training 2>/dev/null || echo 'Not found')"
+echo "Dependencies file: $(ls -la /app/Standard-10-20-Cap81.locs 2>/dev/null || echo 'Not found')"
+echo "Work directory contents:"
+find $WORK_DIR -type f 2>/dev/null | head -10
+echo "========================"
+
 # For local testing, we'll skip running the actual MATLAB executable
 if [[ -d "/test_data" ]]; then
     echo "LOCAL TEST MODE: Skipping MATLAB execution"

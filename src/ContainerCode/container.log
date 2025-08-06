@@ -1,6 +1,6 @@
 Using custom S3 endpoint: http://localstack:4566
 Downloading uploads/test_user/test_session/test_data.zip from test-upload-bucket using LocalStack
-Completed 256.0 KiB/1.5 MiB (56.2 MiB/s) with 1 file(s) remainingCompleted 512.0 KiB/1.5 MiB (95.1 MiB/s) with 1 file(s) remainingCompleted 768.0 KiB/1.5 MiB (133.2 MiB/s) with 1 file(s) remainingCompleted 1.0 MiB/1.5 MiB (168.0 MiB/s) with 1 file(s) remaining  Completed 1.2 MiB/1.5 MiB (197.4 MiB/s) with 1 file(s) remaining  Completed 1.5 MiB/1.5 MiB (222.3 MiB/s) with 1 file(s) remaining  Completed 1.5 MiB/1.5 MiB (212.9 MiB/s) with 1 file(s) remaining  download: s3://test-upload-bucket/uploads/test_user/test_session/test_data.zip to ./input.zip
+Completed 256.0 KiB/1.5 MiB (42.3 MiB/s) with 1 file(s) remainingCompleted 512.0 KiB/1.5 MiB (76.9 MiB/s) with 1 file(s) remainingCompleted 768.0 KiB/1.5 MiB (108.8 MiB/s) with 1 file(s) remainingCompleted 1.0 MiB/1.5 MiB (138.3 MiB/s) with 1 file(s) remaining  Completed 1.2 MiB/1.5 MiB (163.4 MiB/s) with 1 file(s) remaining  Completed 1.5 MiB/1.5 MiB (183.3 MiB/s) with 1 file(s) remaining  Completed 1.5 MiB/1.5 MiB (177.4 MiB/s) with 1 file(s) remaining  download: s3://test-upload-bucket/uploads/test_user/test_session/test_data.zip to ./input.zip
 Unzipping input file to /app/work/Work/CSV/test_user/test_session
 Archive:  /app/input.zip
   inflating: /app/work/Work/CSV/test_user/test_session/metadata.json  
@@ -79,18 +79,58 @@ Loading EEG_rec dataset ...
 Dataset loading: DONE
 
 SubjID2: 1/1, SessionID2: 1/1, BandID: 3/12
-Looking for Simulink model at: /app/sim_bandpass_singleBand.slx
-Model file found
-Error using eval
-Unrecognized function or variable 'open_system'.
+SubjID2: 1/1, SessionID2: 1/1, BandID: 4/12
+SubjID2: 1/1, SessionID2: 1/1, BandID: 5/12
+SubjID2: 1/1, SessionID2: 1/1, BandID: 6/12
+Saving tr{SubjID2,SessionID2} structure ...
+Saving config structure ...
+Saving autorun structure ...
 
-Error in VA_A10_offlineClass_prep_01 (line 546)
+Running: Finished
 
-Error in TAv2_TrainTest (line 85)
+Elapsed time is 6.415026 seconds.
+Prep plus (EEG):
+
+Loading A10_offlineClass_prep_01 [autorun].mat ...
+Loading A10_offlineClass_prep_01 [config].mat ...
+SubjID2: 1/1, SessionID2: 1/1
+Loading tr{1,1}.mat ...
+Dataset loading: DONE
+
+Saving tr_validMask structure ...
+
+Running: Finished
+
+Prep plus (EEG):
+
+Loading A10_offlineClass_prep_01 [autorun].mat ...
+Loading A10_offlineClass_prep_01 [config].mat ...
+SubjID2: 1/1, SessionID2: 1/1
+Loading tr{1,1}.mat ...
+Saving classTrials{1,1} structure ...
+
+Saving config structure ...
+Saving autorun structure ...
+
+Running: Finished
+
+Elapsed time is 0.801096 seconds.
+TM(0) trainTest: 1/4
+TM(0) trainTest: 2/4
+TM(0) trainTest: 3/4
+TM(0) trainTest: 4/4
+TM(0) DA eval ...
+Copy: Standard-10-20-Cap81.locs ...
+DONE.
+Loading tr{1,1}.mat ...
+Error using load
+Unable to find file or directory '/app/work/Work/TrainTest\Prep plus\EEG\tr{1,1}.mat'.
+
+Error in TAv2_TrainTest (line 361)
 
 Error in T1_proper (line 237)
 
 Error in FBCSP_Training (line 39)
 
-MATLAB:UndefinedFunction
+MATLAB:load:couldNotReadFile
 ERROR: MATLAB execution failed with exit code 249

@@ -33,8 +33,6 @@ COPY ClassifierTraining/output/run_FBCSP_Training.sh ./run_FBCSP_Training.sh
 
 # Copy required data files. Ensure your MATLAB code knows to look for this in the current directory (/app).
 COPY ClassifierTraining/Standard-10-20-Cap81.locs ./Standard-10-20-Cap81.locs
-COPY ClassifierTraining/output/sim_bandpass_singleBand.slx ./sim_bandpass_singleBand.slx
-
 # Copy the main execution script that orchestrates the download and run process.
 COPY download_and_run.sh ./download_and_run.sh
 
