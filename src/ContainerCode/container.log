@@ -1,0 +1,96 @@
+Using custom S3 endpoint: http://localstack:4566
+Downloading uploads/test_user/test_session/test_data.zip from test-upload-bucket using LocalStack
+Completed 256.0 KiB/1.5 MiB (56.2 MiB/s) with 1 file(s) remainingCompleted 512.0 KiB/1.5 MiB (95.1 MiB/s) with 1 file(s) remainingCompleted 768.0 KiB/1.5 MiB (133.2 MiB/s) with 1 file(s) remainingCompleted 1.0 MiB/1.5 MiB (168.0 MiB/s) with 1 file(s) remaining  Completed 1.2 MiB/1.5 MiB (197.4 MiB/s) with 1 file(s) remaining  Completed 1.5 MiB/1.5 MiB (222.3 MiB/s) with 1 file(s) remaining  Completed 1.5 MiB/1.5 MiB (212.9 MiB/s) with 1 file(s) remaining  download: s3://test-upload-bucket/uploads/test_user/test_session/test_data.zip to ./input.zip
+Unzipping input file to /app/work/Work/CSV/test_user/test_session
+Archive:  /app/input.zip
+  inflating: /app/work/Work/CSV/test_user/test_session/metadata.json  
+  inflating: /app/work/Work/CSV/test_user/test_session/data.csv  
+Loading metadata from /app/work/Work/CSV/test_user/test_session/metadata.json
+Set env: EEGChannels : 8
+Set env: TriggerChannels : 1
+Set env: RunClassifier : false
+Set env: Notch : 0
+Set env: DeviceFilter : false
+Set env: Resolution : 0
+Set env: Frequency : 125.0
+Set env: HardwareFilter : true
+Set env: SquareWaveTestMode : false
+Set env: Classifier : null
+Running MATLAB executable
+------------------------------------------
+Setting up environment variables
+---
+LD_LIBRARY_PATH is .:/opt/matlabruntime/R2024b/runtime/glnxa64:/opt/matlabruntime/R2024b/bin/glnxa64:/opt/matlabruntime/R2024b/sys/os/glnxa64:/opt/matlabruntime/R2024b/sys/opengl/lib/glnxa64
+Converting CSV files in: /app/work/Work/CSV
+Output MAT files will be saved in: /app/work/Work/SourceData (EEG_rec)
+JSON converted to MATLAB struct and saved.
+Converting: /app/work/Work/CSV/test_user/test_session/data.csv
+Saved: /app/work/Work/SourceData (EEG_rec)/test_user/test_session/EEG_rec.mat
+Batch CSV-to-MAT conversion complete.
+
+dataDir =
+
+    '/app/work/Work/SourceData (EEG_rec)'
+
+
+chanlocDir =
+
+    '/app/work/Dependents'
+
+
+dir0 =
+
+    '/app/work/Work/SourceData (EEG_rec)'
+
+
+________________________
+
+Processing (#1/1) ...
+
+ans =
+
+    'downsample is off'
+
+    "loading "    "/app/work/Work/SourceData (EEG..."
+
+
+ans =
+
+    'downsample is off'
+
+Prep plus (EEG):
+SubjID2: 1/1, SessionID2: 1/1
+Loading EEG_rec dataset ...
+Dataset loading: DONE
+
+Saving config structure ...
+Saving autorun structure ...
+Saving EEG_validation structure ...
+
+Running: Finished
+
+Prep plus (EEG):
+
+Loading A09_EEG_validation_01 [EEG_validation].mat ...
+At /app/work/Work/TrainTest/Prep plus/EEG/A09_EEG_validation_01 [EEG_validation].mat ...
+Dataset loading: DONE
+
+Loading EEG_rec dataset ...
+Dataset loading: DONE
+
+SubjID2: 1/1, SessionID2: 1/1, BandID: 3/12
+Looking for Simulink model at: /app/sim_bandpass_singleBand.slx
+Model file found
+Error using eval
+Unrecognized function or variable 'open_system'.
+
+Error in VA_A10_offlineClass_prep_01 (line 546)
+
+Error in TAv2_TrainTest (line 85)
+
+Error in T1_proper (line 237)
+
+Error in FBCSP_Training (line 39)
+
+MATLAB:UndefinedFunction
+ERROR: MATLAB execution failed with exit code 249

@@ -198,12 +198,17 @@ for wm_taskID = 1 : size(tr_file_list,2)
         % fprintf([tr_file_list{wm_taskID}, '\',V1_TRANS.f.SourceDataName,' (',num2str(wm_taskID),'/',num2str(size(tr_file_list,2)),') ...\n']);
         fprintf(['\n________________________\n\n']);
         fprintf(['Processing (#',fullfile(num2str(wm_taskID),num2str(size(tr_file_list,2))),') ...\n']);
-        
+        if(exist(fullfile(V1_TRANS.f.chanlocs_dir,V1_TRANS.f.chanlocs_filename), 'file') ~= 2)
+            error('Channel locations file not found in the specified directory: %s', fullfile(V1_TRANS.f.chanlocs_dir,V1_TRANS.f.chanlocs_filename));
+        end
         % copy chanlocs file
         copyfile(fullfile(V1_TRANS.f.chanlocs_dir,V1_TRANS.f.chanlocs_filename), fullfile(V1_TRANS.f.BaseDir,V1_TRANS.f.chanlocs_filename));
         
         %import EEG config
         configFilePath = fullfile(V1_TRANS.f.SourceDataDir, V1_TRANS.tr_subDir_list{wm_taskID}, "EEG_config.mat");
+        if(exist(configFilePath, 'file') ~= 2)
+            error('EEG_config.mat file not found in the specified directory: %s', configFilePath);
+        end
         eegConfig = load(configFilePath);
         
         % EEG_rec dataset tranfer (converted Source data to Work data )

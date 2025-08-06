@@ -27,14 +27,22 @@ This folder contains the **MATLAB-based classifier pipeline** and the **Dockerfi
 
 If you **change** the MATLAB source code (`T1_TA_TM.m` or helpers), you need to **recompile**:
 
-1️⃣ Open MATLAB and navigate to this folder:
+**Option 1: Command Line (Recommended)**
+```bash
+# Navigate to MATLAB source directory
+cd src/matlab
 
+# Compile using MATLAB batch mode
+matlab -batch "compileMatlabCodeLinux"
+```
+
+**Option 2: MATLAB GUI**
+1️⃣ Open MATLAB and navigate to this folder:
 ```matlab
 cd('src/matlab/code/')
 ```
 
 2️⃣ Compile using `mcc`:
-
 ```matlab
 mcc -m FBCSP_Training.m -a ./Standard-10-20-Cap81.locs -d ../ContainerCode/ClassifierTraining/output
 ```
@@ -43,23 +51,6 @@ This will generate:
 - `FBCSP_Training` (executable)
 
 ✅ **Commit these new files** to the repo (`FBCSP_Training`).
-
----
-
-## 🟩 How to Build the Docker Image
-
-1️⃣ Build the Docker image:
-
-```bash
-docker build -t eeg-classifier:latest .
-```
-
-This uses:
-- `Dockerfile` for MATLAB Runtime base image
-- `download_and_run.sh` script for S3 download & execution
-
----
-
 ## 🟩 How to Run the Container Locally
 
 ```bash

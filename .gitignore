@@ -27,3 +27,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 .aws-sam/
+src/matlab/simulinkCompilationTests/logs/
+**/slprj/
+src/matlab/simulinkCompilationTests/test_data/
+src/matlab/simulinkCompilationTests/output_dir
