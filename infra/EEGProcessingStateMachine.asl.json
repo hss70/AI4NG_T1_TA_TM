@@ -141,6 +141,7 @@
                     "ErrorEquals": [
                         "States.ALL"
                     ],
+                    "ResultPath": "$.error",
                     "Next": "RecordFailure"
                 }
             ]
@@ -175,6 +176,7 @@
                     "ErrorEquals": [
                         "States.ALL"
                     ],
+                    "ResultPath": "$.error",
                     "Next": "RecordFailure"
                 }
             ]
@@ -192,12 +194,14 @@
                     "ErrorEquals": [
                         "S3.NotFound"
                     ],
+                    "ResultPath": "$.error",
                     "Next": "RecordFailure"
                 },
                 {
                     "ErrorEquals": [
                         "States.ALL"
                     ],
+                    "ResultPath": "$.error",
                     "Next": "RecordFailure"
                 }
             ]
@@ -229,6 +233,7 @@
                     "ErrorEquals": [
                         "States.ALL"
                     ],
+                    "ResultPath": "$.error",
                     "Next": "RecordFailure"
                 }
             ]
@@ -271,6 +276,7 @@
                     "ErrorEquals": [
                         "States.ALL"
                     ],
+                    "ResultPath": "$.error",
                     "Next": "RecordFailure"
                 }
             ]
