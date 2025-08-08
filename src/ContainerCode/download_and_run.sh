@@ -68,7 +68,7 @@ if [[ $EXIT_CODE -ne 0 ]]; then
 fi
 
 # Generate results path
-RESULTS_PATH="$USER_ID/$SESSION_ID/results"
+RESULTS_PATH="$USER_ID/$SESSION_ID"
 
 # Create manifest file
 MANIFEST="/app/output/manifest.json"
