@@ -16,7 +16,7 @@
 % %     % Load T1 results and result_summary files (if stored yet)
 % %     % ________________________________________________________
 % %     
-% %     w.file.load.path = [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_subDir,'\'];
+% %     w.file.load.path = [V1_TRANS.f.BaseDir,filesep,V1_TRANS.f.T1_subDir,filesep];
 % %     w.file.load.name =w.T1_results_fileName;
 % %     w_dirStruct = dir(w.file.load.path);
 % %     wm2 = 0;
@@ -29,11 +29,11 @@
 % %         
 % %       % Load T1 result and resultTable files
 % %       
-% %       w.file.load.path = [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_subDir,'\'];
+% %       w.file.load.path = [V1_TRANS.f.BaseDir,filesep,V1_TRANS.f.T1_subDir,filesep];
 % %       w.file.load.name =w.T1_results_fileName;
 % %       load([w.file.load.path, w.file.load.name]);
 % %       
-% %       w.file.load.path = [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_subDir,'\'];
+% %       w.file.load.path = [V1_TRANS.f.BaseDir,filesep,V1_TRANS.f.T1_subDir,filesep];
 % %       w.file.load.name =w.T1_result_table_fileName;
 % %       load([w.file.load.path, w.file.load.name]);
 % %       
@@ -54,7 +54,7 @@
     
     T1_results(wm1,1) = result;
     
-    % w.wm = find(ismember(tr_subDir_list{1,wm_taskID},'\')==1);
+    % w.wm = find(ismember(tr_subDir_list{1,wm_taskID},filesep)==1);
     % % w.subjID = tr_subDir_list{1,wm_taskID}(1,1:w.wm-1);
     % w.subjID = tr_subDir_list{1,wm_taskID}(w.wm+1:end);
     % T1_result_table(wm1,1).ssr_code = w.subjID;
@@ -152,7 +152,7 @@ end
         
         % fprintf('Saving VA_TRANS structure ...\n');
         % copy_of_VA_TRANS = VA_TRANS;
-        % w.f.save.path = [VA_TRANS.f.baseDir,'\'];
+        % w.f.save.path = [VA_TRANS.f.baseDir,filesep];
         % w.f.save.name = ['TAv2_TrainTest [VA_TRANS].mat'];
         % save([w.f.save.path,w.f.save.name],'copy_of_VA_TRANS','-v7.3');
         % clear copy_of_VA_TRANS
@@ -169,14 +169,14 @@ end
         end
         if tmp.wm == 1
           fprintf('Saving T1_results ...\n');
-          % w.f.save.path = [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_subDir];
+          % w.f.save.path = [V1_TRANS.f.BaseDir,filesep,V1_TRANS.f.T1_subDir];
           w.f.save.name = w.T1_results_fileName;
           save(fullfile(w.f.save.path,w.f.save.name),'T1_results','-v7.3');
         end
         clearvars tmp
     
         fprintf('Saving T1_result_table ...\n');
-        % w.f.save.path = [V1_TRANS.f.BaseDir,'\',V1_TRANS.f.T1_subDir];
+        % w.f.save.path = [V1_TRANS.f.BaseDir,filesep,V1_TRANS.f.T1_subDir];
         w.f.save.name = w.T1_result_table_fileName;
         save(fullfile(w.f.save.path,w.f.save.name),'T1_result_table','-v7.3');
 

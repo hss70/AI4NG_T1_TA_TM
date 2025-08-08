@@ -5,7 +5,7 @@ set -euo pipefail
 export WORK_DIR="/app/work"
 export HOME_DIR="$WORK_DIR"  # For MATLAB compatibility
 export WORK_PATH="$WORK_DIR/Work"
-export RESULTS_PATH="$WORK_DIR/Results"
+export OUTPUT_DIR="$WORK_DIR/Results"
 
 # Create required directories
 mkdir -p \
@@ -72,7 +72,7 @@ export LD_LIBRARY_PATH="/opt/matlabruntime/R2024b/runtime/glnxa64:/opt/matlabrun
 echo "=== DEBUG: File Paths ==="
 echo "WORK_DIR: $WORK_DIR"
 echo "WORK_PATH: $WORK_PATH"
-echo "RESULTS_PATH: $RESULTS_PATH"
+echo "OUTPUT_DIR: $OUTPUT_DIR"
 echo "Current directory: $(pwd)"
 echo "MATLAB executable: $(ls -la /app/FBCSP_Training 2>/dev/null || echo 'Not found')"
 echo "Dependencies file: $(ls -la /app/Standard-10-20-Cap81.locs 2>/dev/null || echo 'Not found')"
@@ -86,7 +86,7 @@ if [[ -d "/test_data" ]]; then
     EXIT_CODE=0
     # Create dummy result files
     echo "Creating dummy result files"
-    cat > "$WORK_DIR/Results/classifier_output.json" << EOF
+    cat > "$OUTPUT_DIR/classifier_output.json" << EOF
 {
   "classifierType": "FBCSP",
   "channels": $EEGChannels,
@@ -103,8 +103,8 @@ if [[ -d "/test_data" ]]; then
   "timestamp": $(date +%s)
 }
 EOF
-    echo "Test model data" > "$WORK_DIR/Results/model.mat"
-    cat > "$WORK_DIR/Results/metadata_output.json" << EOF
+    echo "Test model data" > "$OUTPUT_DIR/model.mat"
+    cat > "$OUTPUT_DIR/metadata_output.json" << EOF
 {
   "subjectId": "$SubjectID",
   "sessionType": "$SessionType",
@@ -115,7 +115,7 @@ EOF
 }
 EOF
     # Create the specific file that the state machine looks for
-    cat > "$WORK_DIR/Results/FBCSP_online_setup_prep_01 [online].json" << EOF
+    cat > "$OUTPUT_DIR/FBCSP_online_setup_prep_01 [online].json" << EOF
 {
   "classifierName": "FBCSP_online_setup_prep_01",
   "mode": "online",
@@ -161,20 +161,23 @@ echo '  "hasMetadata": true,' >> "$MANIFEST"
 echo '  "metadataFile": "metadata_output.json",' >> "$MANIFEST"
 echo '  "outputFiles": [' >> "$MANIFEST"
 
-# List all output files
+# Copy all files and directories recursively
+cp -r "$OUTPUT_DIR"/* /app/output/ 2>/dev/null || true
+
+# List all output files recursively
 first_file=true
-for file in "$WORK_DIR/Results"/*; do
+while IFS= read -r -d '' file; do
     if [ -f "$file" ]; then
         if [ "$first_file" = false ]; then
             echo ',' >> "$MANIFEST"
         fi
-        filename=$(basename "$file")
-        echo -n '    "'"$filename"'"' >> "$MANIFEST"
-        # Move file to output directory
-        cp "$file" /app/output/
+        # Get relative path from /app/output/
+        relative_path="${file#/app/output/}"
+        echo "Adding to manifest: $relative_path"
+        echo -n '    "'"$relative_path"'"' >> "$MANIFEST"
         first_file=false
     fi
-done
+done < <(find /app/output -type f -print0 2>/dev/null)
 
 echo '' >> "$MANIFEST"
 echo '  ]' >> "$MANIFEST"

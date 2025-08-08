@@ -16,7 +16,7 @@ homeDir = getenv('HOME_DIR');
 
 workDir = fullfile(homeDir, 'Work');
 batchConvertCsvToMat;
-clear; clc;
+clear;
 
 % Get environment variables
 homeDir = getenv('HOME_DIR'); %Work folder
@@ -28,7 +28,6 @@ sampleRate = str2double(getenv('sampleRate'));
 %sampleRate = 125
 downSampleRate = str2double(getenv('downSampleRate'));
 %downSampleRate = sampleRate
-resultsDir = getenv('RESULTS_PATH');
 %resultsDir = fullfile(homeDir,'Results')
 % Validate environment variables
 if isempty(homeDir) || isnan(channelNum) || ...
@@ -37,8 +36,17 @@ if isempty(homeDir) || isnan(channelNum) || ...
 end
 
 T1_proper;
+%clear gets called in T1 so might as well clear here for clarity
+clear;
 
 %T1ResultsDir = GetEnv()
-%outputDir = GetEnv
+%outputDir = GetEnv()
+
+homeDir = getenv('HOME_DIR');
+%homeDir = '/home/hardeep/Dev/AI4NG/AI4NG_T1_TA_TM/TestData'
+% resultsDir = app/work/Work/T1 in container
+resultsDir = fullfile(homeDir, 'Work', 'T1'); 
+%outputDir = app/work/Results in container
+outputDir = getenv('OUTPUT_DIR');
 reorganiseFiles(resultsDir, outputDir);
 %reorganiseFiles('C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work\T1','C:\Dev\AI4NG\AI4NG_T1_TA_TM\TestData\Work\Output');

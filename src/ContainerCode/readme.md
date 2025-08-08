@@ -93,7 +93,7 @@ Alternatively, you can use
 ```bash 
 ./test_with_localstack.sh
 ```
-
+This will build the matlab code and the tests locally in a container
 
 ### Deploy to AWS ECR
 ```bash

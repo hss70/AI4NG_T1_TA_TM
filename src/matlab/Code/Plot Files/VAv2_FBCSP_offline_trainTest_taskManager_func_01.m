@@ -69,15 +69,15 @@ w.parCore = TM.parfor.core;
     % TM setup for FBCSP trainTest
     % ____________________________
     
-    % VA.set.autorun.f.load.path.EEG_validation = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    % VA.set.autorun.f.load.path.offlineClass_classSetup = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
+    % VA.set.autorun.f.load.path.EEG_validation = [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A09_EEG_validation.subDir,filesep,VA_TRANS.f.classSubDir{wm_subDirID},filesep];
+    % VA.set.autorun.f.load.path.offlineClass_classSetup = [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,filesep,VA_TRANS.f.classSubDir{wm_subDirID},filesep];
     if parDir_used1 == 1
       wm_parDir_txt = num2str(perm_ID);
     else
       wm_parDir_txt = '';
     end
-    VA.set.autorun.f.load.path.EEG_validation = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,wm_parDir_txt,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
-    VA.set.autorun.f.load.path.offlineClass_classSetup = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,wm_parDir_txt,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
+    VA.set.autorun.f.load.path.EEG_validation = [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A09_EEG_validation.subDir,wm_parDir_txt,filesep,VA_TRANS.f.classSubDir{wm_subDirID},filesep];
+    VA.set.autorun.f.load.path.offlineClass_classSetup = [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,wm_parDir_txt,filesep,VA_TRANS.f.classSubDir{wm_subDirID},filesep];
     
     TM = func_FBCSP_tt_basis_setup(VA, wm_subDirID, w);
     TM = func_FBCSP_tt_option_setup(VA_TRANS, TM);
@@ -120,8 +120,8 @@ w.parCore = TM.parfor.core;
     
     if perm_ID == 0
       fprintf(['Copy: ',VA_TRANS.f.chanlocs_filename,' ...\n'])
-      % copyfile([VA_TRANS.f.chanlocs_path,'\',VA_TRANS.f.chanlocs_filename], [VA_TRANS.f.baseDir,'\',VA_TRANS.f.chanlocs_filename]);
-      copyfile([VA_TRANS.f.workDir,'\',VA_TRANS.f.chanlocs_filename], [VA_TRANS.f.baseDir,'\',VA_TRANS.f.chanlocs_filename]);
+      % copyfile([VA_TRANS.f.chanlocs_path,filesep,VA_TRANS.f.chanlocs_filename], [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.chanlocs_filename]);
+      copyfile([VA_TRANS.f.workDir,filesep,VA_TRANS.f.chanlocs_filename], [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.chanlocs_filename]);
       fprintf('DONE.\n')
     end
     
@@ -395,7 +395,7 @@ function TM = func_FBCSP_tt_basis_setup(VA, wm_subDirID, w)
     % _______________________________________________
     
     for wm_taskID = 1 : VA.set.FBCSP.tt_option_number
-      autorun.tt.file.save.path.offlineClass_trainTest = [VA.f.baseDir,'\',VA.f.FBCSP_offline_trainTest_taskManager.subDir,'\',VA.f.classSubDir{wm_subDirID},'\A',num2str(subFunc_num2str_2digit(wm_taskID)),'\'];
+      autorun.tt.file.save.path.offlineClass_trainTest = [VA.f.baseDir,filesep,VA.f.FBCSP_offline_trainTest_taskManager.subDir,filesep,VA.f.classSubDir{wm_subDirID},filesep,'A',num2str(subFunc_num2str_2digit(wm_taskID)),filesep];
       if ~isdir(autorun.tt.file.save.path.offlineClass_trainTest)
         mkdir(autorun.tt.file.save.path.offlineClass_trainTest);
       end
@@ -435,7 +435,7 @@ for wm_taskID = 1 : size(TM.taskParam,1)
       
       TM.taskParam{wm_taskID,1}.c.eval.w.file.save.autosave = TM.taskParam{wm_taskID,1}.autorun.tt.file.save.autosave;
       w.file_path = TM.taskParam{wm_taskID,1}.autorun.tt.file.save.path.offlineClass_trainTest;
-      w.file_path2 = [TM.taskParam{wm_taskID,1}.c.eval.w.file.save.subDirName,'\'];
+      w.file_path2 = [TM.taskParam{wm_taskID,1}.c.eval.w.file.save.subDirName,filesep];
       if isdir([w.file_path,w.file_path2])
           TM.taskParam{wm_taskID,1}.c.eval.w.file.save.path = [w.file_path,w.file_path2];
       else
@@ -548,7 +548,7 @@ subplot(2,2,4); shadedErrorBar([], mean(plotDataSmooth{wm_taskID},1)*100, std(pl
 % %   basis.testFoldNumber = wm_folds;
 % %   wm_subjID2 = 1;
 % %   wm_sessionID2 = 1;
-% %   w.f.load.path = [func_in1.f.baseDir,'\',func_in1.f.A10_offlineClass_prep.subDir,'\',func_in1.f.classSubDir{func_in1.wm_subDirID},'\'];
+% %   w.f.load.path = [func_in1.f.baseDir,filesep,func_in1.f.A10_offlineClass_prep.subDir,filesep,func_in1.f.classSubDir{func_in1.wm_subDirID},filesep];
 % %   w.f.load.name = ['tr{',num2str(wm_subjID2),',',num2str(wm_sessionID2),'}.mat'];
 % %   fprintf(['Loading ',w.f.load.name,' ...\n']);
 % %   load([w.f.load.path,w.f.load.name]);

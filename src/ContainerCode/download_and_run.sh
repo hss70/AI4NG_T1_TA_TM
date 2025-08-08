@@ -5,7 +5,7 @@ set -euo pipefail
 export WORK_DIR="/app/work"
 export HOME_DIR="$WORK_DIR"  # For MATLAB compatibility
 export WORK_PATH="$WORK_DIR/Work"
-export RESULTS_PATH="$WORK_DIR/Results"
+export OUTPUT_DIR="$WORK_DIR/Results"
 
 # Create required directories
 mkdir -p \
@@ -82,20 +82,23 @@ echo '  "resultsPath": "'"$RESULTS_PATH"'",' >> "$MANIFEST"
 echo '  "exitCode": '"$EXIT_CODE"',' >> "$MANIFEST"
 echo '  "outputFiles": [' >> "$MANIFEST"
 
-# List all output files
+# Copy all files and directories recursively
+cp -r "$OUTPUT_DIR"/* /app/output/ 2>/dev/null || true
+
+# List all output files recursively
 first_file=true
-for file in "$WORK_DIR/Results"/*; do
+while IFS= read -r -d '' file; do
     if [ -f "$file" ]; then
         if [ "$first_file" = false ]; then
             echo ',' >> "$MANIFEST"
         fi
-        filename=$(basename "$file")
-        echo -n '    "'"$filename"'"' >> "$MANIFEST"
-        # Move file to output directory
-        mv "$file" /app/output/
+        # Get relative path from /app/output/
+        relative_path="${file#/app/output/}"
+        echo "Adding to manifest: $relative_path"
+        echo -n '    "'"$relative_path"'"' >> "$MANIFEST"
         first_file=false
     fi
-done
+done < <(find /app/output -type f -print0 2>/dev/null)
 
 echo '' >> "$MANIFEST"
 echo '  ]' >> "$MANIFEST"

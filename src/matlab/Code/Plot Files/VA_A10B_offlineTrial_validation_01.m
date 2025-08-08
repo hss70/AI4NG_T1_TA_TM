@@ -224,9 +224,9 @@ for autorun_subjID2 = TRANS.autorun.prep.prep.used.subjects
         % fprintf('\n');
 
         % EEG record
-        % w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj 0',num2str(autorun_subjID2),'\Session 0',num2str(autorun_sessionID2),'\01 Rec\'];
-        % w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),'\01 Rec\'];
-        w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),'\',VA.f.classSubDir{VA.w.wm_subDirID},'\'];
+        % w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj 0',num2str(autorun_subjID2),filesep,'Session 0',num2str(autorun_sessionID2),filesep,'01 Rec\'];
+        % w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2),filesep,'Session ',subFunc_num2str_2digit(autorun_sessionID2),filesep,'01 Rec\'];
+        w.file.load.path = [autorun.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2),filesep,'Session ',subFunc_num2str_2digit(autorun_sessionID2),filesep,VA.f.classSubDir{VA.w.wm_subDirID},filesep];
         fprintf(['Loading EEG_rec dataset ...\n']);
         w.file.load.name = autorun.file.load.nameBasis.EEG_rec_fileName;
         load([w.file.load.path,w.file.load.name]);

@@ -52,7 +52,7 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
     % allChValid or not
     VA.set.w.switch.ch.allValid = 1;    % =1: all EEG ch valid, =0: EEG ch validation will be called 
     
-    % VA.set.autorun.f.load.path = [VA_TRANS.f.dataDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
+    % VA.set.autorun.f.load.path = [VA_TRANS.f.dataDir,filesep,VA_TRANS.f.classSubDir{wm_subDirID},filesep];
     VA.set.autorun.f.load.path = [VA_TRANS.f.dataDir, filesep]; VA.w.wm_subDirID = wm_subDirID;
     VA.set.autorun.f.save.path = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A09_EEG_validation.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
     if ~isfolder(VA.set.autorun.f.save.path)
@@ -73,7 +73,7 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
     VA = VA_TRANS;
     fprintf([VA_TRANS.f.A10_offlineClass_prep.subDir,' (',VA_TRANS.f.classSubDir{wm_subDirID},'):\n\n']);
     
-    % VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
+    % VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir,filesep,VA_TRANS.f.classSubDir{wm_subDirID},filesep];
     VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir, filesep]; VA.w.wm_subDirID = wm_subDirID;
     VA.set.autorun.f.load.path.validation = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A09_EEG_validation.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
     VA.set.autorun.f.save.path = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A10_offlineClass_prep.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
@@ -95,7 +95,7 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
     VA = VA_TRANS;
     fprintf([VA_TRANS.f.A10B_offlineTrial_validation.subDir,' (',VA_TRANS.f.classSubDir{wm_subDirID},'):\n\n']);
     
-    % VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
+    % VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir,filesep,VA_TRANS.f.classSubDir{wm_subDirID},filesep];
     VA.set.autorun.f.load.path.EEG_rec = [VA_TRANS.f.dataDir, filesep]; VA.w.wm_subDirID = wm_subDirID;
     VA.set.autorun.f.load.path.EEG_validation = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A09_EEG_validation.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
     VA.set.autorun.f.load.path.offlineClass_prep = fullfile(VA_TRANS.f.baseDir, VA_TRANS.f.A10_offlineClass_prep.subDir, VA_TRANS.f.classSubDir{wm_subDirID}, filesep);
@@ -248,24 +248,24 @@ end
      % spmd
      %   perm_ID = labindex-1;
      for perm_ID = 0 : VA_TRANS.c.eval.permut_number
-       if isdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID)])
-         rmdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID)],'s');
+       if isdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID)])
+         rmdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID)],'s');
        end
-       if isdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)])
-         rmdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)],'s');
+       if isdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)])
+         rmdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)],'s');
        end
-       mkdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID),'\',VA_TRANS.f.classSubDir{1}])
-       copyfile([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,'\',VA_TRANS.f.classSubDir{1},'\A09_EEG_validation_01 [EEG_validation].mat'], ...
-                [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID),'\',VA_TRANS.f.classSubDir{1},'\A09_EEG_validation_01 [EEG_validation].mat']);
-       if ~isdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)])
-         mkdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID),'\',VA_TRANS.f.classSubDir{1}])
+       mkdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID),filesep,VA_TRANS.f.classSubDir{1}])
+       copyfile([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A09_EEG_validation.subDir,filesep,VA_TRANS.f.classSubDir{1},filesep,'A09_EEG_validation_01 [EEG_validation].mat'], ...
+                [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID),filesep,VA_TRANS.f.classSubDir{1},filesep,'A09_EEG_validation_01 [EEG_validation].mat']);
+       if ~isdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)])
+         mkdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID),filesep,VA_TRANS.f.classSubDir{1}])
        end
-       copyfile([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,'\',VA_TRANS.f.classSubDir{1},'\A11_offlineClass_classSetup_01 [autorun].mat'], ...
-                [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID),'\',VA_TRANS.f.classSubDir{1},'\A11_offlineClass_classSetup_01 [autorun].mat']);
-       copyfile([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,'\',VA_TRANS.f.classSubDir{1},'\A11_offlineClass_classSetup_01 [config].mat'], ...
-                [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID),'\',VA_TRANS.f.classSubDir{1},'\A11_offlineClass_classSetup_01 [config].mat']);
-       copyfile([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,'\',VA_TRANS.f.classSubDir{1},'\classTrials{1,1}.mat'], ...
-                [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID),'\',VA_TRANS.f.classSubDir{1},'\classTrials{1,1}.mat']);
+       copyfile([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,filesep,VA_TRANS.f.classSubDir{1},filesep,'A11_offlineClass_classSetup_01 [autorun].mat'], ...
+                [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID),filesep,VA_TRANS.f.classSubDir{1},filesep,'A11_offlineClass_classSetup_01 [autorun].mat']);
+       copyfile([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,filesep,VA_TRANS.f.classSubDir{1},filesep,'A11_offlineClass_classSetup_01 [config].mat'], ...
+                [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID),filesep,VA_TRANS.f.classSubDir{1},filesep,'A11_offlineClass_classSetup_01 [config].mat']);
+       copyfile([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,filesep,VA_TRANS.f.classSubDir{1},filesep,'classTrials{1,1}.mat'], ...
+                [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID),filesep,VA_TRANS.f.classSubDir{1},filesep,'classTrials{1,1}.mat']);
      end
      % spmd
      %   perm_ID = labindex-1;
@@ -293,9 +293,9 @@ end
      % spmd
      %   perm_ID = labindex-1;
      for perm_ID = 0 : VA_TRANS.c.eval.permut_number
-       rmdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID)],'s');
-       if isdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)])
-         rmdir([VA_TRANS.f.baseDir,'\',VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)],'s');
+       rmdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A09_EEG_validation.subDir,num2str(perm_ID)],'s');
+       if isdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)])
+         rmdir([VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A11_offlineClass_classSetup.subDir,num2str(perm_ID)],'s');
        end
      end
     end
@@ -355,9 +355,9 @@ for wm_subDirID = 1 : size(VA_TRANS.f.classSubDir,2)
   result.orig.basis.testFoldNumber = wm_folds;
   wm_subjID2 = 1;
   wm_sessionID2 = 1;
-  w.f.load.path = [VA_TRANS.f.baseDir,'\',VA_TRANS.f.A10_offlineClass_prep.subDir,'\',VA_TRANS.f.classSubDir{wm_subDirID},'\'];
+  w.f.load.path = [VA_TRANS.f.baseDir,filesep,VA_TRANS.f.A10_offlineClass_prep.subDir,filesep,VA_TRANS.f.classSubDir{wm_subDirID},filesep];
   w.f.load.name = ['tr{',num2str(wm_subjID2),',',num2str(wm_sessionID2),'}.mat'];
-  fprintf(['Loading ',w.f.load.name,' ...\n']);
+  fprintf(['Loading ', w.f.load.path ,w.f.load.name,' ...\n']);
   load([w.f.load.path,w.f.load.name]);
   tr{wm_subjID2,wm_sessionID2} = copy_of_tr{wm_subjID2,wm_sessionID2};
   clear copy_of_tr
@@ -377,12 +377,12 @@ end
     % Copy optimal Axx directory (including optimal wo_matrix +)
     % __________________________________________________________
     
-    % wm1 = [VA_TRANS.f.baseDir,'\+ FBCSP0\',VA_TRANS.f.classSubDir{1},'\A',subFunc_num2str_2digit(result.orig{1, 1}.opt_tt.optionID),'\'];
-    wm1 = [VA_TRANS.f.baseDir,'\+ FBCSP0\',VA_TRANS.f.classSubDir{1},'\A',subFunc_num2str_2digit(result.orig.opt_tt.optionID),'\'];
+    % wm1 = [VA_TRANS.f.baseDir,filesep,'+ FBCSP0\',VA_TRANS.f.classSubDir{1},filesep,'A',subFunc_num2str_2digit(result.orig{1, 1}.opt_tt.optionID),filesep];
+    wm1 = [VA_TRANS.f.baseDir,filesep,'+ FBCSP0',filesep,VA_TRANS.f.classSubDir{1},filesep,'A',subFunc_num2str_2digit(result.orig.opt_tt.optionID),filesep];
 
     wm_save_subDir = '- opt FBCSP';
     mkdir(VA_TRANS.f.baseDir, wm_save_subDir);
-    wm2 = [VA_TRANS.f.baseDir,'\',wm_save_subDir,'\'];
+    wm2 = [VA_TRANS.f.baseDir,filesep,wm_save_subDir,filesep];
     
     copyfile([wm1,'*.*'],wm2);
     
@@ -519,9 +519,9 @@ end
       % TM.taskParam{wm_taskID,1}.c.eval.w.file.load_chanlocs.path = TM.taskParam{wm_taskID,1}.autorun.tt.file.save.path.offlineClass_trainTest;
       FUNC_IN.w.file.load.autoload = 1;
       FUNC_IN.w.file.load.path = ...
-          [VA_TRANS.f.baseDir,'\+ FBCSP0\',VA_TRANS.f.classSubDir{1},'\A',subFunc_num2str_2digit(result.orig.opt_tt.optionID),'\'];
+          [VA_TRANS.f.baseDir,filesep,'+ FBCSP0',filesep,VA_TRANS.f.classSubDir{1},filesep,'A',subFunc_num2str_2digit(result.orig.opt_tt.optionID),filesep];
       FUNC_IN.w.file.load.nameBasis1 = 'FBCSP_offline_trainTest_01';
-      FUNC_IN.w.file.load_chanlocs.path = [VA_TRANS.f.baseDir,'\'];
+      FUNC_IN.w.file.load_chanlocs.path = [VA_TRANS.f.baseDir,filesep];
       FUNC_IN.w.file.load_chanlocs.name = VA_TRANS.f.chanlocs_filename;    % 'Standard-10-20-Cap81.locs'  
       
       FUNC_IN.w.file.save.autosave = 1;
@@ -637,7 +637,7 @@ end
 % % % % % % % %     % _______________________________________________
 % % % % % % % %     
 % % % % % % % %     for wm_taskID = 1 : VA.set.FBCSP.tt_option_number
-% % % % % % % %       autorun.tt.file.save.path.offlineClass_trainTest = [VA.f.baseDir,'\',VA.f.FBCSP_offline_trainTest_taskManager.subDir,'\',VA.f.classSubDir{wm_subDirID},'\A',num2str(subFunc_num2str_2digit(wm_taskID)),'\'];
+% % % % % % % %       autorun.tt.file.save.path.offlineClass_trainTest = [VA.f.baseDir,filesep,VA.f.FBCSP_offline_trainTest_taskManager.subDir,filesep,VA.f.classSubDir{wm_subDirID},filesep,'A',num2str(subFunc_num2str_2digit(wm_taskID)),filesep];
 % % % % % % % %       if ~isdir(autorun.tt.file.save.path.offlineClass_trainTest)
 % % % % % % % %         mkdir(autorun.tt.file.save.path.offlineClass_trainTest);
 % % % % % % % %       end
@@ -684,23 +684,23 @@ end
     
         % fprintf('Saving VA_TRANS structure ...\n');
         % copy_of_VA_TRANS = VA_TRANS;
-        % w.f.save.path = [VA_TRANS.f.baseDir,'\'];
+        % w.f.save.path = [VA_TRANS.f.baseDir,filesep];
         % w.f.save.name = ['TAv2_TrainTest [VA_TRANS].mat'];
         % save([w.f.save.path,w.f.save.name],'copy_of_VA_TRANS','-v7.3');
         % clear copy_of_VA_TRANS
         fprintf('Saving VA_TRANS structure ...\n');
-        w.f.save.path = [VA_TRANS.f.baseDir,'\'];
+        w.f.save.path = [VA_TRANS.f.baseDir,filesep];
         w.f.save.name = ['TAv2_TrainTest [VA_TRANS].mat'];
         save([w.f.save.path,w.f.save.name],'VA_TRANS','-v7.3');
     
         % fprintf('Saving result structure ...\n');
         % copy_of_result = result;
-        % w.f.save.path = [VA_TRANS.f.baseDir,'\'];
+        % w.f.save.path = [VA_TRANS.f.baseDir,filesep];
         % w.f.save.name = ['TAv2_TrainTest [result].mat'];
         % save([w.f.save.path,w.f.save.name],'copy_of_result','-v7.3');
         % clear copy_of_result
         fprintf('Saving result structure ...\n');
-        w.f.save.path = [VA_TRANS.f.baseDir,'\'];
+        w.f.save.path = [VA_TRANS.f.baseDir,filesep];
         w.f.save.name = ['TAv2_TrainTest [result].mat'];
         save([w.f.save.path,w.f.save.name],'result','-v7.3');
     

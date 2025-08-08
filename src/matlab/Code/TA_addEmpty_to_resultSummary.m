@@ -92,7 +92,7 @@ if ~isfolder(w.f.save.dir)
     mkdir(w.f.save.dir)
 end
 
-%w.f.save.path = [w.f.save.dir, '\'];
+%w.f.save.path = [w.f.save.dir, filesep];
 
 % Save files
 % ________________________
