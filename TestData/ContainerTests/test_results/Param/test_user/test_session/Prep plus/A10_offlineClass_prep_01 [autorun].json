@@ -1,0 +1,30 @@
+{
+  "copy_of_autorun": {
+    "prep": {
+      "used": {
+        "subjects": 1,
+        "sessions": 1
+      },
+      "file": {
+        "load": {
+          "autoload": 1,
+          "path": {
+            "EEG_rec": "/app/work/Work/TMP Data/",
+            "validation": "/app/work/Work/TrainTest/Prep plus/EEG/"
+          },
+          "nameBasis": {
+            "EEG_rec_fileName": "EEG_rec.mat",
+            "EEG_validation_fileName": "A09_EEG_validation_01"
+          }
+        },
+        "save": {
+          "autosave": 1,
+          "path": "/app/work/Work/TrainTest/Prep plus/EEG/",
+          "nameBasis": {
+            "A10_offlineClass_prep": "A10_offlineClass_prep_01"
+          }
+        }
+      }
+    }
+  }
+}

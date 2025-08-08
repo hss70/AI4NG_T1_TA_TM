@@ -1,0 +1,339 @@
+{
+  "copy_of_c": {
+    "tt": {
+      "session": {
+        "use_allSessionsTogether": 0
+      },
+      "cf": {
+        "p": {
+          "winSize": {
+            "ms": 1000,
+            "samp": 125
+          },
+          "winStep": {
+            "ms": 40,
+            "samp": 5
+          },
+          "use_multiClass_cf_onlyIf_numberOfClassesMoreThanTwo": 1,
+          "CSP": {
+            "method_CSP1_TRCSP2": 1
+          },
+          "CF": {
+            "method": {
+              "trainMethod": "RLDA",
+              "toolbox": "RCSPToolbox"
+            }
+          }
+        },
+        "p_options": {
+          "CSP": {
+            "selectedFilterPairNumber": 3
+          },
+          "MI": {
+            "quantization_level": 3,
+            "out_featureNumberPerClass": 10
+          }
+        }
+      },
+      "folds": {
+        "outerFoldNumber": 6,
+        "innerFoldNumber": 5,
+        "innerTrialOrder_original1_random2": 2,
+        "inner_merged_testFoldNumber": 1
+      },
+      "smoothDistance": {
+        "multiClass_innerFold_test_DA": 0,
+        "multiClass_innerFold_test_DA_average": 2,
+        "multiClass_outerFold_test_DA": 0,
+        "multiClass_outerFold_test_DA_average": 2
+      },
+      "sr": 125
+    },
+    "eval": {
+      "SW": {
+        "eval_used": 1,
+        "figures_visible": "off",
+        "plot_shaded_DA": 1,
+        "plot_paramEval": 0,
+        "plot_freqEval_v1": 0,
+        "plot_freqEval_v2": 0,
+        "plot_freqEval_v3": 0,
+        "plot_topoplot_CSPMI": 0,
+        "plot_freqEval_v4": 0,
+        "plot_topoplot_ERDS": 0
+      },
+      "w": {
+        "file": {
+          "save": {
+            "subDirName": "Fig"
+          },
+          "load_chanlocs": {
+            "name": "Standard-10-20-Cap81.locs"
+          }
+        }
+      },
+      "PLOT": {
+        "w": {
+          "ylim": [
+            0,
+            100
+          ],
+          "averagedSubjSession_ylim": [
+            0,
+            100
+          ],
+          "DA": {
+            "averagePlotStd_crossFoldOnly": [
+              1,
+              0
+            ]
+          },
+          "freqMap": {
+            "common": {
+              "colorLimitMax_fix1_auto2": 2
+            }
+          },
+          "topoplot": {
+            "common": {
+              "colorLimitMax_fix1_auto2": 2,
+              "colorLimitMax_sameAutoForRestAndTask": 1,
+              "SW": {
+                "conv": "on"
+              },
+              "wtIDs_restTaskSetup_fix1_auto2": 2,
+              "endOfRestWindow_ms": -1000,
+              "minTaskDA_usedTopoplotCalc_subj_session": 0
+            },
+            "CSP_MI": {
+              "used_CSPFilterPairPart": 0,
+              "plotted_rest1_task2": [
+                1,
+                2,
+                0
+              ]
+            }
+          }
+        }
+      }
+    },
+    "classSetup": {
+      "class": {
+        "classDescription": [
+          "T1",
+          "T2"
+        ],
+        "targetIDs_linkedTo_classID": [
+          1,
+          2
+        ]
+      },
+      "band": {
+        "usedIDs": [
+          3,
+          4,
+          5,
+          6
+        ]
+      }
+    },
+    "prep": {
+      "EEG": {
+        "import": {
+          "chNumber": 8,
+          "trigCh": 9,
+          "chIDs": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        "rec": {
+          "ch": {
+            "name": [
+              "C3",
+              "CZ",
+              "C4",
+              "P3",
+              "O1",
+              "P7",
+              "OZ",
+              "PZ"
+            ],
+            "ID": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          "sr": 125
+        },
+        "used": {
+          "ch": {
+            "name": [
+              "C3",
+              "CZ",
+              "C4",
+              "P3",
+              "O1",
+              "P7",
+              "OZ",
+              "PZ"
+            ]
+          }
+        },
+        "dummy": {
+          "ch": {
+            "name": [
+              "F3",
+              "FZ",
+              "F4",
+              "P3",
+              "PZ",
+              "P4",
+              "T7",
+              "T8"
+            ]
+          }
+        },
+        "filt": {
+          "refFilt": {
+            "usedMethod": {
+              "non0_CAR1_Laplace2": 0
+            }
+          },
+          "bandFilt": {
+            "usedFeature_bandpass1_bandpower2": 1
+          },
+          "bandPass": {
+            "band_pass_dB": 1,
+            "band_stop_dB": 60,
+            "band": [
+              {
+                "low1": 0.01,
+                "low2": 0.5,
+                "high1": 4,
+                "high2": 8
+              },
+              {
+                "low1": 2,
+                "low2": 4,
+                "high1": 8,
+                "high2": 14
+              },
+              {
+                "low1": 4,
+                "low2": 8,
+                "high1": 12,
+                "high2": 18
+              },
+              {
+                "low1": 6,
+                "low2": 12,
+                "high1": 18,
+                "high2": 26
+              },
+              {
+                "low1": 12,
+                "low2": 18,
+                "high1": 28,
+                "high2": 36
+              },
+              {
+                "low1": 22,
+                "low2": 28,
+                "high1": 40,
+                "high2": 48
+              },
+              {
+                "low1": [],
+                "low2": [],
+                "high1": [],
+                "high2": []
+              },
+              {
+                "low1": [],
+                "low2": [],
+                "high1": [],
+                "high2": []
+              },
+              {
+                "low1": [],
+                "low2": [],
+                "high1": [],
+                "high2": []
+              },
+              {
+                "low1": [],
+                "low2": [],
+                "high1": [],
+                "high2": []
+              },
+              {
+                "low1": 0.01,
+                "low2": 0.5,
+                "high1": 2,
+                "high2": 6
+              },
+              {
+                "low1": 0.5,
+                "low2": 2,
+                "high1": 4,
+                "high2": 8
+              }
+            ]
+          }
+        },
+        "norm": {
+          "notUsed0_identificBaseline1_globalBaseline2": 0
+        },
+        "downsamp": {
+          "sr": 125
+        }
+      },
+      "trial": {
+        "trig_PRE_ms": -3000,
+        "trig_PST_ms": 7000,
+        "eval": {
+          "smoothDistance_ms": 100,
+          "ref_interval_ms": [
+            -1000,
+            0
+          ],
+          "task_interval_ms": [
+            400,
+            7000
+          ]
+        }
+      },
+      "experiment": {
+        "target": {
+          "IDs": [
+            1,
+            2
+          ],
+          "name": [
+            "T1",
+            "T2"
+          ],
+          "number": 2
+        },
+        "run": {
+          "number": 1
+        },
+        "block": {
+          "number": 1
+        }
+      }
+    }
+  }
+}

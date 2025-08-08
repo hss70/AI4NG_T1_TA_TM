@@ -1,0 +1,223 @@
+{
+  "copy_of_c": {
+    "prep": {
+      "EEG": {
+        "import": {
+          "chNumber": 8,
+          "trigCh": 9,
+          "chIDs": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        "rec": {
+          "ch": {
+            "name": [
+              "C3",
+              "CZ",
+              "C4",
+              "P3",
+              "O1",
+              "P7",
+              "OZ",
+              "PZ"
+            ],
+            "ID": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          "sr": 125
+        },
+        "used": {
+          "ch": {
+            "name": [
+              "C3",
+              "CZ",
+              "C4",
+              "P3",
+              "O1",
+              "P7",
+              "OZ",
+              "PZ"
+            ]
+          }
+        },
+        "dummy": {
+          "ch": {
+            "name": [
+              "F3",
+              "FZ",
+              "F4",
+              "P3",
+              "PZ",
+              "P4",
+              "T7",
+              "T8"
+            ]
+          }
+        },
+        "filt": {
+          "refFilt": {
+            "usedMethod": {
+              "non0_CAR1_Laplace2": 0
+            }
+          },
+          "bandFilt": {
+            "usedFeature_bandpass1_bandpower2": 1
+          },
+          "bandPass": {
+            "band_pass_dB": 1,
+            "band_stop_dB": 60,
+            "band": [
+              {
+                "low1": 0.01,
+                "low2": 0.5,
+                "high1": 4,
+                "high2": 8
+              },
+              {
+                "low1": 2,
+                "low2": 4,
+                "high1": 8,
+                "high2": 14
+              },
+              {
+                "low1": 4,
+                "low2": 8,
+                "high1": 12,
+                "high2": 18
+              },
+              {
+                "low1": 6,
+                "low2": 12,
+                "high1": 18,
+                "high2": 26
+              },
+              {
+                "low1": 12,
+                "low2": 18,
+                "high1": 28,
+                "high2": 36
+              },
+              {
+                "low1": 22,
+                "low2": 28,
+                "high1": 40,
+                "high2": 48
+              },
+              {
+                "low1": [],
+                "low2": [],
+                "high1": [],
+                "high2": []
+              },
+              {
+                "low1": [],
+                "low2": [],
+                "high1": [],
+                "high2": []
+              },
+              {
+                "low1": [],
+                "low2": [],
+                "high1": [],
+                "high2": []
+              },
+              {
+                "low1": [],
+                "low2": [],
+                "high1": [],
+                "high2": []
+              },
+              {
+                "low1": 0.01,
+                "low2": 0.5,
+                "high1": 2,
+                "high2": 6
+              },
+              {
+                "low1": 0.5,
+                "low2": 2,
+                "high1": 4,
+                "high2": 8
+              }
+            ]
+          }
+        },
+        "norm": {
+          "notUsed0_identificBaseline1_globalBaseline2": 0
+        },
+        "downsamp": {
+          "sr": 125
+        }
+      },
+      "trial": {
+        "trig_PRE_ms": -3000,
+        "trig_PST_ms": 7000,
+        "eval": {
+          "smoothDistance_ms": 100,
+          "ref_interval_ms": [
+            -1000,
+            0
+          ],
+          "task_interval_ms": [
+            400,
+            7000
+          ]
+        }
+      },
+      "experiment": {
+        "target": {
+          "IDs": [
+            1,
+            2
+          ],
+          "name": [
+            "T1",
+            "T2"
+          ],
+          "number": 2
+        },
+        "run": {
+          "number": 1
+        },
+        "block": {
+          "number": 1
+        }
+      }
+    },
+    "classSetup": {
+      "class": {
+        "classDescription": [
+          "T1",
+          "T2"
+        ],
+        "targetIDs_linkedTo_classID": [
+          1,
+          2
+        ]
+      },
+      "band": {
+        "usedIDs": [
+          3,
+          4,
+          5,
+          6
+        ]
+      }
+    }
+  }
+}

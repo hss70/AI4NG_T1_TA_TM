@@ -1,0 +1,236 @@
+{
+  "VA_TRANS": {
+    "SW_T1_maxTrainTestTry": 0,
+    "subjID_text": "test_session",
+    "T1_tryCounter": 1,
+    "SW": true,
+    "SW_print_trainTest_details": 0,
+    "SW_close_figures": 1,
+    "c": {
+      "eval": {
+        "permut_number": 0,
+        "permut_number_min": 0
+      },
+      "classSetup": {
+        "band": {
+          "usedIDs": [
+            3,
+            4,
+            5,
+            6
+          ]
+        }
+      },
+      "prep": {
+        "EEG": {
+          "rec": {
+            "sr": 125,
+            "ch": {
+              "name": [
+                "C3",
+                "CZ",
+                "C4",
+                "P3",
+                "O1",
+                "P7",
+                "OZ",
+                "PZ"
+              ]
+            }
+          },
+          "downsamp": {
+            "sr": 125
+          },
+          "import": {
+            "chNumber": 8,
+            "trigCh": 9,
+            "chIDs": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          },
+          "used": {
+            "ch": {
+              "name": [
+                "C3",
+                "CZ",
+                "C4",
+                "P3",
+                "O1",
+                "P7",
+                "OZ",
+                "PZ"
+              ]
+            }
+          },
+          "dummy": {
+            "ch": {
+              "name": [
+                "F3",
+                "FZ",
+                "F4",
+                "P3",
+                "PZ",
+                "P4",
+                "T7",
+                "T8"
+              ]
+            }
+          },
+          "filt": {
+            "refFilt": {
+              "usedMethod": {
+                "non0_CAR1_Laplace2": 0
+              }
+            },
+            "bandFilt": {
+              "usedFeature_bandpass1_bandpower2": 1
+            },
+            "bandPass": {
+              "band_pass_dB": 1,
+              "band_stop_dB": 60,
+              "band": [
+                {
+                  "low1": 0.01,
+                  "low2": 0.5,
+                  "high1": 4,
+                  "high2": 8
+                },
+                {
+                  "low1": 2,
+                  "low2": 4,
+                  "high1": 8,
+                  "high2": 14
+                },
+                {
+                  "low1": 4,
+                  "low2": 8,
+                  "high1": 12,
+                  "high2": 18
+                },
+                {
+                  "low1": 6,
+                  "low2": 12,
+                  "high1": 18,
+                  "high2": 26
+                },
+                {
+                  "low1": 12,
+                  "low2": 18,
+                  "high1": 28,
+                  "high2": 36
+                },
+                {
+                  "low1": 22,
+                  "low2": 28,
+                  "high1": 40,
+                  "high2": 48
+                },
+                {
+                  "low1": [],
+                  "low2": [],
+                  "high1": [],
+                  "high2": []
+                },
+                {
+                  "low1": [],
+                  "low2": [],
+                  "high1": [],
+                  "high2": []
+                },
+                {
+                  "low1": [],
+                  "low2": [],
+                  "high1": [],
+                  "high2": []
+                },
+                {
+                  "low1": [],
+                  "low2": [],
+                  "high1": [],
+                  "high2": []
+                },
+                {
+                  "low1": 0.01,
+                  "low2": 0.5,
+                  "high1": 2,
+                  "high2": 6
+                },
+                {
+                  "low1": 0.5,
+                  "low2": 2,
+                  "high1": 4,
+                  "high2": 8
+                }
+              ]
+            }
+          }
+        },
+        "trial": {
+          "trig_PRE_ms": -3000,
+          "trig_PST_ms": 7000,
+          "eval": {
+            "smoothDistance_ms": 100,
+            "ref_interval_ms": [
+              -1000,
+              0
+            ],
+            "task_interval_ms": [
+              400,
+              7000
+            ]
+          }
+        }
+      }
+    },
+    "f": {
+      "workDir": "/app/work/Work",
+      "dataDir": "/app/work/Work/TMP Data",
+      "baseDir": "/app/work/Work/TrainTest",
+      "classSubDir": [
+        "EEG"
+      ],
+      "SW": {
+        "task_vs_relax_CP_used": 0
+      },
+      "A09_EEG_validation": {
+        "subDir": "Prep plus"
+      },
+      "A10_offlineClass_prep": {
+        "subDir": "Prep plus"
+      },
+      "A10B_offlineTrial_validation": {
+        "subDir": "Prep plus"
+      },
+      "A11_offlineClass_classSetup": {
+        "subDir": "Prep plus"
+      },
+      "FBCSP_offline_trainTest_taskManager": {
+        "subDir": "+ FBCSP"
+      },
+      "chanlocs_dir": "/app/work/Work/TrainTest",
+      "chanlocs_filename": "Standard-10-20-Cap81.locs"
+    },
+    "autorun": {
+      "used": {
+        "subjects": 1,
+        "sessions": 1
+      }
+    },
+    "set": {
+      "w": {
+        "switch": {
+          "tr": {
+            "allValid": 1
+          }
+        }
+      }
+    }
+  }
+}

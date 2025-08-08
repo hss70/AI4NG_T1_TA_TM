@@ -1,0 +1,51 @@
+{
+  "T1_result_table": {
+    "ssr_code": "test_session",
+    "classes": 2,
+    "CVfolds": 6,
+    "allTrials": 60,
+    "trPerClass": [
+      30,
+      30
+    ],
+    "testTrials": 10,
+    "testTrPerClass": [
+      5,
+      5
+    ],
+    "trainTrials": 50,
+    "trainTrPerClass": [
+      25,
+      25
+    ],
+    "cfWin_ms": 1000,
+    "cfStep_ms": 40,
+    "smoothWidth_ms": 200,
+    "opt_tt_ID": 4,
+    "trigPoint_ms": 3000,
+    "refInterval_ms": [
+      2000,
+      3000
+    ],
+    "taskInterval_ms": [
+      3400,
+      10000
+    ],
+    "refPeak_ms": 2400,
+    "taskPeak_ms": 8640,
+    "smooth_refPeak_ms": 2360,
+    "smooth_taskPeak_ms": 8600,
+    "refPeakDA_mean": 60,
+    "refPeakDA_std": 20,
+    "taskPeakDA_mean": 66.666666666666657,
+    "taskPeakDA_std": 15.055453054181623,
+    "smooth_refPeakDA_mean": 58.000000000000007,
+    "smooth_refPeakDA_std": 14.696938456699069,
+    "smooth_taskPeakDA_mean": 62.666666666666657,
+    "smooth_taskPeakDA_std": 9.6884811331119725,
+    "refPeakDA_lower_taskPeakDA_ttest_p": 0.14279547032260054,
+    "refPeakDA_lower_taskPeakDA_wilc_p": 0.5,
+    "smooth_refPeakDA_lower_taskPeakDA_ttest_p": 0.17467111309408412,
+    "smooth_refPeakDA_lower_taskPeakDA_wilc_p": 0.53125
+  }
+}

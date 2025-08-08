@@ -1,0 +1,95 @@
+{
+  "copy_of_autorun": {
+    "tt": {
+      "file": {
+        "network": {
+          "networkLabel": "\\\\isrchn1\\userdata\\sb00647025"
+        },
+        "load_localDrive1_NetworkDrive2": 1,
+        "save_localDrive1_NetworkDrive2": 1,
+        "load": {
+          "autoload": 1,
+          "path": {
+            "EEG_validation": "/app/work/Work/TrainTest/Prep plus/EEG/",
+            "offlineClass_classSetup": "/app/work/Work/TrainTest/Prep plus/EEG/"
+          },
+          "nameBasis1": {
+            "EEG_validation": "A09_EEG_validation_01",
+            "offlineClass_classSetup": "A11_offlineClass_classSetup_01",
+            "offlineClass_classSetup_classTrials": "classTrials"
+          }
+        },
+        "save": {
+          "autosave": 1,
+          "autosave_w0": 0,
+          "nameBasis": {
+            "offlineClass_trainTest": "FBCSP_offline_trainTest_01",
+            "offlineClass_trainTest__w0": "w0"
+          },
+          "path": {
+            "offlineClass_trainTest": "/app/work/Work/TrainTest/+ FBCSP0/EEG/A04/"
+          }
+        }
+      },
+      "used": {
+        "subjects": 1,
+        "sessions": 1
+      },
+      "parCore": {
+        "parforUsed": 0
+      }
+    },
+    "classSetup": {
+      "file": {
+        "load": {
+          "autoload": 1,
+          "path": {
+            "offlineClass_prep": "/app/work/Work/TrainTest/Prep plus/EEG/"
+          },
+          "nameBasis1": {
+            "offlineClass_prep": "A10_offlineClass_prep_01",
+            "offlineClass_prep_tr": "tr"
+          }
+        },
+        "save": {
+          "autosave": 1,
+          "path": "/app/work/Work/TrainTest/Prep plus/EEG/",
+          "nameBasis": {
+            "A11_offlineClass_classSetup": "A11_offlineClass_classSetup_01",
+            "A11_offlineClass_classSetup__classTrials": "classTrials"
+          }
+        }
+      },
+      "used": {
+        "subjects": 1,
+        "sessions": 1
+      }
+    },
+    "prep": {
+      "used": {
+        "subjects": 1,
+        "sessions": 1
+      },
+      "file": {
+        "load": {
+          "autoload": 1,
+          "path": {
+            "EEG_rec": "/app/work/Work/TMP Data/",
+            "validation": "/app/work/Work/TrainTest/Prep plus/EEG/"
+          },
+          "nameBasis": {
+            "EEG_rec_fileName": "EEG_rec.mat",
+            "EEG_validation_fileName": "A09_EEG_validation_01"
+          }
+        },
+        "save": {
+          "autosave": 1,
+          "path": "/app/work/Work/TrainTest/Prep plus/EEG/",
+          "nameBasis": {
+            "A10_offlineClass_prep": "A10_offlineClass_prep_01"
+          }
+        }
+      }
+    }
+  }
+}
