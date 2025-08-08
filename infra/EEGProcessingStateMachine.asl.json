@@ -42,7 +42,18 @@
                 }
             },
             "ResultPath": "$.dynamoResult",
-            "Next": "LaunchECSTask"
+            "Next": "CheckSkipECS"
+        },
+        "CheckSkipECS": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.skipECS",
+                    "BooleanEquals": true,
+                    "Next": "WaitForManifest"
+                }
+            ],
+            "Default": "LaunchECSTask"
         },
         "LaunchECSTask": {
             "Type": "Task",
