@@ -7,27 +7,90 @@ const ddbClient = new DynamoDBClient();
 
 exports.handler = async (event) => {
     try {
-        await Promise.all(event.Records.map(processRecord));
-        return { status: 'success', processed: event.Records.length };
+        // Handle direct Step Function invocation
+        if (event.s3Bucket && event.s3Key) {
+            await processDirectInvocation(event);
+            return { status: 'success' };
+        }
+        
+        // Handle S3 event records (legacy)
+        if (event.Records) {
+            await Promise.all(event.Records.map(processRecord));
+            return { status: 'success', processed: event.Records.length };
+        }
+        
+        throw new Error('Invalid event format');
     } catch (error) {
         console.error('Handler error:', error);
         throw error;
     }
 };
 
-async function processRecord(record) {
-    const bucket = record.s3.bucket.name;
-    const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
+async function processDirectInvocation(event) {
+    const bucket = event.s3Bucket;
+    const key = event.s3Key;
     
-    // Validate path format: Output/Online/Username/SessionID/filename.json
+    // Validate path format: userId/sessionId/Online/userId/sessionId/filename.json
     const pathParts = key.split('/');
-    if (pathParts.length < 5 || pathParts[0] !== 'Output' || pathParts[1] !== 'Online') {
+    if (pathParts.length < 6 || pathParts[2] !== 'Online') {
         console.log(`Skipping invalid path: ${key}`);
         return;
     }
     
-    const userId = pathParts[2];
-    const sessionId = pathParts[3];
+    const userId = pathParts[0];
+    const sessionId = pathParts[1];
+    const fileName = pathParts[pathParts.length - 1];
+    
+    try {
+        // Get JSON file from S3
+        const { Body } = await s3Client.send(new GetObjectCommand({
+            Bucket: bucket,
+            Key: key
+        }));
+        
+        // Convert stream to string
+        const jsonString = await streamToString(Body);
+        const jsonData = JSON.parse(jsonString);
+        
+        // Extract critical parameters
+        const params = extractParameters(jsonData);
+        
+        // Prepare DynamoDB item
+        const dbItem = {
+            sessionId: { S: sessionId },
+            userId: { S: userId },
+            timestamp: { N: Date.now().toString() },
+            fileName: { S: fileName },
+            s3Key: { S: key },
+            ...params
+        };
+        
+        // Write to DynamoDB
+        await ddbClient.send(new PutItemCommand({
+            TableName: process.env.CLASSIFIER_TABLE,
+            Item: dbItem
+        }));
+        
+        console.log(`Processed session ${sessionId}, file: ${fileName}`);
+    } catch (error) {
+        console.error(`Error processing ${key}: ${error.message}`);
+        throw error;
+    }
+}
+
+async function processRecord(record) {
+    const bucket = record.s3.bucket.name;
+    const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
+    
+    // Validate path format: userId/sessionId/Online/userId/sessionId/filename.json
+    const pathParts = key.split('/');
+    if (pathParts.length < 6 || pathParts[2] !== 'Online') {
+        console.log(`Skipping invalid path: ${key}`);
+        return;
+    }
+    
+    const userId = pathParts[0];
+    const sessionId = pathParts[1];
     const fileName = pathParts[pathParts.length - 1];
     
     try {
@@ -80,37 +143,58 @@ function extractParameters(data) {
     const p = data.online?.p;
     if (!p) throw new Error('Missing parameters in JSON');
     
-    // Extract only critical sections
-    return {
-        eeg: { 
+    const result = {};
+    
+    // EEG parameters (required)
+    if (p.EEG) {
+        result.eeg = { 
             M: {
-                rec: { M: mapToDynamo(p.EEG.rec) },
-                bandPass: { M: mapToDynamo(p.EEG.bandPass) }
+                rec: { M: mapToDynamo(p.EEG.rec || {}) },
+                bandPass: { M: mapToDynamo(p.EEG.bandPass || {}) }
             }
-        },
-        csp: { 
+        };
+    }
+    
+    // CSP parameters (handle empty arrays)
+    if (p.CSP?.filters_used) {
+        result.csp = { 
             M: {
-                filters_used: { L: p.CSP.filters_used.map(arr => ({
-                    L: arr.map(sub => ({
-                        L: sub.map(n => ({ N: n.toString() }))
-                    }))
-                })) }
+                filters_used: { L: p.CSP.filters_used.map(arr => {
+                    if (!Array.isArray(arr) || arr.length === 0) {
+                        return { L: [] };
+                    }
+                    return {
+                        L: arr.map(sub => ({
+                            L: sub.map(n => ({ N: n.toString() }))
+                        }))
+                    };
+                }) }
             }
-        },
-        cf: {
+        };
+    }
+    
+    // CF parameters (optional)
+    if (p.CF) {
+        result.cf = {
             M: {
-                winSize: { M: mapToDynamo(p.CF.winSize) },
-                param: { M: mapToDynamo(p.CF.param) }
+                winSize: { M: mapToDynamo(p.CF.winSize || {}) },
+                param: { M: mapToDynamo(p.CF.param || {}) }
             }
-        },
-        mi: {
+        };
+    }
+    
+    // MI parameters (optional)
+    if (p.MI?.out_usedFeatureIDs) {
+        result.mi = {
             M: {
                 out_usedFeatureIDs: { L: p.MI.out_usedFeatureIDs.map(arr => ({
-                    L: arr.map(n => ({ N: n.toString() }))
+                    L: Array.isArray(arr) ? arr.map(n => ({ N: n.toString() })) : []
                 })) }
             }
-        }
-    };
+        };
+    }
+    
+    return result;
 }
 
 // Helper to convert JS objects to DynamoDB attribute values

@@ -119,6 +119,7 @@
                 "Bucket": "${ResultsBucket}",
                 "Key.$": "States.Format('{}/{}/manifest.json', $.sessionInfo.userId, $.sessionInfo.sessionId)"
             },
+            "ResultPath": "$.manifestCheck",
             "Next": "ProcessManifest",
             "Retry": [
                 {
@@ -186,8 +187,9 @@
             "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
             "Parameters": {
                 "Bucket": "${ResultsBucket}",
-                "Key.$": "States.Format('{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionId)"
+                "Key.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionId, $.sessionInfo.userId, $.sessionInfo.sessionId)"
             },
+            "ResultPath": "$.classifierCheck",
             "Next": "ProcessClassifier",
             "Catch": [
                 {
@@ -213,7 +215,7 @@
                 "FunctionName": "${ClassifierProcessorLambdaArn}",
                 "Payload": {
                     "s3Bucket": "${ResultsBucket}",
-                    "s3Key.$": "States.Format('{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionId)"
+                    "s3Key.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionId, $.sessionInfo.userId, $.sessionInfo.sessionId)"
                 }
             },
             "ResultPath": "$.classifierResult",
