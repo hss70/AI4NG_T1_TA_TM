@@ -72,16 +72,32 @@ Resources:
             Condition:
               Bool:
                 "aws:SecureTransport": "false"
-          - Sid: EnforcePrivateAccess
-            Effect: Deny
-            Principal: "*"
-            Action: "s3:*"
-            Resource:
-              - !GetAtt EEGResultsBucket.Arn
-              - !Sub "${EEGResultsBucket.Arn}/*"
-            Condition:
-              StringNotEquals:
-                "aws:PrincipalAccount": !Ref AWS::AccountId
+          - Sid: AllowStepFunctionAccess
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt EEGStepFunctionRole.Arn
+            Action:
+              - s3:HeadObject
+              - s3:GetObject
+            Resource: !Sub "${EEGResultsBucket.Arn}/*"
+          - Sid: AllowECSTaskAccess
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt EEGTaskExecutionRole.Arn
+            Action:
+              - s3:PutObject
+              - s3:PutObjectAcl
+            Resource: !Sub "${EEGResultsBucket.Arn}/*"
+          - Sid: AllowLambdaAccess
+            Effect: Allow
+            Principal:
+              AWS:
+                - !GetAtt ManifestProcessorLambda.Arn
+                - !GetAtt ClassifierProcessorLambda.Arn
+                - !GetAtt ResultsMetadataLambda.Arn
+            Action:
+              - s3:GetObject
+            Resource: !Sub "${EEGResultsBucket.Arn}/*"
 
   # --- DynamoDB Tables ---
   ProcessingStatusTable:
