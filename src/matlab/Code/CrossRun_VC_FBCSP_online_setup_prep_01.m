@@ -55,8 +55,8 @@ if VA.SW
         w.file.load.autoload = 1;
 
         % MCC_FBCSP_offline_trainTest_01
-        w.file.load_CP(wm_subDirID).path = [VA.f.load.baseDir_FBCSP,'\', ...
-            VA.f.classSubDir{wm_subDirID},'\A',num2str(subFunc_num2str_2digit(VA.c.eval.FBCSP_option_Axx_used(1,wm_subDirID))),'\'];
+        w.file.load_CP(wm_subDirID).path = [VA.f.load.baseDir_FBCSP,filesep, ...
+            VA.f.classSubDir{wm_subDirID},filesep,'A',num2str(subFunc_num2str_2digit(VA.c.eval.FBCSP_option_Axx_used(1,wm_subDirID))),filesep];
         w.file.load_CP(wm_subDirID).nameBasis1 = VA.f.load.nameBasis1_FBCSP;
     end
 else
@@ -352,7 +352,7 @@ end
 
 FUNC_IN.c_wt_taskOnset_cfWinOffset_ms = c.online.wt_taskOnset_cfWinOffset_ms;
 
-tmp = load(fullfule(V1_TRANS.f.Input_T1_BaseDir,'T1','Param',V1_TRANS.tr_subDir_list{V1_TRANS.wm_taskID},'TAv2_TrainTest [result].mat'));
+tmp = load(fullfile(V1_TRANS.f.Input_T1_BaseDir,'T1','Param',V1_TRANS.tr_subDir_list{V1_TRANS.wm_taskID},'TAv2_TrainTest [result].mat'));
 %  tmp = load([V1_TRANS.f.Input_T1_BaseDir,'\T1\Param\',V1_TRANS.tr_subDir_list{V1_TRANS.wm_taskID},'\TAv2_TrainTest [result].mat']);
   wm_subDirID = 1;
   FUNC_IN.wtID(wm_subDirID) = tmp.result.orig.opt_tt.task_wtID;

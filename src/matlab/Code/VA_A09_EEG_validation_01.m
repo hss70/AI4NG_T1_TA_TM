@@ -165,7 +165,7 @@ for autorun_subjID2 = TRANS.c.autorun.used.subjects
     
     % w.file.load.path = [autorun.file.load.path,'Subj 0',num2str(autorun_subjID2),'\Session 0',num2str(autorun_sessionID2),'\01 Rec\'];
     % w.file.load.path = [autorun.file.load.path,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),'\01 Rec\'];
-    %w.file.load.path = [autorun.file.load.path,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\', 'Session ',subFunc_num2str_2digit(autorun_sessionID2),'\',VA.f.classSubDir{VA.w.wm_subDirID},'\'];
+    %w.file.load.path = [autorun.file.load.path,'Subj ',subFunc_num2str_2digit(autorun_subjID2),filesep, 'Session ',subFunc_num2str_2digit(autorun_sessionID2),filesep,VA.f.classSubDir{VA.w.wm_subDirID},filesep];
     subjectFolder = ['Subj ', subFunc_num2str_2digit(autorun_subjID2)];
     sessionRelativePathFolder = ['Session ', subFunc_num2str_2digit(autorun_sessionID2)];
     w.file.load.path = fullfile(autorun.file.load.path, subjectFolder, sessionRelativePathFolder, VA.f.classSubDir{VA.w.wm_subDirID});

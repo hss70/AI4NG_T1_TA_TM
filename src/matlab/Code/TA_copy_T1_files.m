@@ -109,15 +109,15 @@ if ~isempty(V1_TRANS.f.T1_param_subSubDir)
 
     % Copy "Standard-10-20-Cap81.locs" and "TAv2_TrainTest [xxx].mat" files from source base dir
     wm1 = [w.f.in_baseDir];
-    wm2 = [w.f.out_baseDir, '\'];
+    wm2 = [w.f.out_baseDir, filesep];
     w_dirStruct = dir(wm1);
 
     for wm_dirID = 1:size(w_dirStruct, 1)
 
         if w_dirStruct(wm_dirID).name(1, 1) == 'S'
-            copyfile([wm1, '\', w_dirStruct(wm_dirID).name], [wm2, '\', w_dirStruct(wm_dirID).name]);
+            copyfile([wm1, filesep, w_dirStruct(wm_dirID).name], [wm2, filesep, w_dirStruct(wm_dirID).name]);
         elseif w_dirStruct(wm_dirID).name(1, 1) == 'T'
-            copyfile([wm1, '\', w_dirStruct(wm_dirID).name], [wm2, '\', w_dirStruct(wm_dirID).name]);
+            copyfile([wm1, filesep, w_dirStruct(wm_dirID).name], [wm2, filesep, w_dirStruct(wm_dirID).name]);
         end
 
     end
@@ -129,27 +129,27 @@ end
 
 if ~isempty(V1_TRANS.f.T1_param2_subSubDir)
 
-    w.f.in_baseDir = [V1_TRANS.f.BaseDir, '\TrainTest'];
+    w.f.in_baseDir = [V1_TRANS.f.BaseDir, filesep,'TrainTest'];
     % w.f.in_baseDir = [V1_TRANS.f.BaseDir_for_trainTest,'\TrainTest'];
     w.f.out_baseDir = wm_out_baseDir_param2;
 
     % Copy (large) class-trial files from optimal "Prep plus" dir
     wm2a = 'Prep plus';
 
-    if ~isdir([w.f.out_baseDir, '\', wm2a])
-        mkdir([w.f.out_baseDir, '\', wm2a])
+    if ~isdir([w.f.out_baseDir, filesep, wm2a])
+        mkdir([w.f.out_baseDir, filesep, wm2a])
     end
 
-    wm1 = [w.f.in_baseDir, '\Prep plus\EEG'];
-    wm2 = [w.f.out_baseDir, '\', wm2a];
+    wm1 = [w.f.in_baseDir, filesep,'Prep plus',filesep,'EEG'];
+    wm2 = [w.f.out_baseDir, filesep, wm2a];
     w_dirStruct = dir(wm1);
 
     for wm_dirID = 1:size(w_dirStruct, 1)
 
         if w_dirStruct(wm_dirID).name(1, 1) == 'c'
-            copyfile([wm1, '\', w_dirStruct(wm_dirID).name], [wm2, '\', w_dirStruct(wm_dirID).name]);
+            copyfile([wm1, filesep, w_dirStruct(wm_dirID).name], [wm2, filesep, w_dirStruct(wm_dirID).name]);
         elseif w_dirStruct(wm_dirID).name(1, 1) == 't'
-            copyfile([wm1, '\', w_dirStruct(wm_dirID).name], [wm2, '\', w_dirStruct(wm_dirID).name]);
+            copyfile([wm1, filesep, w_dirStruct(wm_dirID).name], [wm2, filesep, w_dirStruct(wm_dirID).name]);
         end
 
     end
@@ -161,8 +161,8 @@ end
 
 if ~isempty(V1_TRANS.f.T1_results_subSubDir)
 
-    w.f.in_baseDir = [V1_TRANS.f.BaseDir, '\TrainTest'];
-    % w.f.in_baseDir = [V1_TRANS.f.BaseDir_for_trainTest,'\TrainTest'];
+    w.f.in_baseDir = [V1_TRANS.f.BaseDir, filesep,'TrainTest'];
+    % w.f.in_baseDir = [V1_TRANS.f.BaseDir_for_trainTest,filesep,'TrainTest'];
     w.f.out_baseDir = wm_out_baseDir_results;
 
     % Copy full content of the Figure dir
@@ -211,14 +211,14 @@ end
 % % _____________
 % fprintf('Copy DA plots ...\n')
 % for wm_classID = 1 : size(w.f.load.classSubDir,2)
-%   w_dirStruct = dir([w.f.load.baseDir,'\',w.f.load.FBCSP_subDir,'\',w.f.load.classSubDir{wm_classID}]);
+%   w_dirStruct = dir([w.f.load.baseDir,filesep,w.f.load.FBCSP_subDir,filesep,w.f.load.classSubDir{wm_classID}]);
 %   for wm_dirID = 1 : size(w_dirStruct,1)
 %     if w_dirStruct(wm_dirID).name(1,1) == 'A'
-%       w_dirStruct2 = dir([w_dirStruct(wm_dirID).folder,'\',w_dirStruct(wm_dirID).name,'\Fig']);
+%       w_dirStruct2 = dir([w_dirStruct(wm_dirID).folder,filesep,w_dirStruct(wm_dirID).name,filesep,'Fig']);
 %       for wm_dirID2 = 1 : size(w_dirStruct2,1)
 %         if size(w_dirStruct2(wm_dirID2).name,2) > size('shadedDAOuter (Subj',2)
 %           if strcmp(w_dirStruct2(wm_dirID2).name(1,1:size('shadedDAOuter (Subj',2)),'shadedDAOuter (Subj')
-%             copyfile( [w_dirStruct(wm_dirID).folder,'\',w_dirStruct(wm_dirID).name,'\Fig\',w_dirStruct2(wm_dirID2).name],...
+%             copyfile( [w_dirStruct(wm_dirID).folder,filesep,w_dirStruct(wm_dirID).name,filesep,'Fig',filesep,w_dirStruct2(wm_dirID2).name],...
 %                       [w.f.save.path,w.f.save.nameBase,' [',w.f.load.classSubDir{wm_classID},' ',w_dirStruct(wm_dirID).name,']', ...
 %                             w_dirStruct2(wm_dirID2).name(1,max(find(ismember(w_dirStruct2(wm_dirID2).name,'.')==1)):end)] );
 %           end

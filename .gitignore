@@ -31,3 +31,8 @@ src/matlab/simulinkCompilationTests/logs/
 **/slprj/
 src/matlab/simulinkCompilationTests/test_data/
 src/matlab/simulinkCompilationTests/output_dir
+TestData/container_files/
+TestData/ContainerTests/
+src/ContainerCode/test_results/
+*.asv
+src/matlab/Code/VAv2_Spec_shaded_DA_plot.asv

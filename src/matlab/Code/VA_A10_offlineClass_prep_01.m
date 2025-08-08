@@ -415,7 +415,7 @@ for autorun_subjID2 = TRANS.autorun.prep.used.subjects
     subjectPath = [autorun.prep.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2)];
     sessionPath =['Session ',subFunc_num2str_2digit(autorun_sessionID2)];
     w.file.load.path.EEG_rec = fullfile(subjectPath,sessionPath,VA.f.classSubDir{VA.w.wm_subDirID});
-%    w.file.load.path.EEG_rec = [autorun.prep.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),'\',VA.f.classSubDir{VA.w.wm_subDirID},'\'];
+%    w.file.load.path.EEG_rec = [autorun.prep.file.load.path.EEG_rec,'Subj ',subFunc_num2str_2digit(autorun_subjID2),'\Session ',subFunc_num2str_2digit(autorun_sessionID2),filesep,VA.f.classSubDir{VA.w.wm_subDirID},filesep];
     
     % EEG record
     fprintf(['Loading EEG_rec dataset ...\n']);

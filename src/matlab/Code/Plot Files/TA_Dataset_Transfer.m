@@ -72,7 +72,7 @@ cf_TAv2_TrainTest_A1_prep
   % ______________________________________
   
   clearvars tmp
-  tmp.wm = strfind(V1_TRANS.tr_file_list{wm_taskID},'\');
+  tmp.wm = strfind(V1_TRANS.tr_file_list{wm_taskID},filesep);
   if contains(lower(V1_TRANS.tr_file_list{wm_taskID}(1,tmp.wm(1,end-1)+1:tmp.wm(1,end)-1)), 'q')
     tmp.wm0 = unique(EEG_rec(VA_TRANS.c.prep.EEG.import.trigCh,:));
     
@@ -121,14 +121,14 @@ subplot(2,1,2); plot(EEG_rec(end,:));
   % _______________________
   
   % Delete Output Data dir with subdirs if exists
-  tmp = [V1_TRANS.f.BaseDir, '\', V1_TRANS.f.DataSubDir];
+  tmp = [V1_TRANS.f.BaseDir, filesep, V1_TRANS.f.DataSubDir];
   if isfolder(tmp)
     rmdir(tmp,'s');
   end
   clearvars tmp
   
   % Prep Data subfold
-  wm_save_subDir = [V1_TRANS.f.DataSubDir, '\', V1_TRANS.f.Subj1Sess1SubDir, '\', V1_TRANS.f.classSubDir{1}];
+  wm_save_subDir = [V1_TRANS.f.DataSubDir, filesep, V1_TRANS.f.Subj1Sess1SubDir, filesep, V1_TRANS.f.classSubDir{1}];
   % mkdir(V1_TRANS.f.BaseDir, wm_save_subDir);
 tmp.wm = 1;
 tmp.wm2 = 1;
@@ -152,7 +152,7 @@ TEST.TA_Dataset_Transfer__mkdir_tryNumber(wm_taskID,1) = tmp.wm2;
 clearvars tmp
   
     % Save EEG_rec.mat
-    save([V1_TRANS.f.BaseDir, '\', wm_save_subDir, '\EEG_rec.mat'],'EEG_rec','-v7.3');
+    save([V1_TRANS.f.BaseDir, filesep, wm_save_subDir, filesep,'EEG_rec.mat'],'EEG_rec','-v7.3');
     clear EEG_rec
   
   
