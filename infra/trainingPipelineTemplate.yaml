@@ -229,11 +229,14 @@ Resources:
       Environment:
         Variables:
           STATUS_TABLE: !Ref ProcessingStatusTable
+          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
       Policies:
         - DynamoDBWritePolicy:
             TableName: !Ref ProcessingStatusTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt ProcessingNotificationTopic.TopicName
         - CloudWatchLogsFullAccess
       LoggingConfig:
         LogFormat: JSON
