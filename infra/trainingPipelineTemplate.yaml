@@ -106,6 +106,43 @@ Resources:
           KeyType: RANGE
       BillingMode: PAY_PER_REQUEST
 
+  FBCSPSessionFilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: FBCSPSessionFiles
+      AttributeDefinitions:
+        - AttributeName: sessionId
+          AttributeType: S
+        - AttributeName: filePath
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: N
+      KeySchema:
+        - AttributeName: sessionId
+          KeyType: HASH
+        - AttributeName: filePath
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: UserIdIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: DateIndex
+          KeySchema:
+            - AttributeName: createdAt
+              KeyType: HASH
+            - AttributeName: sessionId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
   # --- API Gateway Integration ---
   StatusIntegration:
     Type: AWS::ApiGatewayV2::Integration
@@ -229,10 +266,13 @@ Resources:
       Environment:
         Variables:
           STATUS_TABLE: !Ref ProcessingStatusTable
+          FILES_TABLE: !Ref FBCSPSessionFilesTable
           SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
       Policies:
         - DynamoDBWritePolicy:
             TableName: !Ref ProcessingStatusTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref FBCSPSessionFilesTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
         - SNSPublishMessagePolicy:

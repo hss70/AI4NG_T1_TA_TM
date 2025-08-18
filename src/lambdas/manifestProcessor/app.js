@@ -53,6 +53,9 @@ async function processManifestRecord(record) {
         // Update DynamoDB status
         await updateStatusTable(sessionId, userId, status, processingDuration, manifest);
         
+        // Store file metadata
+        await storeFileMetadata(sessionId, userId, manifest);
+        
         // Send SNS notification
         await sendNotification(manifest, status, userId, sessionId);
         
@@ -69,7 +72,7 @@ async function updateStatusTable(sessionId, userId, status, duration, manifest) 
         Key: { sessionId: { S: sessionId } },
         UpdateExpression: "SET #s = :status, userId = :userId, endTime = :endTime, " +
                          "processingDuration = :duration, resultsPath = :resultsPath, " +
-                         "exitCode = :exitCode, outputFiles = :outputFiles",
+                         "exitCode = :exitCode",
         ExpressionAttributeNames: { "#s": "status" },
         ExpressionAttributeValues: {
             ":status": { S: status },
@@ -77,12 +80,30 @@ async function updateStatusTable(sessionId, userId, status, duration, manifest) 
             ":endTime": { N: manifest.endTime.toString() },
             ":duration": { N: duration.toString() },
             ":resultsPath": { S: manifest.resultsPath },
-            ":exitCode": { N: manifest.exitCode.toString() },
-            ":outputFiles": { SS: manifest.outputFiles }
+            ":exitCode": { N: manifest.exitCode.toString() }
         }
     };
     
     await ddbClient.send(new UpdateItemCommand(updateParams));
+}
+
+async function storeFileMetadata(sessionId, userId, manifest) {
+    const { PutItemCommand } = require("@aws-sdk/client-dynamodb");
+    
+    for (const file of manifest.outputFiles) {
+        const fullPath = `${userId}/${sessionId}/${file}`;
+        
+        await ddbClient.send(new PutItemCommand({
+            TableName: process.env.FILES_TABLE,
+            Item: {
+                sessionId: { S: sessionId },
+                filePath: { S: fullPath },
+                fileName: { S: file },
+                userId: { S: userId },
+                createdAt: { N: manifest.endTime.toString() }
+            }
+        }));
+    }
 }
 
 async function sendNotification(manifest, status, userId, sessionId) {
@@ -130,12 +151,29 @@ async function processManifestFromStepFunction(bucket, key) {
         // Update DynamoDB status
         await updateStatusTable(sessionId, userId, status, processingDuration, manifest);
         
+        // Store file metadata
+        await storeFileMetadata(sessionId, userId, manifest);
+        
         // Send SNS notification
         await sendNotification(manifest, status, userId, sessionId);
         
+        // Check if metadata file actually exists if manifest claims it has metadata
+        let hasMetadata = manifest.hasMetadata || false;
+        if (hasMetadata && manifest.metadataFile) {
+            try {
+                await s3Client.send(new GetObjectCommand({
+                    Bucket: bucket,
+                    Key: `${userId}/${sessionId}/${manifest.metadataFile}`
+                }));
+            } catch (error) {
+                console.log(`Metadata file ${manifest.metadataFile} not found, setting hasMetadata to false`);
+                hasMetadata = false;
+            }
+        }
+        
         return {
             requiresClassifier: true,
-            hasMetadata: manifest.hasMetadata || false,
+            hasMetadata,
             classifierFile: `Online/${userId}/${sessionId}/FBCSP_online_setup_prep_01 [online].json`,
             metadataFile: manifest.metadataFile || null
         };
