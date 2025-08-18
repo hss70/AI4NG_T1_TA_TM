@@ -80,11 +80,20 @@ Resources:
     Properties:
       TableName: EEGProcessingStatus
       AttributeDefinitions:
-        - AttributeName: sessionId
+        - AttributeName: sessionName
           AttributeType: S
-      KeySchema:
         - AttributeName: sessionId
+          AttributeType: N
+      KeySchema:
+        - AttributeName: sessionName
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: SessionIdIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
       TimeToLiveSpecification:
         AttributeName: expiry
@@ -95,15 +104,20 @@ Resources:
     Properties:
       TableName: FBCSPClassifierParameters
       AttributeDefinitions:
+        - AttributeName: classifierId
+          AttributeType: N
         - AttributeName: sessionId
-          AttributeType: S
-        - AttributeName: timestamp
           AttributeType: N
       KeySchema:
-        - AttributeName: sessionId
+        - AttributeName: classifierId
           KeyType: HASH
-        - AttributeName: timestamp
-          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: SessionIdIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
 
   FBCSPSessionFilesTable:
@@ -111,20 +125,28 @@ Resources:
     Properties:
       TableName: FBCSPSessionFiles
       AttributeDefinitions:
-        - AttributeName: sessionId
+        - AttributeName: sessionName
           AttributeType: S
         - AttributeName: filePath
           AttributeType: S
+        - AttributeName: sessionId
+          AttributeType: N
         - AttributeName: userId
           AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
       KeySchema:
-        - AttributeName: sessionId
+        - AttributeName: sessionName
           KeyType: HASH
         - AttributeName: filePath
           KeyType: RANGE
       GlobalSecondaryIndexes:
+        - IndexName: SessionIdIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
         - IndexName: UserIdIndex
           KeySchema:
             - AttributeName: userId
@@ -158,6 +180,15 @@ Resources:
     Properties:
       ApiId: !Ref SharedApiId
       RouteKey: "GET /api/status/{sessionId}"
+      AuthorizationType: JWT
+      AuthorizerId: !ImportValue SharedApiAuthorizerId
+      Target: !Sub integrations/${StatusIntegration}
+
+  StatusAllRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SharedApiId
+      RouteKey: "GET /api/status"
       AuthorizationType: JWT
       AuthorizerId: !ImportValue SharedApiAuthorizerId
       Target: !Sub integrations/${StatusIntegration}
@@ -241,6 +272,14 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ProcessingStatusTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+                - dynamodb:Query
+              Resource: 
+                - !GetAtt ProcessingStatusTable.Arn
+                - !Sub "${ProcessingStatusTable.Arn}/index/*"
         - CloudWatchLogsFullAccess
       LoggingConfig:
         LogFormat: JSON
@@ -252,7 +291,7 @@ Resources:
       FunctionName: !GetAtt GetStatusLambda.Arn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/GET/api/status/{sessionId}"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/GET/api/status/*"
 
   # Manifest Processor Lambda
   ManifestProcessorLambda:
@@ -420,9 +459,22 @@ Resources:
               }
             },
             {
-              "type": "metric",
+              "type": "log",
               "x": 0,
               "y": 6,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/aws/lambda/AI4NGUploadLambda'\nSOURCE '/aws/lambda/${AWS::StackName}-S3EventProcessor'\nSOURCE '/aws/lambda/${AWS::StackName}-ManifestProcessor'\nSOURCE '/aws/lambda/${AWS::StackName}-ClassifierProcessor'\nSOURCE '/ecs/eeg-classifier'\nSOURCE '/aws/stepfunctions/${AWS::StackName}-ProcessingStateMachine'\n| fields @timestamp, level, message, sessionId, sessionName, userId\n| filter ispresent(sessionId)\n| sort @timestamp desc\n| limit 100",
+                "region": "${AWS::Region}",
+                "title": "Session Logs (Filter by sessionId)",
+                "view": "table"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
               "width": 12,
               "height": 6,
               "properties": {
@@ -439,7 +491,7 @@ Resources:
             },
             {
               "type": "metric",
-              "x": 0,
+              "x": 12,
               "y": 12,
               "width": 12,
               "height": 6,
@@ -718,6 +770,17 @@ Outputs:
     Description: URL to the CloudWatch Dashboard
     Export:
       Name: EEGProcessingDashboardUrl
+  LogInsightsQuery:
+    Value: !Sub |
+      SOURCE '/aws/lambda/AI4NGUploadLambda'
+      SOURCE '/aws/lambda/${AWS::StackName}-S3EventProcessor'
+      SOURCE '/aws/lambda/${AWS::StackName}-ManifestProcessor'
+      SOURCE '/aws/lambda/${AWS::StackName}-ClassifierProcessor'
+      SOURCE '/ecs/eeg-classifier'
+      | fields @timestamp, level, message, sessionId, sessionName, userId, error
+      | filter sessionId = "YOUR_SESSION_ID"
+      | sort @timestamp asc
+    Description: CloudWatch Logs Insights query to track sessionId across all services
   S3EventProcessorLambdaName:
     Value: !Ref S3EventProcessorLambda
     Description: Name of S3 event processor Lambda

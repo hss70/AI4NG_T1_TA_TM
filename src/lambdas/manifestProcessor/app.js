@@ -9,6 +9,8 @@ const snsClient = new SNSClient();
 
 exports.handler = async (event) => {
     try {
+        console.log(JSON.stringify({ level: 'INFO', message: 'Handler started', event }));
+        
         // Handle Step Function input format
         if (event.s3Bucket && event.s3Key) {
             const result = await processManifestFromStepFunction(event.s3Bucket, event.s3Key);
@@ -21,7 +23,7 @@ exports.handler = async (event) => {
         }
         throw new Error('Invalid event format');
     } catch (error) {
-        console.error('Handler error:', error);
+        console.error(JSON.stringify({ level: 'ERROR', message: 'Handler error', error: error.message }));
         throw error;
     }
 };
@@ -44,24 +46,46 @@ async function processManifestRecord(record) {
         // Extract path components
         const pathParts = key.split('/');
         const userId = pathParts[0];
-        const sessionId = pathParts[1];
+        const sessionName = pathParts[1];
+        
+        // Generate consistent sessionId from userId + sessionName
+        const sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0));
         
         // Calculate processing duration
         const processingDuration = manifest.endTime - manifest.startTime;
         const status = manifest.exitCode === 0 ? 'COMPLETED' : 'FAILED';
         
         // Update DynamoDB status
-        await updateStatusTable(sessionId, userId, status, processingDuration, manifest);
+        await updateStatusTable(sessionName, sessionId, userId, status, processingDuration, manifest);
         
         // Store file metadata
-        await storeFileMetadata(sessionId, userId, manifest);
+        await storeFileMetadata(sessionName, sessionId, userId, manifest);
         
         // Send SNS notification
-        await sendNotification(manifest, status, userId, sessionId);
+        await sendNotification(manifest, status, userId, sessionName, sessionId);
         
-        console.log(`Processed manifest for session: ${sessionId}, status: ${status}`);
+        console.log(JSON.stringify({ 
+            level: 'INFO', 
+            message: 'Manifest processed', 
+            sessionId, 
+            sessionName, 
+            userId, 
+            status,
+            processingDuration 
+        }));
     } catch (error) {
-        console.error(`Error processing manifest ${key}: ${error.message}`);
+        console.error(JSON.stringify({ 
+            level: 'ERROR', 
+            message: 'Manifest processing failed', 
+            sessionId: sessionId || 'unknown',
+            sessionName: sessionName || 'unknown',
+            userId: userId || 'unknown',
+            key, 
+            error: error.message 
+        }));
         throw error;
     }
 }
@@ -88,19 +112,22 @@ async function updateStatusTable(sessionId, userId, status, duration, manifest) 
 }
 
 async function storeFileMetadata(sessionId, userId, manifest) {
-    const { PutItemCommand } = require("@aws-sdk/client-dynamodb");
+    const { UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
     
     for (const file of manifest.outputFiles) {
         const fullPath = `${userId}/${sessionId}/${file}`;
         
-        await ddbClient.send(new PutItemCommand({
+        await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.FILES_TABLE,
-            Item: {
+            Key: {
                 sessionId: { S: sessionId },
-                filePath: { S: fullPath },
-                fileName: { S: file },
-                userId: { S: userId },
-                createdAt: { N: manifest.endTime.toString() }
+                filePath: { S: fullPath }
+            },
+            UpdateExpression: "SET fileName = :fileName, userId = :userId, createdAt = :createdAt",
+            ExpressionAttributeValues: {
+                ":fileName": { S: file },
+                ":userId": { S: userId },
+                ":createdAt": { N: manifest.endTime.toString() }
             }
         }));
     }
@@ -142,20 +169,26 @@ async function processManifestFromStepFunction(bucket, key) {
         // Extract path components
         const pathParts = key.split('/');
         const userId = pathParts[0];
-        const sessionId = pathParts[1];
+        const sessionName = pathParts[1];
+        
+        // Generate consistent sessionId from userId + sessionName
+        const sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0));
         
         // Calculate processing duration
         const processingDuration = manifest.endTime - manifest.startTime;
         const status = manifest.exitCode === 0 ? 'COMPLETED' : 'FAILED';
         
         // Update DynamoDB status
-        await updateStatusTable(sessionId, userId, status, processingDuration, manifest);
+        await updateStatusTable(sessionName, sessionId, userId, status, processingDuration, manifest);
         
         // Store file metadata
-        await storeFileMetadata(sessionId, userId, manifest);
+        await storeFileMetadata(sessionName, sessionId, userId, manifest);
         
         // Send SNS notification
-        await sendNotification(manifest, status, userId, sessionId);
+        await sendNotification(manifest, status, userId, sessionName, sessionId);
         
         // Check if metadata file actually exists if manifest claims it has metadata
         let hasMetadata = manifest.hasMetadata || false;
@@ -166,7 +199,14 @@ async function processManifestFromStepFunction(bucket, key) {
                     Key: `${userId}/${sessionId}/${manifest.metadataFile}`
                 }));
             } catch (error) {
-                console.log(`Metadata file ${manifest.metadataFile} not found, setting hasMetadata to false`);
+                console.log(JSON.stringify({ 
+                level: 'WARN', 
+                message: 'Metadata file not found', 
+                sessionId, 
+                sessionName, 
+                userId,
+                metadataFile: manifest.metadataFile 
+            }));
                 hasMetadata = false;
             }
         }
@@ -174,11 +214,19 @@ async function processManifestFromStepFunction(bucket, key) {
         return {
             requiresClassifier: true,
             hasMetadata,
-            classifierFile: `Online/${userId}/${sessionId}/FBCSP_online_setup_prep_01 [online].json`,
+            classifierFile: `Online/${userId}/${sessionName}/FBCSP_online_setup_prep_01 [online].json`,
             metadataFile: manifest.metadataFile || null
         };
     } catch (error) {
-        console.error(`Error processing manifest ${key}: ${error.message}`);
+        console.error(JSON.stringify({ 
+            level: 'ERROR', 
+            message: 'Step function manifest processing failed', 
+            sessionId: sessionId || 'unknown',
+            sessionName: sessionName || 'unknown', 
+            userId: userId || 'unknown',
+            key, 
+            error: error.message 
+        }));
         throw error;
     }
 }

@@ -19,8 +19,8 @@
             "Parameters": {
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
-                    "sessionId": {
-                        "S.$": "$.sessionInfo.sessionId"
+                    "sessionName": {
+                        "S.$": "$.sessionInfo.sessionName"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #u = :user, #t = :time",
@@ -88,8 +88,8 @@
                                     "Value.$": "$.sessionInfo.userId"
                                 },
                                 {
-                                    "Name": "SESSION_ID",
-                                    "Value.$": "$.sessionInfo.sessionId"
+                                    "Name": "SESSION_NAME",
+                                    "Value.$": "$.sessionInfo.sessionName"
                                 }
                             ]
                         }
@@ -300,8 +300,8 @@
             "Parameters": {
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
-                    "sessionId": {
-                        "S.$": "$.sessionInfo.sessionId"
+                    "sessionName": {
+                        "S.$": "$.sessionInfo.sessionName"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :endTime",
@@ -326,8 +326,8 @@
             "Parameters": {
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
-                    "sessionId": {
-                        "S.$": "$.sessionInfo.sessionId"
+                    "sessionName": {
+                        "S.$": "$.sessionInfo.sessionName"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :error, #t = :time",

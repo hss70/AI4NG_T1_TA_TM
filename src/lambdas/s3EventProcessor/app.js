@@ -3,13 +3,25 @@ const stepFunctions = new AWS.StepFunctions();
 
 exports.handler = async (event) => {
     try {
-        console.log('Received EventBridge event:', JSON.stringify(event, null, 2));
-        
-        // Extract bucket and key from EventBridge format
         const bucket = event.detail.bucket.name;
         const key = decodeURIComponent(event.detail.object.key.replace(/\+/g, ' '));
+        const pathParts = key.split('/');
+        const userId = pathParts[0] || 'unknown';
+        const sessionName = pathParts[1] || 'unknown';
+        const sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0));
         
-        console.log(`Processing EEG upload: ${bucket}/${key}`);
+        console.log(JSON.stringify({ 
+            level: 'INFO', 
+            message: 'S3 event received', 
+            sessionId, 
+            sessionName, 
+            userId, 
+            bucket, 
+            key 
+        }));
         
         // Prepare Step Function input
         const input = {
@@ -27,14 +39,26 @@ exports.handler = async (event) => {
         };
         
         const response = await stepFunctions.startExecution(params).promise();
-        console.log(`Started Step Function execution: ${response.executionArn}`);
+        
+        console.log(JSON.stringify({ 
+            level: 'INFO', 
+            message: 'Step Function started', 
+            sessionId, 
+            sessionName, 
+            userId,
+            executionArn: response.executionArn 
+        }));
         
         return {
             statusCode: 200,
             body: JSON.stringify({ message: 'Processing initiated successfully' })
         };
     } catch (error) {
-        console.error('Error processing event:', error);
+        console.error(JSON.stringify({ 
+            level: 'ERROR', 
+            message: 'S3 event processing failed', 
+            error: error.message 
+        }));
         
         return {
             statusCode: 500,

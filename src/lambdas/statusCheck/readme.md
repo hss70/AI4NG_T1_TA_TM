@@ -1,10 +1,23 @@
 getStatusLambda
-Purpose: Provide API endpoint for processing status
+Purpose: Provide API endpoints for processing status
 
-Trigger: API Gateway GET /status/{sessionId}
+Triggers:
+- GET /api/status/{sessionId} - Get specific session
+- GET /api/status - Get all sessions
+- GET /api/status?status=COMPLETED - Filter by status
 
-Input: sessionId path parameter
+Inputs:
+- sessionId path parameter (for specific session)
+- status query parameter (optional filter)
 
-Output: Processing status from DynamoDB
+Outputs:
+- Single session object
+- Array of sessions with count
 
-Permissions: dynamodb:GetItem on status table
+Valid Status Filters:
+- PROCESSING
+- COMPLETED
+- FAILED
+- UNKNOWN
+
+Permissions: dynamodb:Query, dynamodb:Scan on status table

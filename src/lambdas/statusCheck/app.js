@@ -1,4 +1,4 @@
-const { DynamoDBClient, GetItemCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, QueryCommand, ScanCommand } = require("@aws-sdk/client-dynamodb");
 const { unmarshall } = require("@aws-sdk/util-dynamodb");
 
 const ddbClient = new DynamoDBClient();
@@ -6,49 +6,20 @@ const tableName = process.env.STATUS_TABLE;
 
 exports.handler = async (event) => {
     try {
-        // Extract session ID from path parameters
-        const sessionId = event.pathParameters.sessionId;
+        const path = event.routeKey;
+        const queryParams = event.queryStringParameters || {};
         
-        // Get status from DynamoDB
-        const params = {
-            TableName: tableName,
-            Key: { sessionId: { S: sessionId } }
-        };
-        
-        const response = await ddbClient.send(new GetItemCommand(params));
-        
-        if (!response.Item) {
-            return {
-                statusCode: 404,
-                body: JSON.stringify({ error: 'Session not found' })
-            };
-        }
-        
-        // Unmarshall DynamoDB item to plain JS object
-        const item = unmarshall(response.Item);
-        
-        // Prepare response
-        const statusInfo = {
-            sessionId: sessionId,
-            status: item.status || 'UNKNOWN',
-            userId: item.userId || '',
-            startTime: parseInt(item.startTime) || 0,
-            processingDuration: parseInt(item.processingDuration) || 0,
-            resultsPath: item.resultsPath || '',
-            exitCode: parseInt(item.exitCode) || -1
-        };
-        
-        // Add human-readable timestamp
-        if (item.startTime) {
-            statusInfo.startTimeISO = new Date(parseInt(item.startTime) * 1000)
-                .toISOString()
-                .replace(/\.\d{3}Z$/, 'Z');  // Trim milliseconds
+        // Route to appropriate handler
+        if (path === 'GET /api/status') {
+            return await getAllSessions(queryParams);
+        } else if (path === 'GET /api/status/{sessionId}') {
+            const sessionId = parseInt(event.pathParameters.sessionId);
+            return await getSessionById(sessionId);
         }
         
         return {
-            statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(statusInfo)
+            statusCode: 404,
+            body: JSON.stringify({ error: 'Route not found' })
         };
         
     } catch (error) {
@@ -59,3 +30,92 @@ exports.handler = async (event) => {
         };
     }
 };
+
+async function getSessionById(sessionId) {
+    const params = {
+        TableName: tableName,
+        IndexName: 'SessionIdIndex',
+        KeyConditionExpression: 'sessionId = :sessionId',
+        ExpressionAttributeValues: {
+            ':sessionId': { N: sessionId.toString() }
+        },
+        Limit: 1
+    };
+    
+    const response = await ddbClient.send(new QueryCommand(params));
+    
+    if (!response.Items || response.Items.length === 0) {
+        return {
+            statusCode: 404,
+            body: JSON.stringify({ error: 'Session not found' })
+        };
+    }
+    
+    const item = unmarshall(response.Items[0]);
+    const statusInfo = formatStatusItem(item, sessionId);
+    
+    return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(statusInfo)
+    };
+}
+
+async function getAllSessions(queryParams) {
+    const status = queryParams.status;
+    let params;
+    
+    if (status) {
+        // Filter by status
+        params = {
+            TableName: tableName,
+            FilterExpression: '#status = :status',
+            ExpressionAttributeNames: {
+                '#status': 'status'
+            },
+            ExpressionAttributeValues: {
+                ':status': { S: status }
+            }
+        };
+    } else {
+        // Get all sessions
+        params = {
+            TableName: tableName
+        };
+    }
+    
+    const response = await ddbClient.send(new ScanCommand(params));
+    
+    const sessions = response.Items.map(item => {
+        const unmarshalled = unmarshall(item);
+        return formatStatusItem(unmarshalled, unmarshalled.sessionId);
+    });
+    
+    return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessions, count: sessions.length })
+    };
+}
+
+function formatStatusItem(item, sessionId) {
+    const statusInfo = {
+        sessionName: item.sessionName || '',
+        sessionId: sessionId || item.sessionId || 0,
+        status: item.status || 'UNKNOWN',
+        userId: item.userId || '',
+        startTime: parseInt(item.startTime) || 0,
+        processingDuration: parseInt(item.processingDuration) || 0,
+        resultsPath: item.resultsPath || '',
+        exitCode: parseInt(item.exitCode) || -1
+    };
+    
+    // Add human-readable timestamp
+    if (item.startTime) {
+        statusInfo.startTimeISO = new Date(parseInt(item.startTime) * 1000)
+            .toISOString()
+            .replace(/\.\d{3}Z$/, 'Z');  // Trim milliseconds
+    }
+    
+    return statusInfo;
+}
