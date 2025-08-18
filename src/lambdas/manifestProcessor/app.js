@@ -9,8 +9,17 @@ const snsClient = new SNSClient();
 
 exports.handler = async (event) => {
     try {
-        await Promise.all(event.Records.map(processManifestRecord));
-        return { status: 'success', processed: event.Records.length };
+        // Handle Step Function input format
+        if (event.s3Bucket && event.s3Key) {
+            const result = await processManifestFromStepFunction(event.s3Bucket, event.s3Key);
+            return result;
+        }
+        // Handle S3 event format
+        if (event.Records) {
+            await Promise.all(event.Records.map(processManifestRecord));
+            return { status: 'success', processed: event.Records.length };
+        }
+        throw new Error('Invalid event format');
     } catch (error) {
         console.error('Handler error:', error);
         throw error;
@@ -96,6 +105,44 @@ async function sendNotification(manifest, status, userId, sessionId) {
     });
     
     await snsClient.send(command);
+}
+
+async function processManifestFromStepFunction(bucket, key) {
+    try {
+        // Get manifest file from S3
+        const { Body } = await s3Client.send(new GetObjectCommand({
+            Bucket: bucket,
+            Key: key
+        }));
+        
+        const manifestJson = await streamToString(Body);
+        const manifest = JSON.parse(manifestJson);
+        
+        // Extract path components
+        const pathParts = key.split('/');
+        const userId = pathParts[0];
+        const sessionId = pathParts[1];
+        
+        // Calculate processing duration
+        const processingDuration = manifest.endTime - manifest.startTime;
+        const status = manifest.exitCode === 0 ? 'COMPLETED' : 'FAILED';
+        
+        // Update DynamoDB status
+        await updateStatusTable(sessionId, userId, status, processingDuration, manifest);
+        
+        // Send SNS notification
+        await sendNotification(manifest, status, userId, sessionId);
+        
+        return {
+            requiresClassifier: true,
+            hasMetadata: manifest.hasMetadata || false,
+            classifierFile: `Online/${userId}/${sessionId}/FBCSP_online_setup_prep_01 [online].json`,
+            metadataFile: manifest.metadataFile || null
+        };
+    } catch (error) {
+        console.error(`Error processing manifest ${key}: ${error.message}`);
+        throw error;
+    }
 }
 
 function streamToString(stream) {
