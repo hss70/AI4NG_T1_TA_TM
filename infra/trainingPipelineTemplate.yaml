@@ -78,7 +78,7 @@ Resources:
   ProcessingStatusTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: EEGProcessingStatus
+      TableName: EEGProcessingStatusV2
       AttributeDefinitions:
         - AttributeName: sessionName
           AttributeType: S
@@ -102,7 +102,7 @@ Resources:
   EEGClassifierTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: FBCSPClassifierParameters
+      TableName: FBCSPClassifierParametersV2
       AttributeDefinitions:
         - AttributeName: classifierId
           AttributeType: N
@@ -123,7 +123,7 @@ Resources:
   FBCSPSessionFilesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: FBCSPSessionFiles
+      TableName: FBCSPSessionFilesV2
       AttributeDefinitions:
         - AttributeName: sessionName
           AttributeType: S
