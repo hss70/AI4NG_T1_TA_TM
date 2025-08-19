@@ -78,7 +78,7 @@ Resources:
   ProcessingStatusTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: EEGProcessingStatusV2
+      TableName: EEGProcessingStatus
       AttributeDefinitions:
         - AttributeName: sessionName
           AttributeType: S
@@ -95,6 +95,8 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       TimeToLiveSpecification:
         AttributeName: expiry
         Enabled: true
@@ -102,7 +104,7 @@ Resources:
   EEGClassifierTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: FBCSPClassifierParametersV2
+      TableName: FBCSPClassifierParameters
       AttributeDefinitions:
         - AttributeName: classifierId
           AttributeType: N
@@ -119,11 +121,13 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
 
   FBCSPSessionFilesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: FBCSPSessionFilesV2
+      TableName: FBCSPSessionFiles
       AttributeDefinitions:
         - AttributeName: sessionName
           AttributeType: S
@@ -164,6 +168,8 @@ Resources:
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
 
   # --- API Gateway Integration ---
   StatusIntegration:
