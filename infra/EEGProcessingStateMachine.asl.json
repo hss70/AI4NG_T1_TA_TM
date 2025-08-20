@@ -7,10 +7,26 @@
             "Parameters": {
                 "pathParts.$": "States.StringSplit($.detail.object.key, '/')",
                 "userId.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 0)",
-                "sessionId.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1)",
+                "sessionName.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1)",
                 "inputFile.$": "$.detail.object.key"
             },
             "ResultPath": "$.sessionInfo",
+            "Next": "GenerateSessionId"
+        },
+        "GenerateSessionId": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+                "FunctionName": "${SessionIdGeneratorLambdaArn}",
+                "Payload": {
+                    "userId.$": "$.sessionInfo.userId",
+                    "sessionName.$": "$.sessionInfo.sessionName"
+                }
+            },
+            "ResultSelector": {
+                "sessionId.$": "$.Payload.sessionId"
+            },
+            "ResultPath": "$.sessionInfo.sessionId",
             "Next": "RecordProcessingStart"
         },
         "RecordProcessingStart": {

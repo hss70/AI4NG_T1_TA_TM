@@ -371,6 +371,17 @@ Resources:
         LogFormat: JSON
         LogGroup: !Ref ResultsMetadataLogGroup
 
+  SessionIdGeneratorLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/lambdas/sessionIdGenerator/
+      Handler: app.handler
+      Runtime: nodejs22.x
+      Timeout: 10
+      MemorySize: 128
+      Policies:
+        - CloudWatchLogsFullAccess
+
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -593,6 +604,7 @@ Resources:
                   - !GetAtt ClassifierProcessorLambda.Arn
                   - !GetAtt ResultsMetadataLambda.Arn
                   - !GetAtt ManifestProcessorLambda.Arn
+                  - !GetAtt SessionIdGeneratorLambda.Arn
               - Effect: Allow
                 Action:
                   - ecs:RunTask
@@ -732,6 +744,7 @@ Resources:
         ManifestProcessorLambdaArn: !GetAtt ManifestProcessorLambda.Arn
         ClassifierProcessorLambdaArn: !GetAtt ClassifierProcessorLambda.Arn
         ResultsMetadataLambdaArn: !GetAtt ResultsMetadataLambda.Arn
+        SessionIdGeneratorLambdaArn: !GetAtt SessionIdGeneratorLambda.Arn
         ResultsBucket: !Ref EEGResultsBucket
       Role: !GetAtt EEGStepFunctionRole.Arn
       Logging:
