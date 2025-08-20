@@ -39,12 +39,13 @@
                         "S.$": "$.sessionInfo.sessionName"
                     }
                 },
-                "UpdateExpression": "SET #s = :status, #u = :user, #t = :time, #sid = :sessionId",
+                "UpdateExpression": "SET #s = :status, #u = :user, #t = :time, #sid = :sessionId REMOVE #e",
                 "ExpressionAttributeNames": {
                     "#s": "status",
                     "#u": "userId",
                     "#t": "startTime",
-                    "#sid": "sessionId"
+                    "#sid": "sessionId",
+                    "#e": "error"
                 },
                 "ExpressionAttributeValues": {
                     ":status": {

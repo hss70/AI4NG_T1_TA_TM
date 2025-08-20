@@ -99,23 +99,34 @@ async function getAllSessions(queryParams) {
 }
 
 function formatStatusItem(item, sessionId) {
+    // Parse startTime - could be ISO string or Unix timestamp
+    let startTimeUnix = 0;
+    let startTimeISO = '';
+    
+    if (item.startTime) {
+        if (typeof item.startTime === 'string' && item.startTime.includes('T')) {
+            // ISO string format like "2025-08-20T12:48:20.387Z"
+            const date = new Date(item.startTime);
+            startTimeUnix = Math.floor(date.getTime() / 1000);
+            startTimeISO = item.startTime;
+        } else {
+            // Unix timestamp or number
+            startTimeUnix = parseInt(item.startTime);
+            startTimeISO = new Date(startTimeUnix * 1000).toISOString();
+        }
+    }
+    
     const statusInfo = {
         sessionName: item.sessionName || '',
         sessionId: sessionId || item.sessionId || 0,
         status: item.status || 'UNKNOWN',
         userId: item.userId || '',
-        startTime: parseInt(item.startTime) || 0,
+        startTime: startTimeUnix,
         processingDuration: parseInt(item.processingDuration) || 0,
         resultsPath: item.resultsPath || '',
-        exitCode: parseInt(item.exitCode) || -1
+        exitCode: parseInt(item.exitCode) || -1,
+        startTimeISO: startTimeISO
     };
-    
-    // Add human-readable timestamp
-    if (item.startTime) {
-        statusInfo.startTimeISO = new Date(parseInt(item.startTime) * 1000)
-            .toISOString()
-            .replace(/\.\d{3}Z$/, 'Z');  // Trim milliseconds
-    }
     
     return statusInfo;
 }
