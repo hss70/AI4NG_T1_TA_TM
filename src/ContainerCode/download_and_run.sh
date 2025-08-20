@@ -10,7 +10,7 @@ export OUTPUT_DIR="$WORK_DIR/Results"
 # Create required directories
 mkdir -p \
   "$WORK_DIR/Dependents" \
-  "$WORK_PATH/CSV/$USER_ID/$SESSION_ID" \
+  "$WORK_PATH/CSV/$USER_ID/$SESSION_NAME" \
   "$WORK_PATH/Results" \
   "/app/output"
 
@@ -22,11 +22,11 @@ echo "Downloading $INPUT_FILE from $UPLOAD_BUCKET"
 aws s3 cp "s3://${UPLOAD_BUCKET}/${INPUT_FILE}" /app/input.zip
 
 # Unzip into session directory
-echo "Unzipping input file to $WORK_PATH/CSV/$USER_ID/$SESSION_ID"
-unzip -o /app/input.zip -d "$WORK_PATH/CSV/$USER_ID/$SESSION_ID"
+echo "Unzipping input file to $WORK_PATH/CSV/$USER_ID/$SESSION_NAME"
+unzip -o /app/input.zip -d "$WORK_PATH/CSV/$USER_ID/$SESSION_NAME"
 
 # Load metadata and set critical variables
-METADATA_FILE="$WORK_PATH/CSV/$USER_ID/$SESSION_ID/metadata.json"
+METADATA_FILE="$WORK_PATH/CSV/$USER_ID/$SESSION_NAME/metadata.json"
 if [[ -f "$METADATA_FILE" ]]; then
     echo "Loading metadata from $METADATA_FILE"
     # Extract required parameters
@@ -41,7 +41,7 @@ if [[ -f "$METADATA_FILE" ]]; then
     # Export other metadata fields as environment variables
     while IFS="=" read -r key value; do
         key="${key//[^a-zA-Z0-9_]/_}"  # Sanitize key
-        if [[ ! $key =~ ^(USER_ID|SESSION_ID|INPUT_FILE|UPLOAD_BUCKET|RESULTS_BUCKET)$ ]]; then
+        if [[ ! $key =~ ^(USER_ID|SESSION_NAME|INPUT_FILE|UPLOAD_BUCKET|RESULTS_BUCKET)$ ]]; then
             export "$key"="$value"
             echo "Set env: $key : $value"
         fi
@@ -68,12 +68,13 @@ if [[ $EXIT_CODE -ne 0 ]]; then
 fi
 
 # Generate results path
-RESULTS_PATH="$USER_ID/$SESSION_ID"
+RESULTS_PATH="$USER_ID/$SESSION_NAME"
 
 # Create manifest file
 MANIFEST="/app/output/manifest.json"
 echo '{' > "$MANIFEST"
 echo '  "userId": "'"$USER_ID"'",' >> "$MANIFEST"
+echo '  "sessionName": "'"$SESSION_NAME"'",' >> "$MANIFEST"
 echo '  "sessionId": "'"$SESSION_ID"'",' >> "$MANIFEST"
 echo '  "inputFile": "'"$INPUT_FILE"'",' >> "$MANIFEST"
 echo '  "startTime": '"$start_time"',' >> "$MANIFEST"
@@ -107,6 +108,7 @@ echo '}' >> "$MANIFEST"
 # Upload results to S3
 echo "Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
 aws s3 cp /app/output/ "s3://$RESULTS_BUCKET/$RESULTS_PATH/" --recursive
+aws s3 cp "$Metadata_FILE" "s3://$RESULTS_BUCKET/$RESULTS_PATH/metadata.json"
 
 # Output results for Step Function
 echo '{"resultsPath": "'"$RESULTS_PATH"'"}'

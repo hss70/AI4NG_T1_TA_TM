@@ -2,6 +2,7 @@ const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { DynamoDBClient, UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
 const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
 const { Readable } = require('stream');
+const { assert } = require("console");
 
 const s3Client = new S3Client();
 const ddbClient = new DynamoDBClient();
@@ -10,7 +11,7 @@ const snsClient = new SNSClient();
 exports.handler = async (event) => {
     try {
         console.log(JSON.stringify({ level: 'INFO', message: 'Handler started', event }));
-        
+
         // Handle Step Function input format
         if (event.s3Bucket && event.s3Key) {
             const result = await processManifestFromStepFunction(event.s3Bucket, event.s3Key);
@@ -31,60 +32,60 @@ exports.handler = async (event) => {
 async function processManifestRecord(record) {
     const bucket = record.s3.bucket.name;
     const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
-    
+
     try {
         // Get manifest file from S3
         const { Body } = await s3Client.send(new GetObjectCommand({
             Bucket: bucket,
             Key: key
         }));
-        
+
         // Convert stream to string
         const manifestJson = await streamToString(Body);
         const manifest = JSON.parse(manifestJson);
-        
+
         // Extract path components
         const pathParts = key.split('/');
         const userId = pathParts[0];
         const sessionName = pathParts[1];
-        
+
         // Generate consistent sessionId from userId + sessionName
         const sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
             a = ((a << 5) - a) + b.charCodeAt(0);
             return a & a;
         }, 0));
-        
+
         // Calculate processing duration
         const processingDuration = manifest.endTime - manifest.startTime;
         const status = manifest.exitCode === 0 ? 'COMPLETED' : 'FAILED';
-        
+
         // Update DynamoDB status
         await updateStatusTable(sessionName, sessionId, userId, status, processingDuration, manifest);
-        
+
         // Store file metadata
         await storeFileMetadata(sessionName, sessionId, userId, manifest);
-        
+
         // Send SNS notification
         await sendNotification(manifest, status, userId, sessionName, sessionId);
-        
-        console.log(JSON.stringify({ 
-            level: 'INFO', 
-            message: 'Manifest processed', 
-            sessionId, 
-            sessionName, 
-            userId, 
+
+        console.log(JSON.stringify({
+            level: 'INFO',
+            message: 'Manifest processed',
+            sessionId,
+            sessionName,
+            userId,
             status,
-            processingDuration 
+            processingDuration
         }));
     } catch (error) {
-        console.error(JSON.stringify({ 
-            level: 'ERROR', 
-            message: 'Manifest processing failed', 
+        console.error(JSON.stringify({
+            level: 'ERROR',
+            message: 'Manifest processing failed',
             sessionId: sessionId || 'unknown',
             sessionName: sessionName || 'unknown',
             userId: userId || 'unknown',
-            key, 
-            error: error.message 
+            key,
+            error: error.message
         }));
         throw error;
     }
@@ -95,8 +96,8 @@ async function updateStatusTable(sessionName, sessionId, userId, status, duratio
         TableName: process.env.STATUS_TABLE,
         Key: { sessionName: { S: sessionName } },
         UpdateExpression: "SET #s = :status, userId = :userId, endTime = :endTime, " +
-                         "processingDuration = :duration, resultsPath = :resultsPath, " +
-                         "exitCode = :exitCode",
+            "processingDuration = :duration, resultsPath = :resultsPath, " +
+            "exitCode = :exitCode",
         ExpressionAttributeNames: { "#s": "status" },
         ExpressionAttributeValues: {
             ":status": { S: status },
@@ -107,16 +108,16 @@ async function updateStatusTable(sessionName, sessionId, userId, status, duratio
             ":exitCode": { N: manifest.exitCode.toString() }
         }
     };
-    
+
     await ddbClient.send(new UpdateItemCommand(updateParams));
 }
 
 async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
     const { UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
-    
+
     for (const file of manifest.outputFiles) {
         const fullPath = `${userId}/${sessionId}/${file}`;
-        
+
         await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.FILES_TABLE,
             Key: {
@@ -146,13 +147,13 @@ async function sendNotification(manifest, status, userId, sessionId) {
         exitCode: manifest.exitCode,
         outputFiles: manifest.outputFiles
     };
-    
+
     const command = new PublishCommand({
         TopicArn: process.env.SNS_TOPIC_ARN,
         Message: JSON.stringify(message),
         Subject: `EEG Processing ${status} - Session: ${sessionId}`
     });
-    
+
     await snsClient.send(command);
 }
 
@@ -163,55 +164,40 @@ async function processManifestFromStepFunction(bucket, key) {
             Bucket: bucket,
             Key: key
         }));
-        
+
         const manifestJson = await streamToString(Body);
         const manifest = JSON.parse(manifestJson);
-        
+
         // Extract path components
         const pathParts = key.split('/');
         const userId = pathParts[0];
         const sessionName = pathParts[1];
-        
         // Generate consistent sessionId from userId + sessionName
         const sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
             a = ((a << 5) - a) + b.charCodeAt(0);
             return a & a;
         }, 0));
-        
+
+        assert(userId == manifest.userId, 'User ID mismatch in manifest');
+        assert(sessionName == manifest.sessionName, 'Session name mismatch in manifest');
+        assert(sessionId == manifest.sessionId, 'Session ID mismatch in manifest');
+
         // Calculate processing duration
         const processingDuration = manifest.endTime - manifest.startTime;
         const status = manifest.exitCode === 0 ? 'COMPLETED' : 'FAILED';
-        
+
         // Update DynamoDB status
         await updateStatusTable(sessionName, sessionId, userId, status, processingDuration, manifest);
-        
+
         // Store file metadata
         await storeFileMetadata(sessionName, sessionId, userId, manifest);
-        
+
         // Send SNS notification
         await sendNotification(manifest, status, userId, sessionName, sessionId);
-        
-        // Check if metadata file actually exists if manifest claims it has metadata
-        let hasMetadata = manifest.hasMetadata || false;
-        if (hasMetadata && manifest.metadataFile) {
-            try {
-                await s3Client.send(new GetObjectCommand({
-                    Bucket: bucket,
-                    Key: `${userId}/${sessionId}/${manifest.metadataFile}`
-                }));
-            } catch (error) {
-                console.log(JSON.stringify({ 
-                level: 'WARN', 
-                message: 'Metadata file not found', 
-                sessionId, 
-                sessionName, 
-                userId,
-                metadataFile: manifest.metadataFile 
-            }));
-                hasMetadata = false;
-            }
-        }
-        
+
+        // Use metadata info directly from manifest
+        const hasMetadata = manifest.hasMetadata || false;
+
         return {
             requiresClassifier: true,
             hasMetadata,
@@ -219,14 +205,14 @@ async function processManifestFromStepFunction(bucket, key) {
             metadataFile: manifest.metadataFile || null
         };
     } catch (error) {
-        console.error(JSON.stringify({ 
-            level: 'ERROR', 
-            message: 'Step function manifest processing failed', 
+        console.error(JSON.stringify({
+            level: 'ERROR',
+            message: 'Step function manifest processing failed',
             sessionId: sessionId || 'unknown',
-            sessionName: sessionName || 'unknown', 
+            sessionName: sessionName || 'unknown',
             userId: userId || 'unknown',
-            key, 
-            error: error.message 
+            key,
+            error: error.message
         }));
         throw error;
     }
