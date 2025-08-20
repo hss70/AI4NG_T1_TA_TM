@@ -80,17 +80,17 @@ Resources:
     Properties:
       TableName: EEGProcessingStatus
       AttributeDefinitions:
-        - AttributeName: sessionName
-          AttributeType: S
         - AttributeName: sessionId
           AttributeType: N
-      KeySchema:
         - AttributeName: sessionName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: sessionId
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: SessionIdIndex
+        - IndexName: SessionNameIndex
           KeySchema:
-            - AttributeName: sessionId
+            - AttributeName: sessionName
               KeyType: HASH
           Projection:
             ProjectionType: ALL
@@ -129,25 +129,25 @@ Resources:
     Properties:
       TableName: FBCSPSessionFiles
       AttributeDefinitions:
-        - AttributeName: sessionName
-          AttributeType: S
-        - AttributeName: filePath
-          AttributeType: S
         - AttributeName: sessionId
           AttributeType: N
+        - AttributeName: filePath
+          AttributeType: S
+        - AttributeName: sessionName
+          AttributeType: S
         - AttributeName: userId
           AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
       KeySchema:
-        - AttributeName: sessionName
+        - AttributeName: sessionId
           KeyType: HASH
         - AttributeName: filePath
           KeyType: RANGE
       GlobalSecondaryIndexes:
-        - IndexName: SessionIdIndex
+        - IndexName: SessionNameIndex
           KeySchema:
-            - AttributeName: sessionId
+            - AttributeName: sessionName
               KeyType: HASH
           Projection:
             ProjectionType: ALL

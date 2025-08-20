@@ -35,15 +35,16 @@
             "Parameters": {
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
-                    "sessionName": {
-                        "S.$": "$.sessionInfo.sessionName"
+                    "sessionId": {
+                        "N.$": "States.JsonToString($.sessionInfo.sessionId.sessionId)"
                     }
                 },
-                "UpdateExpression": "SET #s = :status, #u = :user, #t = :time",
+                "UpdateExpression": "SET #s = :status, #u = :user, #t = :time, #sid = :sessionId",
                 "ExpressionAttributeNames": {
                     "#s": "status",
                     "#u": "userId",
-                    "#t": "startTime"
+                    "#t": "startTime",
+                    "#sid": "sessionId"
                 },
                 "ExpressionAttributeValues": {
                     ":status": {
@@ -54,6 +55,9 @@
                     },
                     ":time": {
                         "S.$": "$$.Execution.StartTime"
+                    },
+                    ":sessionId": {
+                        "N.$": "States.JsonToString($.sessionInfo.sessionId.sessionId)"
                     }
                 }
             },
@@ -114,6 +118,10 @@
                                 {
                                     "Name": "SESSION_NAME",
                                     "Value.$": "$.sessionInfo.sessionName"
+                                },
+                                {
+                                    "Name": "SESSION_ID",
+                                    "Value.$": "States.JsonToString($.sessionInfo.sessionId.sessionId)"
                                 }
                             ]
                         }
@@ -324,8 +332,8 @@
             "Parameters": {
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
-                    "sessionName": {
-                        "S.$": "$.sessionInfo.sessionName"
+                    "sessionId": {
+                        "N.$": "States.JsonToString($.sessionInfo.sessionId.sessionId)"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :endTime",
@@ -350,8 +358,8 @@
             "Parameters": {
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
-                    "sessionName": {
-                        "S.$": "$.sessionInfo.sessionName"
+                    "sessionId": {
+                        "N.$": "States.JsonToString($.sessionInfo.sessionId.sessionId)"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :error, #t = :time",

@@ -90,10 +90,10 @@ async function processManifestRecord(record) {
     }
 }
 
-async function updateStatusTable(sessionId, userId, status, duration, manifest) {
+async function updateStatusTable(sessionName, sessionId, userId, status, duration, manifest) {
     const updateParams = {
         TableName: process.env.STATUS_TABLE,
-        Key: { sessionId: { S: sessionId } },
+        Key: { sessionId: { N: sessionId.toString() } },
         UpdateExpression: "SET #s = :status, userId = :userId, endTime = :endTime, " +
                          "processingDuration = :duration, resultsPath = :resultsPath, " +
                          "exitCode = :exitCode",
@@ -111,7 +111,7 @@ async function updateStatusTable(sessionId, userId, status, duration, manifest) 
     await ddbClient.send(new UpdateItemCommand(updateParams));
 }
 
-async function storeFileMetadata(sessionId, userId, manifest) {
+async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
     const { UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
     
     for (const file of manifest.outputFiles) {
@@ -120,14 +120,15 @@ async function storeFileMetadata(sessionId, userId, manifest) {
         await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.FILES_TABLE,
             Key: {
-                sessionId: { S: sessionId },
+                sessionId: { N: sessionId.toString() },
                 filePath: { S: fullPath }
             },
-            UpdateExpression: "SET fileName = :fileName, userId = :userId, createdAt = :createdAt",
+            UpdateExpression: "SET fileName = :fileName, userId = :userId, createdAt = :createdAt, sessionName = :sessionName",
             ExpressionAttributeValues: {
                 ":fileName": { S: file },
                 ":userId": { S: userId },
-                ":createdAt": { N: manifest.endTime.toString() }
+                ":createdAt": { N: manifest.endTime.toString() },
+                ":sessionName": { S: sessionName }
             }
         }));
     }
