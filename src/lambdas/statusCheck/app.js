@@ -34,6 +34,7 @@ exports.handler = async (event) => {
 async function getSessionById(sessionId) {
     const params = {
         TableName: tableName,
+        IndexName: 'SessionIdIndex',
         KeyConditionExpression: 'sessionId = :sessionId',
         ExpressionAttributeValues: {
             ':sessionId': { N: sessionId.toString() }

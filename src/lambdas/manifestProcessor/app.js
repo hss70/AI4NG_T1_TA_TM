@@ -93,7 +93,7 @@ async function processManifestRecord(record) {
 async function updateStatusTable(sessionName, sessionId, userId, status, duration, manifest) {
     const updateParams = {
         TableName: process.env.STATUS_TABLE,
-        Key: { sessionId: { N: sessionId.toString() } },
+        Key: { sessionName: { S: sessionName } },
         UpdateExpression: "SET #s = :status, userId = :userId, endTime = :endTime, " +
                          "processingDuration = :duration, resultsPath = :resultsPath, " +
                          "exitCode = :exitCode",
@@ -120,7 +120,7 @@ async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
         await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.FILES_TABLE,
             Key: {
-                sessionId: { N: sessionId.toString() },
+                sessionName: { S: sessionName },
                 filePath: { S: fullPath }
             },
             UpdateExpression: "SET fileName = :fileName, userId = :userId, createdAt = :createdAt, sessionName = :sessionName",
