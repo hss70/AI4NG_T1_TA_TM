@@ -8,7 +8,8 @@
                 "pathParts.$": "States.StringSplit($.detail.object.key, '/')",
                 "userId.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 0)",
                 "sessionName.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1)",
-                "inputFile.$": "$.detail.object.key"
+                "inputFile.$": "$.detail.object.key",
+                "skipECS.$": "$.skipECS"
             },
             "ResultPath": "$.sessionInfo",
             "Next": "GenerateSessionId"
@@ -64,7 +65,7 @@
             "Type": "Choice",
             "Choices": [
                 {
-                    "Variable": "$.skipECS",
+                    "Variable": "$.sessionInfo.skipECS",
                     "BooleanEquals": true,
                     "Next": "WaitForManifest"
                 }
