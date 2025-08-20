@@ -46,6 +46,9 @@ if [[ -f "$METADATA_FILE" ]]; then
             echo "Set env: $key : $value"
         fi
     done < <(jq -r 'to_entries[] | "\(.key)=\(.value | tostring)"' "$METADATA_FILE")
+    
+    # Upload metadata file to S3 results after processing
+    aws s3 cp "$METADATA_FILE" "s3://$RESULTS_BUCKET/$RESULTS_PATH/metadata.json"
 else
     echo "ERROR: metadata.json not found in input ZIP"
     exit 1
@@ -108,7 +111,6 @@ echo '}' >> "$MANIFEST"
 # Upload results to S3
 echo "Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
 aws s3 cp /app/output/ "s3://$RESULTS_BUCKET/$RESULTS_PATH/" --recursive
-aws s3 cp "$Metadata_FILE" "s3://$RESULTS_BUCKET/$RESULTS_PATH/metadata.json"
 
 # Output results for Step Function
 echo '{"resultsPath": "'"$RESULTS_PATH"'"}'
