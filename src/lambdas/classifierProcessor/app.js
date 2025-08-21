@@ -51,6 +51,7 @@ async function processClassifierFile(bucket, key) {
     const userId = pathParts[0];
     const sessionName = pathParts[1];
     const fileName = pathParts[pathParts.length - 1];
+    let sessionId;
 
     try {
         // Get JSON file from S3
@@ -67,7 +68,7 @@ async function processClassifierFile(bucket, key) {
         const params = extractParameters(jsonData);
 
         // Generate unique IDs
-        const sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
+        sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
             a = ((a << 5) - a) + b.charCodeAt(0);
             return a & a;
         }, 0));

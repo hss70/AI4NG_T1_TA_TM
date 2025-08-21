@@ -158,6 +158,8 @@ async function sendNotification(manifest, status, userId, sessionId) {
 }
 
 async function processManifestFromStepFunction(bucket, key) {
+    let sessionId, sessionName, userId;
+    
     try {
         // Get manifest file from S3
         const { Body } = await s3Client.send(new GetObjectCommand({
@@ -170,10 +172,10 @@ async function processManifestFromStepFunction(bucket, key) {
 
         // Extract path components
         const pathParts = key.split('/');
-        const userId = pathParts[0];
-        const sessionName = pathParts[1];
+        userId = pathParts[0];
+        sessionName = pathParts[1];
         // Generate consistent sessionId from userId + sessionName
-        const sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
+        sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
             a = ((a << 5) - a) + b.charCodeAt(0);
             return a & a;
         }, 0));
