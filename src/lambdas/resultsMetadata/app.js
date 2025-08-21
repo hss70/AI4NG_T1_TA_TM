@@ -36,14 +36,21 @@ async function processRecord(record) {
             Key: key
         }));
         
+        // Generate sessionId from userId + sessionName
+        const sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0));
+        
         // Update DynamoDB
         await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.STATUS_TABLE,
-            Key: { sessionId: { S: sessionId } },
-            UpdateExpression: "ADD files :file SET lastUpdated = :now",
+            Key: { sessionName: { S: sessionName } },
+            UpdateExpression: "ADD files :file SET lastUpdated = :now, sessionId = :sessionId",
             ExpressionAttributeValues: {
                 ":file": { SS: [key] },
-                ":now": { N: Math.floor(Date.now() / 1000).toString() }
+                ":now": { N: Math.floor(Date.now() / 1000).toString() },
+                ":sessionId": { N: sessionId.toString() }
             }
         }));
         

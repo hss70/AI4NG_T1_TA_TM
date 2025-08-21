@@ -124,12 +124,12 @@ async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
                 sessionName: { S: sessionName },
                 filePath: { S: fullPath }
             },
-            UpdateExpression: "SET fileName = :fileName, userId = :userId, createdAt = :createdAt, sessionName = :sessionName",
+            UpdateExpression: "SET fileName = :fileName, sessionId = :sessionId, userId = :userId, createdAt = :createdAt",
             ExpressionAttributeValues: {
                 ":fileName": { S: file },
+                ":sessionId": { N: sessionId.toString() },
                 ":userId": { S: userId },
-                ":createdAt": { N: manifest.endTime.toString() },
-                ":sessionName": { S: sessionName }
+                ":createdAt": { N: manifest.endTime.toString() }
             }
         }));
     }
