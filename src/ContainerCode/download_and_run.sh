@@ -25,6 +25,9 @@ aws s3 cp "s3://${UPLOAD_BUCKET}/${INPUT_FILE}" /app/input.zip
 echo "Unzipping input file to $WORK_PATH/CSV/$USER_ID/$SESSION_NAME"
 unzip -o /app/input.zip -d "$WORK_PATH/CSV/$USER_ID/$SESSION_NAME"
 
+# Generate results path
+RESULTS_PATH="$USER_ID/$SESSION_NAME"
+
 # Load metadata and set critical variables
 METADATA_FILE="$WORK_PATH/CSV/$USER_ID/$SESSION_NAME/metadata.json"
 if [[ -f "$METADATA_FILE" ]]; then
@@ -69,9 +72,6 @@ if [[ $EXIT_CODE -ne 0 ]]; then
     echo "ERROR: MATLAB execution failed with exit code $EXIT_CODE"
     exit $EXIT_CODE
 fi
-
-# Generate results path
-RESULTS_PATH="$USER_ID/$SESSION_NAME"
 
 # Create manifest file
 MANIFEST="/app/output/manifest.json"
