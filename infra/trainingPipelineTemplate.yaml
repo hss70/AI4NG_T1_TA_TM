@@ -110,10 +110,18 @@ Resources:
           AttributeType: N
         - AttributeName: sessionId
           AttributeType: N
+        - AttributeName: userId
+          AttributeType: S
       KeySchema:
         - AttributeName: classifierId
           KeyType: HASH
       GlobalSecondaryIndexes:
+        - IndexName: UserIdIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
         - IndexName: SessionIdIndex
           KeySchema:
             - AttributeName: sessionId
@@ -283,7 +291,7 @@ Resources:
               Action:
                 - dynamodb:Scan
                 - dynamodb:Query
-              Resource: 
+              Resource:
                 - !GetAtt ProcessingStatusTable.Arn
                 - !Sub "${ProcessingStatusTable.Arn}/index/*"
         - CloudWatchLogsFullAccess
