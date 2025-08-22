@@ -147,6 +147,10 @@ Resources:
           AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
+        - AttributeName: fileName
+          AttributeType: S
+        - AttributeName: extension
+          AttributeType: S
       KeySchema:
         - AttributeName: sessionName
           KeyType: HASH
@@ -172,6 +176,22 @@ Resources:
             - AttributeName: createdAt
               KeyType: HASH
             - AttributeName: sessionId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: SessionIdFileNameIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+            - AttributeName: fileName
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: SessionIdExtensionIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+            - AttributeName: extension
               KeyType: RANGE
           Projection:
             ProjectionType: ALL

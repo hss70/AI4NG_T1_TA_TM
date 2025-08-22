@@ -117,6 +117,9 @@ async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
 
     for (const file of manifest.outputFiles) {
         const fullPath = `${userId}/${sessionId}/${file}`;
+        const parts = fullPath.split('/');
+        const fileName = parts[parts.length - 1];
+        const extension = fileName.includes('.') ? fileName.split('.').pop() : '';
 
         await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.FILES_TABLE,
@@ -124,12 +127,13 @@ async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
                 sessionName: { S: sessionName },
                 filePath: { S: fullPath }
             },
-            UpdateExpression: "SET fileName = :fileName, sessionId = :sessionId, userId = :userId, createdAt = :createdAt",
+            UpdateExpression: "SET fileName = :fileName, sessionId = :sessionId, userId = :userId, createdAt = :createdAt, extension= :extension",
             ExpressionAttributeValues: {
-                ":fileName": { S: file },
+                ":fileName": { S: fileName },
                 ":sessionId": { N: sessionId.toString() },
                 ":userId": { S: userId },
-                ":createdAt": { N: manifest.endTime.toString() }
+                ":createdAt": { N: manifest.endTime.toString() },
+                ":extension": { S: extension }
             }
         }));
     }
@@ -159,7 +163,7 @@ async function sendNotification(manifest, status, userId, sessionId) {
 
 async function processManifestFromStepFunction(bucket, key) {
     let sessionId, sessionName, userId;
-    
+
     try {
         // Get manifest file from S3
         const { Body } = await s3Client.send(new GetObjectCommand({
