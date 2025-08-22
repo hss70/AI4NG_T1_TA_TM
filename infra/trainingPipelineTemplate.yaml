@@ -112,6 +112,8 @@ Resources:
           AttributeType: N
         - AttributeName: userId
           AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
       KeySchema:
         - AttributeName: classifierId
           KeyType: HASH
@@ -122,10 +124,26 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
+        - IndexName: UserIdTimestampIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
         - IndexName: SessionIdIndex
           KeySchema:
             - AttributeName: sessionId
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: SessionIdTimestampIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
@@ -163,7 +181,7 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: UserIdIndex
+        - IndexName: UserIdCreatedAtIndex
           KeySchema:
             - AttributeName: userId
               KeyType: HASH
@@ -171,19 +189,13 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: DateIndex
-          KeySchema:
-            - AttributeName: createdAt
-              KeyType: HASH
-            - AttributeName: sessionId
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-        - IndexName: SessionIdFileNameIndex
+        - IndexName: SessionIdFileNameCreatedAtIndex
           KeySchema:
             - AttributeName: sessionId
               KeyType: HASH
             - AttributeName: fileName
+              KeyType: RANGE
+            - AttributeName: createdAt
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
@@ -192,6 +204,14 @@ Resources:
             - AttributeName: sessionId
               KeyType: HASH
             - AttributeName: extension
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: SessionIdCreatedAtIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+            - AttributeName: createdAt
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
