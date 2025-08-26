@@ -124,26 +124,10 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: UserIdTimestampIndex
-          KeySchema:
-            - AttributeName: userId
-              KeyType: HASH
-            - AttributeName: timestamp
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
         - IndexName: SessionIdIndex
           KeySchema:
             - AttributeName: sessionId
               KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-        - IndexName: SessionIdTimestampIndex
-          KeySchema:
-            - AttributeName: sessionId
-              KeyType: HASH
-            - AttributeName: timestamp
-              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
@@ -181,7 +165,7 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: UserIdCreatedAtIndex
+        - IndexName: UserIdIndex
           KeySchema:
             - AttributeName: userId
               KeyType: HASH
@@ -189,29 +173,11 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: SessionIdFileNameCreatedAtIndex
+        - IndexName: DateIndex
           KeySchema:
-            - AttributeName: sessionId
-              KeyType: HASH
-            - AttributeName: fileName
-              KeyType: RANGE
             - AttributeName: createdAt
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-        - IndexName: SessionIdExtensionIndex
-          KeySchema:
-            - AttributeName: sessionId
               KeyType: HASH
-            - AttributeName: extension
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-        - IndexName: SessionIdCreatedAtIndex
-          KeySchema:
             - AttributeName: sessionId
-              KeyType: HASH
-            - AttributeName: createdAt
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
