@@ -124,13 +124,13 @@ async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
         await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.FILES_TABLE,
             Key: {
-                sessionName: { S: sessionName },
-                filePath: { S: fullPath }
+                sessionId: { N: sessionId.toString() },
+                fileName: { S: fileName }
             },
-            UpdateExpression: "SET fileName = :fileName, sessionId = :sessionId, userId = :userId, createdAt = :createdAt, extension= :extension",
+            UpdateExpression: "SET filePath = :filePath, sessionName = :sessionName, userId = :userId, createdAt = :createdAt, extension = :extension",
             ExpressionAttributeValues: {
-                ":fileName": { S: fileName },
-                ":sessionId": { N: sessionId.toString() },
+                ":filePath": { S: fullPath },
+                ":sessionName": { S: sessionName },
                 ":userId": { S: userId },
                 ":createdAt": { N: manifest.endTime.toString() },
                 ":extension": { S: extension }

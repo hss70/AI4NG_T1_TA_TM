@@ -112,6 +112,8 @@ Resources:
           AttributeType: N
         - AttributeName: userId
           AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
       KeySchema:
         - AttributeName: classifierId
           KeyType: HASH
@@ -122,10 +124,26 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
+        - IndexName: UserIdTimestampIndex
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
         - IndexName: SessionIdIndex
           KeySchema:
             - AttributeName: sessionId
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: SessionIdTimestampIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
@@ -135,35 +153,37 @@ Resources:
   FBCSPSessionFilesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: FBCSPSessionFiles
+      TableName: FBCSPSessionFilesV2
       AttributeDefinitions:
-        - AttributeName: sessionName
-          AttributeType: S
-        - AttributeName: filePath
-          AttributeType: S
         - AttributeName: sessionId
           AttributeType: N
+        - AttributeName: fileName
+          AttributeType: S
         - AttributeName: userId
           AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
+        - AttributeName: extension
+          AttributeType: S
       KeySchema:
-        - AttributeName: sessionName
+        - AttributeName: sessionId
           KeyType: HASH
-        - AttributeName: filePath
+        - AttributeName: fileName
           KeyType: RANGE
       GlobalSecondaryIndexes:
-        - IndexName: SessionIdIndex
-          KeySchema:
-            - AttributeName: sessionId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-        - IndexName: UserIdIndex
+        - IndexName: UserIdCreatedAtIndex
           KeySchema:
             - AttributeName: userId
               KeyType: HASH
             - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: SessionIdExtensionIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+            - AttributeName: extension
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
@@ -732,7 +752,6 @@ Resources:
   # --- Step Functions ---
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
-    DependsOn: SessionIdGeneratorLambda
     Properties:
       DefinitionUri: EEGProcessingStateMachine.asl.json
       DefinitionSubstitutions:
