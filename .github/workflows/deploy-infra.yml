@@ -94,35 +94,204 @@ jobs:
           echo "subnet1_id=$SUBNET1" >> $GITHUB_OUTPUT
           echo "subnet2_id=$SUBNET2" >> $GITHUB_OUTPUT
 
-      # Build SAM application
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Compute DynamoDB GSI changes
+        id: gsi_delta
+        run: |
+          set -euo pipefail
+          BASE=$(git rev-parse HEAD~1) || true
+          TPL="infra/trainingPipelineTemplate.yaml"
+          
+          git show "$BASE:${TPL}" > /tmp/base.yaml 2>/dev/null || echo "Resources: {}" > /tmp/base.yaml
+          cp "$TPL" /tmp/head.yaml
+          
+          # Get all DynamoDB tables
+          get_tables() {
+            yq '.Resources | to_entries | map(select(.value.Type == "AWS::DynamoDB::Table")) | .[].key' -r "$1" 2>/dev/null || true
+          }
+          
+          BASE_TABLES=$(get_tables /tmp/base.yaml)
+          HEAD_TABLES=$(get_tables /tmp/head.yaml)
+          
+          # Check if any table has GSI changes
+          HAS_GSI_CHANGES=false
+          for table in $HEAD_TABLES; do
+            BASE_GSIS=$(yq ".Resources.${table}.Properties.GlobalSecondaryIndexes[].IndexName" /tmp/base.yaml 2>/dev/null | sort || true)
+            HEAD_GSIS=$(yq ".Resources.${table}.Properties.GlobalSecondaryIndexes[].IndexName" /tmp/head.yaml 2>/dev/null | sort || true)
+            
+            if [ "$BASE_GSIS" != "$HEAD_GSIS" ]; then
+              HAS_GSI_CHANGES=true
+              
+              # Detect additions and removals for this table
+              ADDED=$(comm -13 <(echo "$BASE_GSIS") <(echo "$HEAD_GSIS") || true)
+              REMOVED=$(comm -23 <(echo "$BASE_GSIS") <(echo "$HEAD_GSIS") || true)
+              
+              echo "::notice::Table $table - Removing: $REMOVED"
+              echo "::notice::Table $table - Adding: $ADDED"
+              
+              echo "${table}_added<<EOF" >> $GITHUB_OUTPUT
+              echo "$ADDED" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+              
+              echo "${table}_removed<<EOF" >> $GITHUB_OUTPUT
+              echo "$REMOVED" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            fi
+          done
+          
+          echo "has_gsi_changes=$HAS_GSI_CHANGES" >> $GITHUB_OUTPUT
+
       - name: SAM Build
         run: sam build --template-file infra/trainingPipelineTemplate.yaml
 
-      # Deploy with SAM
-      - name: SAM Deploy
-        id: sam_deploy
+      - name: Deploy with GSI sequencing
+        if: steps.gsi_delta.outputs.has_gsi_changes == 'true'
         run: |
-          set -o pipefail
+          set -euo pipefail
+          TPL="infra/trainingPipelineTemplate.yaml"
+          
+          # Create rollback state file
+          echo "{}" > /tmp/rollback_state.json
+          
+          # Function to save rollback state
+          save_state() {
+            local table=$1 phase=$2 status=$3
+            jq --arg t "$table" --arg p "$phase" --arg s "$status" \
+              '.[$t] = {"phase": $p, "status": $s, "timestamp": now}' \
+              /tmp/rollback_state.json > /tmp/rollback_state.tmp
+            mv /tmp/rollback_state.tmp /tmp/rollback_state.json
+          }
+          
+          # Function to wait for table to be ACTIVE
+          wait_for_active() {
+            local table_logical=$1
+            TABLE_NAME=$(aws cloudformation describe-stack-resources \
+              --stack-name ${{ env.STACK_NAME }} \
+              --query "StackResources[?LogicalResourceId=='${table_logical}'].PhysicalResourceId" \
+              --output text 2>/dev/null || echo "")
+            
+            if [ -n "$TABLE_NAME" ]; then
+              echo "Waiting for $TABLE_NAME to be ACTIVE..."
+              for i in {1..30}; do
+                STATUS=$(aws dynamodb describe-table --table-name "$TABLE_NAME" --query 'Table.TableStatus' --output text 2>/dev/null || echo "UNKNOWN")
+                [ "$STATUS" = "ACTIVE" ] && break
+                sleep 10
+              done
+              
+              if [ "$STATUS" != "ACTIVE" ]; then
+                echo "::error::Table $TABLE_NAME failed to become ACTIVE (status: $STATUS)"
+                return 1
+              fi
+            fi
+          }
+          
+          # Rollback function
+          rollback() {
+            echo "::error::Deployment failed, attempting rollback..."
+            
+            # Get the last known good state (base template)
+            git show "$(git rev-parse HEAD~1):$TPL" > /tmp/rollback.yaml 2>/dev/null || {
+              echo "::warning::Cannot rollback - no previous template version found"
+              return 1
+            }
+            
+            echo "::notice::Rolling back to previous template state"
+            sam deploy --template-file /tmp/rollback.yaml \
+              --parameter-overrides \
+                "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
+                "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
+                "PrivateSG=${{ steps.get_exports.outputs.sg_id }}" \
+                "PrivateSubnetId1=${{ steps.get_exports.outputs.subnet1_id }}" \
+                "PrivateSubnetId2=${{ steps.get_exports.outputs.subnet2_id }}" \
+              --no-confirm-changeset --no-fail-on-empty-changeset || {
+              echo "::error::Rollback failed - manual intervention required"
+              cat /tmp/rollback_state.json
+              return 1
+            }
+          }
+          
+          # Trap to handle failures
+          trap 'rollback; exit 1' ERR
+          
+          # Process each table's GSI changes: removals first, then additions
+          for table in EEGClassifierTable FBCSPSessionFilesTable; do
+            echo "::notice::Processing table: $table"
+            save_state "$table" "started" "processing"
+            
+            # Handle removals first (if any)
+            REMOVED_VAR="${table}_removed"
+            if [ -n "${!REMOVED_VAR:-}" ]; then
+              echo "::group::Removing GSIs for $table"
+              echo "Indexes to remove: ${!REMOVED_VAR}"
+              save_state "$table" "removing" "in_progress"
+              
+              sam deploy --template-file "$TPL" \
+                --parameter-overrides \
+                  "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
+                  "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
+                  "PrivateSG=${{ steps.get_exports.outputs.sg_id }}" \
+                  "PrivateSubnetId1=${{ steps.get_exports.outputs.subnet1_id }}" \
+                  "PrivateSubnetId2=${{ steps.get_exports.outputs.subnet2_id }}" \
+                --no-confirm-changeset --no-fail-on-empty-changeset
+              
+              wait_for_active "$table"
+              save_state "$table" "removing" "completed"
+              echo "::endgroup::"
+            fi
+            
+            # Handle additions (if any)
+            ADDED_VAR="${table}_added"
+            if [ -n "${!ADDED_VAR:-}" ]; then
+              echo "::group::Adding GSIs for $table"
+              echo "Indexes to add: ${!ADDED_VAR}"
+              save_state "$table" "adding" "in_progress"
+              
+              sam deploy --template-file "$TPL" \
+                --parameter-overrides \
+                  "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
+                  "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
+                  "PrivateSG=${{ steps.get_exports.outputs.sg_id }}" \
+                  "PrivateSubnetId1=${{ steps.get_exports.outputs.subnet1_id }}" \
+                  "PrivateSubnetId2=${{ steps.get_exports.outputs.subnet2_id }}" \
+                --no-confirm-changeset --no-fail-on-empty-changeset
+              
+              wait_for_active "$table"
+              save_state "$table" "adding" "completed"
+              echo "::endgroup::"
+            fi
+            
+            save_state "$table" "completed" "success"
+          done
+          
+          # Clear trap on success
+          trap - ERR
+          echo "::notice::All GSI changes completed successfully"
 
-          output=$(sam deploy \
+      - name: Standard SAM Deploy
+        if: steps.gsi_delta.outputs.has_gsi_changes != 'true'
+        run: |
+          sam deploy \
             --parameter-overrides \
               "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
               "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
               "PrivateSG=${{ steps.get_exports.outputs.sg_id }}" \
               "PrivateSubnetId1=${{ steps.get_exports.outputs.subnet1_id }}" \
               "PrivateSubnetId2=${{ steps.get_exports.outputs.subnet2_id }}" \
-            --no-confirm-changeset 2>&1 || true)
+            --no-confirm-changeset --no-fail-on-empty-changeset
 
-          echo "$output"
-
-          # Check for successful deployment patterns
-          if echo "$output" | grep -q "Successfully created/updated stack"; then
-            echo "::notice::Stack deployment completed successfully"
-            exit 0
-          elif echo "$output" | grep -iq "no changes to deploy"; then
-            echo "::notice::No changes detected - stack is up to date"
-            exit 0
-          else
-            echo "::error::SAM deploy failed or produced unexpected output"
-            exit 1
-          fi
+      - name: Final deployment verification
+        if: steps.gsi_delta.outputs.has_gsi_changes == 'true'
+        run: |
+          sam deploy \
+            --parameter-overrides \
+              "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
+              "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
+              "PrivateSG=${{ steps.get_exports.outputs.sg_id }}" \
+              "PrivateSubnetId1=${{ steps.get_exports.outputs.subnet1_id }}" \
+              "PrivateSubnetId2=${{ steps.get_exports.outputs.subnet2_id }}" \
+            --no-confirm-changeset --no-fail-on-empty-changeset
