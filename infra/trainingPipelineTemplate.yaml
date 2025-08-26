@@ -112,8 +112,6 @@ Resources:
           AttributeType: N
         - AttributeName: userId
           AttributeType: S
-        - AttributeName: timestamp
-          AttributeType: N
       KeySchema:
         - AttributeName: classifierId
           KeyType: HASH
@@ -149,10 +147,6 @@ Resources:
           AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
-        - AttributeName: fileName
-          AttributeType: S
-        - AttributeName: extension
-          AttributeType: S
       KeySchema:
         - AttributeName: sessionName
           KeyType: HASH
@@ -170,14 +164,6 @@ Resources:
             - AttributeName: userId
               KeyType: HASH
             - AttributeName: createdAt
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-        - IndexName: DateIndex
-          KeySchema:
-            - AttributeName: createdAt
-              KeyType: HASH
-            - AttributeName: sessionId
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
