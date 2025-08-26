@@ -118,21 +118,29 @@ jobs:
           BASE_TABLES=$(get_tables /tmp/base.yaml)
           HEAD_TABLES=$(get_tables /tmp/head.yaml)
           
-          # Check if any table has GSI changes
+          # Check if any table has GSI or AttributeDefinitions changes
           HAS_GSI_CHANGES=false
           for table in $HEAD_TABLES; do
             BASE_GSIS=$(yq ".Resources.${table}.Properties.GlobalSecondaryIndexes[].IndexName" /tmp/base.yaml 2>/dev/null | sort || true)
             HEAD_GSIS=$(yq ".Resources.${table}.Properties.GlobalSecondaryIndexes[].IndexName" /tmp/head.yaml 2>/dev/null | sort || true)
             
-            if [ "$BASE_GSIS" != "$HEAD_GSIS" ]; then
+            BASE_ATTRS=$(yq ".Resources.${table}.Properties.AttributeDefinitions[].AttributeName" /tmp/base.yaml 2>/dev/null | sort || true)
+            HEAD_ATTRS=$(yq ".Resources.${table}.Properties.AttributeDefinitions[].AttributeName" /tmp/head.yaml 2>/dev/null | sort || true)
+            
+            if [ "$BASE_GSIS" != "$HEAD_GSIS" ] || [ "$BASE_ATTRS" != "$HEAD_ATTRS" ]; then
               HAS_GSI_CHANGES=true
               
               # Detect additions and removals for this table
               ADDED=$(comm -13 <(echo "$BASE_GSIS") <(echo "$HEAD_GSIS") || true)
               REMOVED=$(comm -23 <(echo "$BASE_GSIS") <(echo "$HEAD_GSIS") || true)
               
-              echo "::notice::Table $table - Removing: $REMOVED"
-              echo "::notice::Table $table - Adding: $ADDED"
+              ATTR_ADDED=$(comm -13 <(echo "$BASE_ATTRS") <(echo "$HEAD_ATTRS") || true)
+              ATTR_REMOVED=$(comm -23 <(echo "$BASE_ATTRS") <(echo "$HEAD_ATTRS") || true)
+              
+              echo "::notice::Table $table - Removing GSIs: $REMOVED"
+              echo "::notice::Table $table - Adding GSIs: $ADDED"
+              echo "::notice::Table $table - Removing Attrs: $ATTR_REMOVED"
+              echo "::notice::Table $table - Adding Attrs: $ATTR_ADDED"
               
               echo "${table}_added<<EOF" >> $GITHUB_OUTPUT
               echo "$ADDED" >> $GITHUB_OUTPUT
