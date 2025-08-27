@@ -106,16 +106,30 @@ jobs:
           set -euo pipefail
           TPL="infra/trainingPipelineTemplate.yaml"
           
-          # Check if we have a previous commit
-          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
-            echo "::notice::First commit detected - skipping GSI sequencing"
-            echo "has_gsi_changes=false" >> $GITHUB_OUTPUT
-            exit 0
+          # Find last successful deployment commit
+          LAST_SUCCESS_COMMIT=$(gh run list --workflow deploy-infra.yml --branch ${{ github.ref_name }} --limit 50 --json conclusion,headSha --jq 'map(select(.conclusion == "success")) | .[0].headSha' 2>/dev/null || echo "")
+          
+          if [ -n "$LAST_SUCCESS_COMMIT" ] && [ "$LAST_SUCCESS_COMMIT" != "null" ]; then
+            echo "::notice::Found last successful deployment: $LAST_SUCCESS_COMMIT"
+          else
+            LAST_SUCCESS_COMMIT=""
           fi
           
-          BASE=$(git rev-parse HEAD~1)
-          git show "$BASE:${TPL}" > /tmp/base.yaml 2>/dev/null || {
-            echo "::notice::Template not found in previous commit - skipping GSI sequencing"
+          # If no successful run found, try to use HEAD~1
+          if [ -z "$LAST_SUCCESS_COMMIT" ]; then
+            # Check if we have git history
+            if git log --oneline -2 >/dev/null 2>&1; then
+              LAST_SUCCESS_COMMIT=$(git rev-parse HEAD~1)
+              echo "::notice::No successful workflow found, using HEAD~1: $LAST_SUCCESS_COMMIT"
+            else
+              echo "::notice::No git history available - skipping GSI sequencing"
+              echo "has_gsi_changes=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          fi
+          
+          git show "$LAST_SUCCESS_COMMIT:${TPL}" > /tmp/base.yaml 2>/dev/null || {
+            echo "::notice::Template not found in last successful commit - skipping GSI sequencing"
             echo "has_gsi_changes=false" >> $GITHUB_OUTPUT
             exit 0
           }
@@ -128,6 +142,14 @@ jobs:
           
           BASE_TABLES=$(get_tables /tmp/base.yaml)
           HEAD_TABLES=$(get_tables /tmp/head.yaml)
+          
+          # Check if only table names changed (skip GSI sequencing for table renames)
+          DIFF_OUTPUT=$(git diff "$LAST_SUCCESS_COMMIT" HEAD -- "$TPL")
+          if echo "$DIFF_OUTPUT" | grep -q "^-.*TableName:" && echo "$DIFF_OUTPUT" | grep -q "^+.*TableName:" && ! echo "$DIFF_OUTPUT" | grep -qE "(GlobalSecondaryIndexes|AttributeDefinitions)"; then
+            echo "::notice::Only table name changes detected - skipping GSI sequencing"
+            echo "has_gsi_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           
           # Check if any table has GSI or AttributeDefinitions changes
           HAS_GSI_CHANGES=false
