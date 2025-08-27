@@ -112,8 +112,6 @@ Resources:
           AttributeType: N
         - AttributeName: userId
           AttributeType: S
-        - AttributeName: timestamp
-          AttributeType: N
       KeySchema:
         - AttributeName: classifierId
           KeyType: HASH
@@ -124,26 +122,10 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: UserIdTimestampIndex
-          KeySchema:
-            - AttributeName: userId
-              KeyType: HASH
-            - AttributeName: timestamp
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
         - IndexName: SessionIdIndex
           KeySchema:
             - AttributeName: sessionId
               KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-        - IndexName: SessionIdTimestampIndex
-          KeySchema:
-            - AttributeName: sessionId
-              KeyType: HASH
-            - AttributeName: timestamp
-              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
@@ -155,23 +137,29 @@ Resources:
     Properties:
       TableName: FBCSPSessionFiles
       AttributeDefinitions:
+        - AttributeName: sessionName
+          AttributeType: S
+        - AttributeName: filePath
+          AttributeType: S
         - AttributeName: sessionId
           AttributeType: N
-        - AttributeName: fileName
-          AttributeType: S
         - AttributeName: userId
           AttributeType: S
         - AttributeName: createdAt
           AttributeType: N
-        - AttributeName: extension
-          AttributeType: S
       KeySchema:
-        - AttributeName: sessionId
+        - AttributeName: sessionName
           KeyType: HASH
-        - AttributeName: fileName
+        - AttributeName: filePath
           KeyType: RANGE
       GlobalSecondaryIndexes:
-        - IndexName: UserIdCreatedAtIndex
+        - IndexName: SessionIdIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: UserIdIndex
           KeySchema:
             - AttributeName: userId
               KeyType: HASH
@@ -179,11 +167,11 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: SessionIdExtensionIndex
+        - IndexName: DateIndex
           KeySchema:
-            - AttributeName: sessionId
+            - AttributeName: createdAt
               KeyType: HASH
-            - AttributeName: extension
+            - AttributeName: sessionId
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
@@ -752,6 +740,7 @@ Resources:
   # --- Step Functions ---
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
+    DependsOn: SessionIdGeneratorLambda
     Properties:
       DefinitionUri: EEGProcessingStateMachine.asl.json
       DefinitionSubstitutions:
