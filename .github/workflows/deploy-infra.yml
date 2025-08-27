@@ -256,15 +256,26 @@ jobs:
             ADDED_VAR="${table}_added"
             REMOVED_VAR="${table}_removed"
             
-            # Debug: show what variables we have
-            echo "::notice::Checking variables for $table:"
-            echo "::notice::ADDED_VAR=$ADDED_VAR, value=${!ADDED_VAR:-empty}"
-            echo "::notice::REMOVED_VAR=$REMOVED_VAR, value=${!REMOVED_VAR:-empty}"
+            # Skip tables with no changes
+            case $table in
+              "EEGClassifierTable")
+                REMOVED_GSIS="${{ steps.gsi_delta.outputs.EEGClassifierTable_removed }}"
+                ADDED_GSIS="${{ steps.gsi_delta.outputs.EEGClassifierTable_added }}"
+                ;;
+              "FBCSPSessionFilesTable")
+                REMOVED_GSIS="${{ steps.gsi_delta.outputs.FBCSPSessionFilesTable_removed }}"
+                ADDED_GSIS="${{ steps.gsi_delta.outputs.FBCSPSessionFilesTable_added }}"
+                ;;
+              *)
+                REMOVED_GSIS=""
+                ADDED_GSIS=""
+                ;;
+            esac
             
             # Process removals first (one at a time)
-            if [ -n "${!REMOVED_VAR:-}" ]; then
+            if [ -n "$REMOVED_GSIS" ]; then
               echo "::group::Removing GSIs for $table one by one"
-              echo "::notice::GSIs to remove: ${!REMOVED_VAR}"
+              echo "::notice::GSIs to remove: $REMOVED_GSIS"
               while IFS= read -r gsi_name; do
                 [ -z "$gsi_name" ] && continue
                 echo "::notice::🗑️ Removing GSI: '$gsi_name' from table '$table'"
@@ -286,16 +297,16 @@ jobs:
                 
                 wait_for_active "$table"
                 echo "::notice::✅ Successfully removed GSI: '$gsi_name' from table '$table'"
-              done <<< "${!REMOVED_VAR}"
+              done <<< "$REMOVED_GSIS"
               echo "::endgroup::"
             else
               echo "::notice::No GSIs to remove for table $table"
             fi
             
             # Process additions (one at a time)
-            if [ -n "${!ADDED_VAR:-}" ]; then
+            if [ -n "$ADDED_GSIS" ]; then
               echo "::group::Adding GSIs for $table one by one"
-              echo "::notice::GSIs to add: ${!ADDED_VAR}"
+              echo "::notice::GSIs to add: $ADDED_GSIS"
               while IFS= read -r gsi_name; do
                 [ -z "$gsi_name" ] && continue
                 echo "::notice::➕ Adding GSI: '$gsi_name' to table '$table'"
@@ -315,7 +326,7 @@ jobs:
                 
                 wait_for_active "$table"
                 echo "::notice::✅ Successfully added GSI: '$gsi_name' to table '$table'"
-              done <<< "${!ADDED_VAR}"
+              done <<< "$ADDED_GSIS"
               echo "::endgroup::"
             else
               echo "::notice::No GSIs to add for table $table"
