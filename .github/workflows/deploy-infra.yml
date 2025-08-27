@@ -194,6 +194,10 @@ jobs:
               echo "::notice::Table $table - Removing Attrs: $ATTR_REMOVED"
               echo "::notice::Table $table - Adding Attrs: $ATTR_ADDED"
               
+              # Debug: show what we're writing to output
+              echo "::notice::Writing to output - ${table}_added: '$ADDED'"
+              echo "::notice::Writing to output - ${table}_removed: '$REMOVED'"
+              
               echo "${table}_added<<EOF" >> $GITHUB_OUTPUT
               echo "$ADDED" >> $GITHUB_OUTPUT
               echo "EOF" >> $GITHUB_OUTPUT
@@ -205,6 +209,10 @@ jobs:
           done
           
           echo "has_gsi_changes=$HAS_GSI_CHANGES" >> $GITHUB_OUTPUT
+          
+          # Debug: show all output variables
+          echo "::notice::All GitHub output variables:"
+          cat $GITHUB_OUTPUT || echo "Failed to read GITHUB_OUTPUT"
 
       - name: SAM Build
         run: sam build --template-file infra/trainingPipelineTemplate.yaml
@@ -264,6 +272,9 @@ jobs:
                 # Create temporary template with this GSI removed
                 yq "del(.Resources.${table}.Properties.GlobalSecondaryIndexes[] | select(.IndexName == \"$gsi_name\"))" "$TPL" > "/tmp/${table}_remove_${gsi_name}.yaml"
                 
+                # Build the modified template
+                sam build --template-file "/tmp/${table}_remove_${gsi_name}.yaml"
+                
                 sam deploy --template-file "/tmp/${table}_remove_${gsi_name}.yaml" \
                   --parameter-overrides \
                     "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
@@ -288,6 +299,9 @@ jobs:
               while IFS= read -r gsi_name; do
                 [ -z "$gsi_name" ] && continue
                 echo "::notice::➕ Adding GSI: '$gsi_name' to table '$table'"
+                
+                # Build the template before deployment
+                sam build --template-file "$TPL"
                 
                 # Deploy with just this GSI added
                 sam deploy --template-file "$TPL" \
