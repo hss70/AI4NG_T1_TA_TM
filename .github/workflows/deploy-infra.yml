@@ -102,6 +102,8 @@ jobs:
 
       - name: Compute DynamoDB GSI changes
         id: gsi_delta
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TPL="infra/trainingPipelineTemplate.yaml"
@@ -109,11 +111,12 @@ jobs:
           # Find last successful deployment commit
           echo "::notice::Checking for successful runs on branch: ${{ github.ref_name }}"
           
-          # Debug: show all recent runs
-          echo "::notice::Recent workflow runs:"
-          gh run list --workflow deploy-infra.yml --branch ${{ github.ref_name }} --limit 10 --json conclusion,headSha,status || echo "Failed to list runs"
+          # Try main branch first, then current branch
+          LAST_SUCCESS_COMMIT=$(gh run list --workflow deploy-infra.yml --branch main --limit 50 --json conclusion,headSha --jq 'map(select(.conclusion == "success")) | .[0].headSha' 2>/dev/null || echo "")
           
-          LAST_SUCCESS_COMMIT=$(gh run list --workflow deploy-infra.yml --branch ${{ github.ref_name }} --limit 50 --json conclusion,headSha --jq 'map(select(.conclusion == "success")) | .[0].headSha' 2>/dev/null || echo "")
+          if [ -z "$LAST_SUCCESS_COMMIT" ] || [ "$LAST_SUCCESS_COMMIT" = "null" ]; then
+            LAST_SUCCESS_COMMIT=$(gh run list --workflow deploy-infra.yml --branch ${{ github.ref_name }} --limit 50 --json conclusion,headSha --jq 'map(select(.conclusion == "success")) | .[0].headSha' 2>/dev/null || echo "")
+          fi
           
           echo "::notice::Last success commit result: '$LAST_SUCCESS_COMMIT'"
           
