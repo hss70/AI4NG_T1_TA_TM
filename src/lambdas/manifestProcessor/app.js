@@ -116,7 +116,7 @@ async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
     const { UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
 
     for (const file of manifest.outputFiles) {
-        const fullPath = `${userId}/${sessionId}/${file}`;
+        const fullPath = `${userId}/${sessionName}/${file}`;
         const parts = fullPath.split('/');
         const fileName = parts[parts.length - 1];
         const extension = fileName.includes('.') ? fileName.split('.').pop() : '';
@@ -124,16 +124,16 @@ async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
         await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.FILES_TABLE,
             Key: {
-                sessionId: { N: sessionId.toString() },
-                fileName: { S: fileName }
+                sessionName: { S: sessionName },
+                filePath: { S: fullPath }
             },
-            UpdateExpression: "SET filePath = :filePath, sessionName = :sessionName, userId = :userId, createdAt = :createdAt, extension = :extension",
+            UpdateExpression: "SET sessionId = :sessionId, userId = :userId, createdAt = :createdAt, extension = :extension, fileName = :fileName",
             ExpressionAttributeValues: {
-                ":filePath": { S: fullPath },
-                ":sessionName": { S: sessionName },
+                ":sessionId": { N: sessionId.toString() },
                 ":userId": { S: userId },
                 ":createdAt": { N: manifest.endTime.toString() },
-                ":extension": { S: extension }
+                ":extension": { S: extension },
+                ":fileName": { S: fileName }
             }
         }));
     }
