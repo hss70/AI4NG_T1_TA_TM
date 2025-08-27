@@ -281,13 +281,11 @@ jobs:
                 echo "::notice::🗑️ Removing GSI: '$gsi_name' from table '$table'"
                 
                 # Create temporary template with this GSI removed
-                yq "del(.Resources.${table}.Properties.GlobalSecondaryIndexes[] | select(.IndexName == \"$gsi_name\"))" "$TPL" > "/tmp/${table}_remove_${gsi_name}.yaml"
-                
-                # Build the modified template
-                sam build --template-file "/tmp/${table}_remove_${gsi_name}.yaml"
+                yq "del(.Resources.${table}.Properties.GlobalSecondaryIndexes[] | select(.IndexName == \"$gsi_name\"))" ".aws-sam/build/template.yaml" > "/tmp/${table}_remove_${gsi_name}.yaml"
                 
                 sam deploy --template-file "/tmp/${table}_remove_${gsi_name}.yaml" \
                   --stack-name ${{ env.STACK_NAME }} \
+                  --s3-bucket aws-sam-cli-managed-default-samclisourcebucket-elqih9cswhbb \
                   --parameter-overrides \
                     "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
                     "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
@@ -312,12 +310,10 @@ jobs:
                 [ -z "$gsi_name" ] && continue
                 echo "::notice::➕ Adding GSI: '$gsi_name' to table '$table'"
                 
-                # Build the template before deployment
-                sam build --template-file "$TPL"
-                
                 # Deploy with just this GSI added
-                sam deploy --template-file "$TPL" \
+                sam deploy --template-file ".aws-sam/build/template.yaml" \
                   --stack-name ${{ env.STACK_NAME }} \
+                  --s3-bucket aws-sam-cli-managed-default-samclisourcebucket-elqih9cswhbb \
                   --parameter-overrides \
                     "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
                     "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
