@@ -106,8 +106,6 @@ Resources:
     Properties:
       TableName: FBCSPClassifierParameters
       AttributeDefinitions:
-        - AttributeName: classifierId
-          AttributeType: N
         - AttributeName: sessionId
           AttributeType: N
         - AttributeName: userId
@@ -118,24 +116,12 @@ Resources:
         - AttributeName: classifierId
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: UserIdIndex
-          KeySchema:
-            - AttributeName: userId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
         - IndexName: UserIdTimestampIndex
           KeySchema:
             - AttributeName: userId
               KeyType: HASH
             - AttributeName: timestamp
               KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-        - IndexName: SessionIdIndex
-          KeySchema:
-            - AttributeName: sessionId
-              KeyType: HASH
           Projection:
             ProjectionType: ALL
         - IndexName: SessionIdTimestampIndex
@@ -177,14 +163,6 @@ Resources:
           KeySchema:
             - AttributeName: sessionId
               KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-        - IndexName: UserIdIndex
-          KeySchema:
-            - AttributeName: userId
-              KeyType: HASH
-            - AttributeName: createdAt
-              KeyType: RANGE
           Projection:
             ProjectionType: ALL
         - IndexName: UserIdCreatedAtIndex
