@@ -112,6 +112,8 @@ Resources:
           AttributeType: S
         - AttributeName: timestamp
           AttributeType: N
+        - AttributeName: classifierId
+          AttributeType: S
       KeySchema:
         - AttributeName: classifierId
           KeyType: HASH
