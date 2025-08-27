@@ -107,25 +107,23 @@ jobs:
           TPL="infra/trainingPipelineTemplate.yaml"
           
           # Find last successful deployment commit
+          echo "::notice::Checking for successful runs on branch: ${{ github.ref_name }}"
+          
+          # Debug: show all recent runs
+          echo "::notice::Recent workflow runs:"
+          gh run list --workflow deploy-infra.yml --branch ${{ github.ref_name }} --limit 10 --json conclusion,headSha,status || echo "Failed to list runs"
+          
           LAST_SUCCESS_COMMIT=$(gh run list --workflow deploy-infra.yml --branch ${{ github.ref_name }} --limit 50 --json conclusion,headSha --jq 'map(select(.conclusion == "success")) | .[0].headSha' 2>/dev/null || echo "")
           
-          if [ -n "$LAST_SUCCESS_COMMIT" ] && [ "$LAST_SUCCESS_COMMIT" != "null" ]; then
+          echo "::notice::Last success commit result: '$LAST_SUCCESS_COMMIT'"
+          
+          if [ -n "$LAST_SUCCESS_COMMIT" ] && [ "$LAST_SUCCESS_COMMIT" != "null" ] && [ "$LAST_SUCCESS_COMMIT" != "" ]; then
             echo "::notice::Found last successful deployment: $LAST_SUCCESS_COMMIT"
           else
-            LAST_SUCCESS_COMMIT=""
-          fi
-          
-          # If no successful run found, try to use HEAD~1
-          if [ -z "$LAST_SUCCESS_COMMIT" ]; then
-            # Check if we have git history
-            if git log --oneline -2 >/dev/null 2>&1; then
-              LAST_SUCCESS_COMMIT=$(git rev-parse HEAD~1)
-              echo "::notice::No successful workflow found, using HEAD~1: $LAST_SUCCESS_COMMIT"
-            else
-              echo "::notice::No git history available - skipping GSI sequencing"
-              echo "has_gsi_changes=false" >> $GITHUB_OUTPUT
-              exit 0
-            fi
+            # No successful runs found, skip GSI sequencing for safety
+            echo "::notice::No successful deployment found - skipping GSI sequencing"
+            echo "has_gsi_changes=false" >> $GITHUB_OUTPUT
+            exit 0
           fi
           
           git show "$LAST_SUCCESS_COMMIT:${TPL}" > /tmp/base.yaml 2>/dev/null || {
