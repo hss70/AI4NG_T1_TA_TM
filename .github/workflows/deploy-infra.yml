@@ -248,12 +248,18 @@ jobs:
             ADDED_VAR="${table}_added"
             REMOVED_VAR="${table}_removed"
             
+            # Debug: show what variables we have
+            echo "::notice::Checking variables for $table:"
+            echo "::notice::ADDED_VAR=$ADDED_VAR, value=${!ADDED_VAR:-empty}"
+            echo "::notice::REMOVED_VAR=$REMOVED_VAR, value=${!REMOVED_VAR:-empty}"
+            
             # Process removals first (one at a time)
             if [ -n "${!REMOVED_VAR:-}" ]; then
               echo "::group::Removing GSIs for $table one by one"
+              echo "::notice::GSIs to remove: ${!REMOVED_VAR}"
               while IFS= read -r gsi_name; do
                 [ -z "$gsi_name" ] && continue
-                echo "Removing GSI: $gsi_name from $table"
+                echo "::notice::🗑️ Removing GSI: '$gsi_name' from table '$table'"
                 
                 # Create temporary template with this GSI removed
                 yq "del(.Resources.${table}.Properties.GlobalSecondaryIndexes[] | select(.IndexName == \"$gsi_name\"))" "$TPL" > "/tmp/${table}_remove_${gsi_name}.yaml"
@@ -268,16 +274,20 @@ jobs:
                   --no-confirm-changeset --no-fail-on-empty-changeset
                 
                 wait_for_active "$table"
+                echo "::notice::✅ Successfully removed GSI: '$gsi_name' from table '$table'"
               done <<< "${!REMOVED_VAR}"
               echo "::endgroup::"
+            else
+              echo "::notice::No GSIs to remove for table $table"
             fi
             
             # Process additions (one at a time)
             if [ -n "${!ADDED_VAR:-}" ]; then
               echo "::group::Adding GSIs for $table one by one"
+              echo "::notice::GSIs to add: ${!ADDED_VAR}"
               while IFS= read -r gsi_name; do
                 [ -z "$gsi_name" ] && continue
-                echo "Adding GSI: $gsi_name to $table"
+                echo "::notice::➕ Adding GSI: '$gsi_name' to table '$table'"
                 
                 # Deploy with just this GSI added
                 sam deploy --template-file "$TPL" \
@@ -290,8 +300,11 @@ jobs:
                   --no-confirm-changeset --no-fail-on-empty-changeset
                 
                 wait_for_active "$table"
+                echo "::notice::✅ Successfully added GSI: '$gsi_name' to table '$table'"
               done <<< "${!ADDED_VAR}"
               echo "::endgroup::"
+            else
+              echo "::notice::No GSIs to add for table $table"
             fi
           done
           
