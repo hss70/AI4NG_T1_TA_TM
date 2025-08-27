@@ -287,6 +287,7 @@ jobs:
                 sam build --template-file "/tmp/${table}_remove_${gsi_name}.yaml"
                 
                 sam deploy --template-file "/tmp/${table}_remove_${gsi_name}.yaml" \
+                  --stack-name ${{ env.STACK_NAME }} \
                   --parameter-overrides \
                     "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
                     "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
@@ -316,6 +317,7 @@ jobs:
                 
                 # Deploy with just this GSI added
                 sam deploy --template-file "$TPL" \
+                  --stack-name ${{ env.STACK_NAME }} \
                   --parameter-overrides \
                     "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
                     "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
@@ -339,6 +341,7 @@ jobs:
         if: steps.gsi_delta.outputs.has_gsi_changes != 'true'
         run: |
           sam deploy \
+            --stack-name ${{ env.STACK_NAME }} \
             --parameter-overrides \
               "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
               "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
@@ -351,6 +354,7 @@ jobs:
         if: steps.gsi_delta.outputs.has_gsi_changes == 'true'
         run: |
           sam deploy \
+            --stack-name ${{ env.STACK_NAME }} \
             --parameter-overrides \
               "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
               "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
