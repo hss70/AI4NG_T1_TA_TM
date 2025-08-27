@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -129,11 +131,21 @@ jobs:
             exit 0
           fi
           
-          git show "$LAST_SUCCESS_COMMIT:${TPL}" > /tmp/base.yaml 2>/dev/null || {
-            echo "::notice::Template not found in last successful commit - skipping GSI sequencing"
+          # Debug: check if commit exists and what files are available
+          echo "::notice::Checking commit $LAST_SUCCESS_COMMIT"
+          git show --name-only "$LAST_SUCCESS_COMMIT" | head -10 || echo "Failed to show commit"
+          
+          # Try to get the template from the commit
+          echo "::notice::Attempting to retrieve template: $LAST_SUCCESS_COMMIT:${TPL}"
+          if git show "$LAST_SUCCESS_COMMIT:${TPL}" > /tmp/base.yaml 2>&1; then
+            echo "::notice::Successfully retrieved template from commit"
+          else
+            echo "::notice::Failed to retrieve template. Git show output:"
+            git show "$LAST_SUCCESS_COMMIT:${TPL}" 2>&1 || true
+            echo "::notice::Template not found at $TPL - skipping GSI sequencing"
             echo "has_gsi_changes=false" >> $GITHUB_OUTPUT
             exit 0
-          }
+          fi
           cp "$TPL" /tmp/head.yaml
           
           # Get all DynamoDB tables
