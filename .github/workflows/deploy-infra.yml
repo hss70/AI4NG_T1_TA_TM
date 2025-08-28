@@ -166,6 +166,8 @@ jobs:
           
           # Check if any table has GSI or AttributeDefinitions changes
           HAS_GSI_CHANGES=false
+          TABLES_WITH_MULTIPLE_CHANGES=0
+          
           for table in $HEAD_TABLES; do
             # Skip if table doesn't exist in base (new table)
             if ! yq ".Resources.${table}" /tmp/base.yaml >/dev/null 2>&1; then
@@ -180,8 +182,6 @@ jobs:
             HEAD_ATTRS=$(yq ".Resources.${table}.Properties.AttributeDefinitions[].AttributeName" /tmp/head.yaml 2>/dev/null | sort || true)
             
             if [ "$BASE_GSIS" != "$HEAD_GSIS" ] || [ "$BASE_ATTRS" != "$HEAD_ATTRS" ]; then
-              HAS_GSI_CHANGES=true
-              
               # Detect additions and removals for this table
               ADDED=$(comm -13 <(echo "$BASE_GSIS") <(echo "$HEAD_GSIS") || true)
               REMOVED=$(comm -23 <(echo "$BASE_GSIS") <(echo "$HEAD_GSIS") || true)
@@ -193,6 +193,16 @@ jobs:
               echo "::notice::Table $table - Adding GSIs: $ADDED"
               echo "::notice::Table $table - Removing Attrs: $ATTR_REMOVED"
               echo "::notice::Table $table - Adding Attrs: $ATTR_ADDED"
+              
+              # Count GSI changes for this table
+              ADDED_COUNT=$(echo "$ADDED" | grep -c . || echo "0")
+              REMOVED_COUNT=$(echo "$REMOVED" | grep -c . || echo "0")
+              TOTAL_CHANGES=$((ADDED_COUNT + REMOVED_COUNT))
+              
+              if [ $TOTAL_CHANGES -gt 1 ]; then
+                TABLES_WITH_MULTIPLE_CHANGES=$((TABLES_WITH_MULTIPLE_CHANGES + 1))
+                HAS_GSI_CHANGES=true
+              fi
               
               # Debug: show what we're writing to output
               echo "::notice::Writing to output - ${table}_added: '$ADDED'"
@@ -208,7 +218,14 @@ jobs:
             fi
           done
           
+          # Only use GSI sequencing if there are tables with multiple changes
+          if [ $TABLES_WITH_MULTIPLE_CHANGES -eq 0 ]; then
+            echo "::notice::No tables have multiple GSI changes - skipping GSI sequencing"
+            HAS_GSI_CHANGES=false
+          fi
+          
           echo "has_gsi_changes=$HAS_GSI_CHANGES" >> $GITHUB_OUTPUT
+          echo "tables_with_multiple_changes=$TABLES_WITH_MULTIPLE_CHANGES" >> $GITHUB_OUTPUT
           
           # Debug: show all output variables
           echo "::notice::All GitHub output variables:"
@@ -283,9 +300,13 @@ jobs:
                 # Create temporary template with this GSI removed
                 yq "del(.Resources.${table}.Properties.GlobalSecondaryIndexes[] | select(.IndexName == \"$gsi_name\"))" ".aws-sam/build/template.yaml" > "/tmp/${table}_remove_${gsi_name}.yaml"
                 
-                sam deploy --template-file "/tmp/${table}_remove_${gsi_name}.yaml" \
-                  --stack-name ${{ env.STACK_NAME }} \
+                # Package the template to fix artifact paths
+                sam package --template-file "/tmp/${table}_remove_${gsi_name}.yaml" \
                   --s3-bucket aws-sam-cli-managed-default-samclisourcebucket-elqih9cswhbb \
+                  --output-template-file "/tmp/${table}_remove_${gsi_name}_packaged.yaml"
+                
+                sam deploy --template-file "/tmp/${table}_remove_${gsi_name}_packaged.yaml" \
+                  --stack-name ${{ env.STACK_NAME }} \
                   --parameter-overrides \
                     "SharedApiId=${{ steps.get_exports.outputs.shared_api_id }}" \
                     "EEGUploadBucketName=${{ steps.get_exports.outputs.bucket_name }}" \
