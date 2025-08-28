@@ -106,14 +106,14 @@ Resources:
     Properties:
       TableName: FBCSPClassifierParameters
       AttributeDefinitions:
+        - AttributeName: classifierId
+          AttributeType: N
         - AttributeName: sessionId
           AttributeType: N
         - AttributeName: userId
           AttributeType: S
         - AttributeName: timestamp
           AttributeType: N
-        - AttributeName: classifierId
-          AttributeType: S
       KeySchema:
         - AttributeName: classifierId
           KeyType: HASH
@@ -126,12 +126,10 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: UserIdIndex
+        - IndexName: SessionIdIndex
           KeySchema:
-            - AttributeName: userId
+            - AttributeName: sessionId
               KeyType: HASH
-            - AttributeName: timestamp
-              KeyType: RANGE
           Projection:
             ProjectionType: ALL
         - IndexName: SessionIdTimestampIndex
