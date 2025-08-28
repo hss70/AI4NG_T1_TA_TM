@@ -155,6 +155,8 @@ Resources:
           AttributeType: N
         - AttributeName: extension
           AttributeType: S
+        - AttributeName: fileName
+          AttributeType: S
       KeySchema:
         - AttributeName: sessionName
           KeyType: HASH
@@ -188,6 +190,14 @@ Resources:
             - AttributeName: sessionId
               KeyType: HASH
             - AttributeName: extension
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: SessionIdFileNameIndex
+          KeySchema:
+            - AttributeName: sessionId
+              KeyType: HASH
+            - AttributeName: fileName
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
