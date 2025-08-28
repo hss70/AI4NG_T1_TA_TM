@@ -126,12 +126,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: SessionIdIndex
-          KeySchema:
-            - AttributeName: sessionId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
         - IndexName: SessionIdTimestampIndex
           KeySchema:
             - AttributeName: sessionId
