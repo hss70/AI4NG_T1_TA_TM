@@ -124,15 +124,7 @@
                                     "Name": "SESSION_ID",
                                     "Value.$": "States.JsonToString($.sessionInfo.sessionId.sessionId)"
                                 }
-                            ],
-                            "LogConfiguration": {
-                                "LogDriver": "awslogs",
-                                "Options": {
-                                    "awslogs-group": "/ecs/eeg-classifier",
-                                    "awslogs-region": "${AWS::Region}",
-                                    "awslogs-stream-prefix.$": "States.Format('session-{}', $.sessionInfo.sessionId.sessionId)"
-                                }
-                            }
+                            ]
                         }
                     ]
                 }
