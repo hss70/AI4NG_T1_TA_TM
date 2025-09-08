@@ -18,6 +18,10 @@ Parameters:
   PrivateSubnetId2:
     Type: String
     Description: Second private subnet ID
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
 
 Resources:
   # S3 Event Rule to trigger Lambda on new uploads. The entry point to this pipeline, triggered when EEG data is uploaded to the S3 bucket.
@@ -43,7 +47,7 @@ Resources:
   EEGResultsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub ai4ng-eeg-results-${AWS::AccountId}-${AWS::Region}
+      BucketName: !Sub ai4ng-eeg-results-${Environment}-${AWS::AccountId}-${AWS::Region}
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
@@ -264,7 +268,7 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${AWS::StackName}-ResultsMetadata
       RetentionInDays: 14
 
-  # --- Lambda Functions ---
+  # --- Lambda Functions and relevant Permissions ---
   # S3 Event Processor Lambda
   S3EventProcessorLambda:
     Type: AWS::Serverless::Function
@@ -306,6 +310,12 @@ Resources:
       Runtime: nodejs22.x
       Timeout: 10
       MemorySize: 128
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref PrivateSG
+        SubnetIds:
+          - !Ref PrivateSubnetId1
+          - !Ref PrivateSubnetId2
       Environment:
         Variables:
           STATUS_TABLE: !Ref ProcessingStatusTable
@@ -321,6 +331,7 @@ Resources:
                 - !GetAtt ProcessingStatusTable.Arn
                 - !Sub "${ProcessingStatusTable.Arn}/index/*"
         - CloudWatchLogsFullAccess
+        - AWSLambdaVPCAccessExecutionRole
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref GetStatusLogGroup
@@ -342,6 +353,12 @@ Resources:
       Runtime: nodejs22.x
       Timeout: 30
       MemorySize: 256
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref PrivateSG
+        SubnetIds:
+          - !Ref PrivateSubnetId1
+          - !Ref PrivateSubnetId2
       Environment:
         Variables:
           STATUS_TABLE: !Ref ProcessingStatusTable
@@ -357,6 +374,7 @@ Resources:
         - SNSPublishMessagePolicy:
             TopicName: !GetAtt ProcessingNotificationTopic.TopicName
         - CloudWatchLogsFullAccess
+        - AWSLambdaVPCAccessExecutionRole
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ManifestProcessorLogGroup
@@ -370,6 +388,12 @@ Resources:
       Runtime: nodejs22.x
       Timeout: 30
       MemorySize: 256
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref PrivateSG
+        SubnetIds:
+          - !Ref PrivateSubnetId1
+          - !Ref PrivateSubnetId2
       Environment:
         Variables:
           CLASSIFIER_TABLE: !Ref EEGClassifierTable
@@ -379,6 +403,7 @@ Resources:
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
         - CloudWatchLogsFullAccess
+        - AWSLambdaVPCAccessExecutionRole
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ClassifierProcessorLogGroup
@@ -392,6 +417,12 @@ Resources:
       Runtime: nodejs22.x
       Timeout: 30
       MemorySize: 256
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref PrivateSG
+        SubnetIds:
+          - !Ref PrivateSubnetId1
+          - !Ref PrivateSubnetId2
       Environment:
         Variables:
           STATUS_TABLE: !Ref ProcessingStatusTable
@@ -401,6 +432,7 @@ Resources:
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
         - CloudWatchLogsFullAccess
+        - AWSLambdaVPCAccessExecutionRole
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ResultsMetadataLogGroup
@@ -415,7 +447,7 @@ Resources:
       MemorySize: 128
       Policies:
         - CloudWatchLogsFullAccess
-
+  # --- SNS Topic
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -424,7 +456,7 @@ Resources:
       Subscription:
         - Protocol: email
           Endpoint: "hss70@bath.ac.uk"
-
+  #--- SQS Queue ---
   StatusQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -800,31 +832,31 @@ Outputs:
     Value: !Sub https://${SharedApiId}.execute-api.${AWS::Region}.amazonaws.com/dev/api/status/
     Description: URL for status checking API
     Export:
-      Name: EEGStatusApiUrl
+      Name: !Sub EEGStatusApiUrl-${Environment}
   ProcessingStatusTable:
     Value: !Ref ProcessingStatusTable
     Description: Name of the processing status DynamoDB table
     Export:
-      Name: ProcessingStatusTableName
+      Name: !Sub ProcessingStatusTableName-${Environment}
   ResultsBucketName:
     Value: !Ref EEGResultsBucket
     Export:
-      Name: EEGResultsBucketName
+      Name: !Sub EEGResultsBucketName-${Environment}
   ECRRepositoryUri:
     Value: !GetAtt ClassifierECR.RepositoryUri
     Description: URI for the ECR repository containing the classifier image
     Export:
-      Name: EEGClassifierECRUri
+      Name: !Sub EEGClassifierECRUri-${Environment}
   ProcessingStateMachineArn:
     Value: !Ref ProcessingStateMachine
     Description: ARN of the EEG processing state machine
     Export:
-      Name: EEGProcessingStateMachineArn
+      Name: !Sub EEGProcessingStateMachineArn-${Environment}
   DashboardUrl:
     Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AWS::StackName}-EEG-Processing-Pipeline
     Description: URL to the CloudWatch Dashboard
     Export:
-      Name: EEGProcessingDashboardUrl
+      Name: !Sub EEGProcessingDashboardUrl-${Environment}
   LogInsightsQuery:
     Value: !Sub |
       SOURCE '/aws/lambda/AI4NGUploadLambda'
@@ -840,4 +872,4 @@ Outputs:
     Value: !Ref S3EventProcessorLambda
     Description: Name of S3 event processor Lambda
     Export:
-      Name: S3EventProcessorLambdaName
+      Name: !Sub S3EventProcessorLambdaName-${Environment}
