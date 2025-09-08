@@ -143,7 +143,6 @@ async function getECSLogs(sessionId) {
         const params = {
             logGroupName: '/ecs/eeg-classifier',
             filterPattern: `"[SESSION_ID=${sessionId}]"`,
-            logStreamNamePrefix: `session-${sessionId}`,
             limit: 50,
             startTime: Date.now() - (24 * 60 * 60 * 1000) // Last 24 hours
         };

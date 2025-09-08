@@ -17,7 +17,7 @@
             "Type": "Task",
             "Resource": "arn:aws:states:::lambda:invoke",
             "Parameters": {
-                "FunctionName": "AI4NG-T1-Training-dev-SessionIdGeneratorLambda-g6TFVQPcwlHC",
+                "FunctionName": "${SessionIdGeneratorLambdaArn}",
                 "Payload": {
                     "userId.$": "$.sessionInfo.userId",
                     "sessionName.$": "$.sessionInfo.sessionName"
