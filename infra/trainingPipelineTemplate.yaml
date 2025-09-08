@@ -3,21 +3,6 @@ Description: EEG Processing Pipeline with Manifest-Driven Workflow
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
-  SharedApiId:
-    Type: String
-    Description: ID of the shared API Gateway
-  EEGUploadBucketName:
-    Type: String
-    Description: Name of the existing EEG upload bucket
-  PrivateSG:
-    Type: String
-    Description: Security group ID for private resources
-  PrivateSubnetId1:
-    Type: String
-    Description: First private subnet ID
-  PrivateSubnetId2:
-    Type: String
-    Description: Second private subnet ID
   Environment:
     Type: String
     Default: dev
@@ -36,7 +21,7 @@ Resources:
         detail:
           bucket:
             name:
-              - !Ref EEGUploadBucketName
+              - Fn::ImportValue: !Sub EEGUploadBucketName-${Environment}
           object:
             key:
               - suffix: ".zip"
@@ -82,7 +67,7 @@ Resources:
   ProcessingStatusTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: EEGProcessingStatus
+      TableName: !Sub ${Environment}-EEGProcessingStatus
       AttributeDefinitions:
         - AttributeName: sessionName
           AttributeType: S
@@ -108,7 +93,7 @@ Resources:
   EEGClassifierTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: FBCSPClassifierParameters
+      TableName: !Sub ${Environment}-FBCSPClassifierParameters
       AttributeDefinitions:
         - AttributeName: classifierId
           AttributeType: N
@@ -145,7 +130,7 @@ Resources:
   FBCSPSessionFilesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: FBCSPSessionFiles
+      TableName: !Sub ${Environment}-FBCSPSessionFiles
       AttributeDefinitions:
         - AttributeName: sessionName
           AttributeType: S
@@ -213,7 +198,8 @@ Resources:
   StatusIntegration:
     Type: AWS::ApiGatewayV2::Integration
     Properties:
-      ApiId: !Ref SharedApiId
+      ApiId: 
+        Fn::ImportValue: !Sub SharedApiId-${Environment}
       IntegrationType: AWS_PROXY
       IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetStatusLambda.Arn}/invocations
       PayloadFormatVersion: "2.0"
@@ -222,19 +208,23 @@ Resources:
   StatusRoute:
     Type: AWS::ApiGatewayV2::Route
     Properties:
-      ApiId: !Ref SharedApiId
+      ApiId: 
+        Fn::ImportValue: !Sub SharedApiId-${Environment}
       RouteKey: "GET /api/status/{sessionId}"
       AuthorizationType: JWT
-      AuthorizerId: !ImportValue SharedApiAuthorizerId
+      AuthorizerId: 
+        Fn::ImportValue: !Sub SharedApiAuthorizerId-${Environment}
       Target: !Sub integrations/${StatusIntegration}
 
   StatusAllRoute:
     Type: AWS::ApiGatewayV2::Route
     Properties:
-      ApiId: !Ref SharedApiId
+      ApiId: 
+        Fn::ImportValue: !Sub SharedApiId-${Environment}
       RouteKey: "GET /api/status"
       AuthorizationType: JWT
-      AuthorizerId: !ImportValue SharedApiAuthorizerId
+      AuthorizerId: 
+        Fn::ImportValue: !Sub SharedApiAuthorizerId-${Environment}
       Target: !Sub integrations/${StatusIntegration}
 
   # --- CloudWatch Log Groups ---
@@ -287,7 +277,8 @@ Resources:
               Action: states:StartExecution
               Resource: !Ref ProcessingStateMachine
         - S3ReadPolicy:
-            BucketName: !Ref EEGUploadBucketName
+            BucketName: 
+              Fn::ImportValue: !Sub EEGUploadBucketName-${Environment}
         - CloudWatchLogsFullAccess
       LoggingConfig:
         LogFormat: JSON
