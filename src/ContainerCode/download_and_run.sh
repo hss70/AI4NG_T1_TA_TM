@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Log with SESSION_ID for CloudWatch filtering
+echo "[SESSION_ID=${SESSION_ID}] Starting EEG processing for session ${SESSION_ID}"
+
 # Set fixed environment variables
 export WORK_DIR="/app/work"
 export HOME_DIR="$WORK_DIR"  # For MATLAB compatibility
@@ -18,7 +21,7 @@ mkdir -p \
 cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Dependents/"
 
 # Download input file from S3
-echo "Downloading $INPUT_FILE from $UPLOAD_BUCKET"
+echo "[SESSION_ID=${SESSION_ID}] Downloading $INPUT_FILE from $UPLOAD_BUCKET"
 aws s3 cp "s3://${UPLOAD_BUCKET}/${INPUT_FILE}" /app/input.zip
 
 # Unzip into session directory
@@ -61,11 +64,13 @@ fi
 export LD_LIBRARY_PATH="/opt/matlabruntime/R2024b/runtime/glnxa64:/opt/matlabruntime/R2024b/bin/glnxa64:/opt/matlabruntime/R2024b/sys/os/glnxa64:/opt/matlabruntime/R2024b/sys/opengl/lib/glnxa64:/opt/matlabruntime/R2024b/extern/bin/glnxa64:${LD_LIBRARY_PATH:-}"
 
 # Run MATLAB executable using the runner script
-echo "Running MATLAB executable"
+echo "[SESSION_ID=${SESSION_ID}] Running MATLAB executable"
 start_time=$(date +%s)
-./run_FBCSP_Training.sh ${MATLAB_RUNTIME_ROOT:-/opt/matlabruntime/R2024b} || EXIT_CODE=$?
+./run_FBCSP_Training.sh ${MATLAB_RUNTIME_ROOT:-/opt/matlabruntime/R2024b} 2>&1 | while IFS= read -r line; do
+    echo "[SESSION_ID=${SESSION_ID}] $line"
+done
+EXIT_CODE=${PIPESTATUS[0]}
 end_time=$(date +%s)
-EXIT_CODE=${EXIT_CODE:-0}
 
 # Exit immediately if MATLAB failed
 if [[ $EXIT_CODE -ne 0 ]]; then
@@ -109,7 +114,7 @@ echo '  ]' >> "$MANIFEST"
 echo '}' >> "$MANIFEST"
 
 # Upload results to S3
-echo "Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
+echo "[SESSION_ID=${SESSION_ID}] Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
 aws s3 cp /app/output/ "s3://$RESULTS_BUCKET/$RESULTS_PATH/" --recursive
 
 # Output results for Step Function
