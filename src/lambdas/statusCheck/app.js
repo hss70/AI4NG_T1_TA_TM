@@ -1,7 +1,9 @@
 const { DynamoDBClient, QueryCommand, ScanCommand } = require("@aws-sdk/client-dynamodb");
+const { CloudWatchLogsClient, FilterLogEventsCommand } = require("@aws-sdk/client-cloudwatch-logs");
 const { unmarshall } = require("@aws-sdk/util-dynamodb");
 
 const ddbClient = new DynamoDBClient();
+const logsClient = new CloudWatchLogsClient();
 const tableName = process.env.STATUS_TABLE;
 
 exports.handler = async (event) => {
@@ -53,6 +55,11 @@ async function getSessionById(sessionId) {
     
     const item = unmarshall(response.Items[0]);
     const statusInfo = formatStatusItem(item, sessionId);
+    
+    // Add ECS logs if available
+    if (statusInfo.status === 'PROCESSING' || statusInfo.status === 'FAILED') {
+        statusInfo.logs = await getECSLogs(sessionId);
+    }
     
     return {
         statusCode: 200,
@@ -129,4 +136,25 @@ function formatStatusItem(item, sessionId) {
     };
     
     return statusInfo;
+}
+
+async function getECSLogs(sessionId) {
+    try {
+        const params = {
+            logGroupName: '/ecs/eeg-classifier',
+            filterPattern: `"SESSION_ID=${sessionId}"`,
+            limit: 50,
+            startTime: Date.now() - (24 * 60 * 60 * 1000) // Last 24 hours
+        };
+        
+        const response = await logsClient.send(new FilterLogEventsCommand(params));
+        
+        return response.events?.map(event => ({
+            timestamp: new Date(event.timestamp).toISOString(),
+            message: event.message?.trim()
+        })) || [];
+    } catch (error) {
+        console.error('Error fetching ECS logs:', error);
+        return [];
+    }
 }

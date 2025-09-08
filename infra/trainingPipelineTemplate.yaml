@@ -320,6 +320,10 @@ Resources:
               Resource:
                 - !GetAtt ProcessingStatusTable.Arn
                 - !Sub "${ProcessingStatusTable.Arn}/index/*"
+            - Effect: Allow
+              Action:
+                - logs:FilterLogEvents
+              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/eeg-classifier:*"
         - CloudWatchLogsFullAccess
       LoggingConfig:
         LogFormat: JSON
