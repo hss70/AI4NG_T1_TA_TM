@@ -70,6 +70,7 @@ for i = 1:length(subjects)
         
         % Validate fields
         if isfield(EEGConfig, 'Frequency') && isfield(EEGConfig, 'EEGChannels')
+            channelNumber = EEGConfig.EEGChannels;
             %set output filePath
             configFilePath = fullfile(outputSessionPath, 'EEG_config.mat');
             
@@ -109,6 +110,13 @@ for i = 1:length(subjects)
         % Load CSV data
         csvData = readmatrix(csvFilePath);
         fprintf('Converting: %s\n', csvFilePath);
+        
+        %Neuroprecise naturally saves the data as 10 columns [channels,
+        %classifier, trigger]. On 3 Channel EEG this means that columns E-I
+        %are empty and cause an issue with the classfier training
+        if(channelNumber == 3 & size(csvData,2) == 10)
+            csvData(:, 5:9) = [];
+        end
         
         %Need to transform data. mobile app saves the data as [channels,
         %classifier, trigger] x time whereas the training is expecting
