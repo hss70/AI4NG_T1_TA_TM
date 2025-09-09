@@ -409,7 +409,7 @@ Resources:
         LogFormat: JSON
         LogGroup: !Ref ResultsMetadataLogGroup
 
-  SessionIdGeneratorLambda:
+  SessionIdGeneratorLambdaV2:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../src/lambdas/sessionIdGenerator/
@@ -642,7 +642,7 @@ Resources:
                   - !GetAtt ClassifierProcessorLambda.Arn
                   - !GetAtt ResultsMetadataLambda.Arn
                   - !GetAtt ManifestProcessorLambda.Arn
-                  - !GetAtt SessionIdGeneratorLambda.Arn
+                  - !GetAtt SessionIdGeneratorLambdaV2.Arn
               - Effect: Allow
                 Action:
                   - ecs:RunTask
@@ -770,7 +770,7 @@ Resources:
   # --- Step Functions ---
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
-    DependsOn: SessionIdGeneratorLambda
+    DependsOn: SessionIdGeneratorLambdaV2
     Properties:
       DefinitionUri: EEGProcessingStateMachine.asl.json
       DefinitionSubstitutions:
@@ -783,7 +783,7 @@ Resources:
         ManifestProcessorLambdaArn: !GetAtt ManifestProcessorLambda.Arn
         ClassifierProcessorLambdaArn: !GetAtt ClassifierProcessorLambda.Arn
         ResultsMetadataLambdaArn: !GetAtt ResultsMetadataLambda.Arn
-        SessionIdGeneratorLambdaArn: !GetAtt SessionIdGeneratorLambda.Arn
+        SessionIdGeneratorLambdaArn: !GetAtt SessionIdGeneratorLambdaV2.Arn
         ResultsBucket: !Ref EEGResultsBucket
       Role: !GetAtt EEGStepFunctionRole.Arn
       Logging:

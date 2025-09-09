@@ -201,7 +201,7 @@ function escapeRegExp(s) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export async function getECSLogs(
+async function getECSLogs(
     sessionId,
     {
         maxLogs = 50,
