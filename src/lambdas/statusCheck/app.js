@@ -150,6 +150,8 @@ const excludePhrases = [
     "Set env:",
     "LD_LIBRARY_PATH",
     "________________________",
+    "------------------------------------------",
+    "---",
     "ans =",
     "downsample is off",
     "dataDir =",

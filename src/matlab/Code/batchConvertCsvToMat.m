@@ -114,17 +114,26 @@ for i = 1:length(subjects)
         %Neuroprecise naturally saves the data as 10 columns [channels,
         %classifier, trigger]. On 3 Channel EEG this means that columns E-I
         %are empty and cause an issue with the classfier training
-        if(channelNumber == 3 & size(csvData,2) == 10)
+        nCols = size(csvData, 2);
+        if(ChannelNum == 3 & nCols == 10)
             csvData(:, 5:9) = [];
         end
         
-        %Need to transform data. mobile app saves the data as [channels,
-        %classifier, trigger] x time whereas the training is expecting
-        %time * [Channels, trigger, classifier] so need to swap last two
-        %columns and transpose
-        
-        %Column swap
         nCols = size(csvData, 2);
+        %The Training will break if there are less than 30 left triggers
+        %and 30 right triggers. We will reject in that case and print a
+        %message
+        
+        % Count number of 1s
+        numOnes = nnz(csvData(:,nCols) == 1);
+        % Count number of 2s
+        numTwos = nnz(csvData(:,nCols) == 2);
+        
+        if(numOnes <30 || numTwos <30)
+            error('Not enough triggers for MI Training. We require 30 Left triggers and 30 Right triggers. Found %d Left and %d Right in %s', numOnes, numTwos, csvFilePathS);
+        end
+        
+        %Column swap so that trigger is in column n-1 and classifier in n
         if nCols >= 2
             csvData(:, [nCols-1, nCols]) = csvData(:, [nCols, nCols-1]);
         end
