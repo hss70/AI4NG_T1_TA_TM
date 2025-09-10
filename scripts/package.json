@@ -1,0 +1,10 @@
+{
+  "name": "migration-scripts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.540.0",
+    "@aws-sdk/client-s3": "^3.540.0",
+    "@aws-sdk/credential-providers": "^3.540.0",
+    "csv-parser": "^3.0.0"
+  }
+}
