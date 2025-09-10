@@ -10,7 +10,7 @@ exports.handler = async (event) => {
         console.log(JSON.stringify({ level: 'INFO', message: 'Classifier handler started', event }));
 
         // Handle direct Step Function invocation
-        if (event.s3Bucket && event.s3Key) {
+        if (event.s3Bucket && (event.s3Key || event.s3KeyClassifierFile)) {
             await processDirectInvocation(event);
             return { status: 'success' };
         }
@@ -30,21 +30,22 @@ exports.handler = async (event) => {
 
 async function processDirectInvocation(event) {
     const bucket = event.s3Bucket;
-    const key = event.s3Key;
-    await processClassifierFile(bucket, key);
+    const classifierKey = event.s3KeyClassifierFile || event.s3Key; // backward compatibility
+    const resultsKey = event.s3KeyResultsFile;
+    await processClassifierFile(bucket, classifierKey, resultsKey);
 }
 
 async function processRecord(record) {
     const bucket = record.s3.bucket.name;
     const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
-    await processClassifierFile(bucket, key);
+    await processClassifierFile(bucket, key, null);
 }
 
-async function processClassifierFile(bucket, key) {
+async function processClassifierFile(bucket, classifierKey, resultsKey = null) {
     // Validate path format: userId/sessionName/Online/userId/sessionName/filename.json
-    const pathParts = key.split('/');
+    const pathParts = classifierKey.split('/');
     if (pathParts.length < 6 || pathParts[2] !== 'Online') {
-        console.log(JSON.stringify({ level: 'WARN', message: 'Invalid path format', key }));
+        console.log(JSON.stringify({ level: 'WARN', message: 'Invalid path format', key: classifierKey }));
         return;
     }
 
@@ -57,7 +58,7 @@ async function processClassifierFile(bucket, key) {
         // Get JSON file from S3
         const { Body } = await s3Client.send(new GetObjectCommand({
             Bucket: bucket,
-            Key: key
+            Key: classifierKey
         }));
 
         // Convert stream to string
@@ -74,6 +75,11 @@ async function processClassifierFile(bucket, key) {
         }, 0));
         const classifierId = Date.now() + Math.floor(Math.random() * 1000);
 
+        // Fetch T1 results for DA metrics
+        const t1Results = resultsKey ? 
+            await fetchT1ResultsFromKey(bucket, resultsKey) : 
+            await fetchT1Results(bucket, userId, sessionName);
+        
         // Store in DynamoDB
         const updateExpression = [];
         const expressionAttributeValues = {
@@ -82,7 +88,7 @@ async function processClassifierFile(bucket, key) {
             ":sessionName": { S: sessionName },
             ":timestamp": { N: Date.now().toString() },
             ":fileName": { S: fileName },
-            ":s3Key": { S: key }
+            ":s3Key": { S: classifierKey }
         };
 
         updateExpression.push("sessionId = :sessionId");
@@ -91,6 +97,14 @@ async function processClassifierFile(bucket, key) {
         updateExpression.push("#ts = :timestamp");
         updateExpression.push("fileName = :fileName");
         updateExpression.push("s3Key = :s3Key");
+        
+        // Add T1 results if available
+        if (t1Results) {
+            expressionAttributeValues[":peakAccuracy"] = { N: t1Results.taskPeakDA_mean.toString() };
+            expressionAttributeValues[":errorMargin"] = { N: t1Results.taskPeakDA_std.toString() };
+            updateExpression.push("peakAccuracy = :peakAccuracy");
+            updateExpression.push("errorMargin = :errorMargin");
+        }
 
         // Add parameter attributes
         Object.keys(params).forEach((key, index) => {
@@ -125,7 +139,7 @@ async function processClassifierFile(bucket, key) {
             sessionId: sessionId || 'unknown',
             sessionName: sessionName || 'unknown',
             userId: userId || 'unknown',
-            key,
+            key: classifierKey,
             error: error.message
         }));
         throw error;
@@ -224,4 +238,50 @@ function mapToDynamo(obj) {
         }
     }
     return result;
+}
+
+async function fetchT1Results(bucket, userId, sessionName) {
+    const t1Key = `${userId}/${sessionName}/T1 [results].json`;
+    return await fetchT1ResultsFromKey(bucket, t1Key);
+}
+
+async function fetchT1ResultsFromKey(bucket, t1Key) {
+    try {
+        const { Body } = await s3Client.send(new GetObjectCommand({
+            Bucket: bucket,
+            Key: t1Key
+        }));
+        
+        const jsonString = await streamToString(Body);
+        const t1Data = JSON.parse(jsonString);
+        
+        const taskPeakDA_mean = t1Data?.DA?.smooth?.taskPeakDA_mean;
+        const taskPeakDA_std = t1Data?.DA?.smooth?.taskPeakDA_std;
+        
+        if (taskPeakDA_mean !== undefined && taskPeakDA_std !== undefined) {
+            console.log(JSON.stringify({
+                level: 'INFO',
+                message: 'T1 results extracted',
+                t1Key,
+                taskPeakDA_mean,
+                taskPeakDA_std
+            }));
+            return { taskPeakDA_mean, taskPeakDA_std };
+        }
+        
+        console.log(JSON.stringify({
+            level: 'WARN',
+            message: 'T1 results missing required fields',
+            t1Key
+        }));
+        return null;
+    } catch (error) {
+        console.log(JSON.stringify({
+            level: 'WARN',
+            message: 'T1 results file not found or invalid',
+            t1Key,
+            error: error.message
+        }));
+        return null;
+    }
 }

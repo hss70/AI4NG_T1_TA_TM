@@ -234,6 +234,32 @@
                 "Key.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionName, $.sessionInfo.userId, $.sessionInfo.sessionName)"
             },
             "ResultPath": "$.classifierCheck",
+            "Next": "CheckT1ResultsExists",
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "S3.NotFound"
+                    ],
+                    "ResultPath": "$.error",
+                    "Next": "RecordFailure"
+                },
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "ResultPath": "$.error",
+                    "Next": "RecordFailure"
+                }
+            ]
+        },
+        "CheckT1ResultsExists": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
+            "Parameters": {
+                "Bucket": "${ResultsBucket}",
+                "Key.$": "States.Format('{}/{}/T1 [results].json', $.sessionInfo.userId, $.sessionInfo.sessionName)"
+            },
+            "ResultPath": "$.t1Check",
             "Next": "ProcessClassifier",
             "Catch": [
                 {
@@ -259,7 +285,8 @@
                 "FunctionName": "${ClassifierProcessorLambdaArn}",
                 "Payload": {
                     "s3Bucket": "${ResultsBucket}",
-                    "s3Key.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionName, $.sessionInfo.userId, $.sessionInfo.sessionName)"
+                    "s3KeyClassifierFile.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionName, $.sessionInfo.userId, $.sessionInfo.sessionName)",
+                    "s3KeyResultsFile.$": "States.Format('{}/{}/T1 [results].json', $.sessionInfo.userId, $.sessionInfo.sessionName)"
                 }
             },
             "ResultPath": "$.classifierResult",
