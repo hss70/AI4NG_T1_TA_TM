@@ -1,6 +1,9 @@
-# AI4NG T1_TA_TM training pipeline
+# AI4NG T1_TA_TM Training Pipeline
 ## For use with the FBCSP classifier
 This repository contains the infrastructure code for the AI4NG EEG Processing Pipeline, which automates the processing of EEG data files, tracks processing status, and provides a REST API for status checks.
+
+## Architecture Overview
+The pipeline processes EEG .zip files uploaded to S3, runs classification in ECS containers, and stores results. It includes manifest-driven processing, T1 results extraction, and comprehensive status tracking.
 
 flowchart TD
     A[User Uploads .zip] -->|S3 Event| B[S3EventProcessorLambda]
@@ -23,39 +26,113 @@ flowchart TD
     O --> P
 
 ## Key Components
+
 ### S3 Buckets
+- **Upload Bucket** (`ai4ngstore-dev`): Receives user-uploaded EEG data (.zip files)
+- **Results Bucket** (`ai4ng-eeg-results-*`): Stores processed EEG results, manifests, and classifier outputs
 
-- Upload Bucket: Receives user-uploaded EEG data (.zip files)
-
-- Results Bucket: Stores processed EEG results
-
-### AWS Step Function
-
-- Orchestrates the entire processing workflow
-
-- Coordinates between ECS, Lambda, and DynamoDB
+### AWS Step Function (`ProcessingStateMachine`)
+Orchestrates the entire processing workflow:
+1. **ExtractSessionInfo**: Parses upload path to extract userId, sessionName, and sessionId
+2. **RecordProcessingStart**: Updates DynamoDB with PROCESSING status
+3. **CheckSkipECS**: Optional bypass for ECS processing (for testing)
+4. **LaunchECSTask**: Runs EEG classification in Fargate container
+5. **WaitForManifest**: Polls for manifest.json file creation
+6. **CheckManifestExists**: Verifies manifest file is available
+7. **ProcessManifest**: Extracts processing results and file metadata
+8. **CheckClassifierExists**: Verifies classifier JSON file exists
+9. **CheckT1ResultsExists**: Verifies T1 results JSON file exists
+10. **ProcessClassifier**: Extracts classifier parameters and T1 DA metrics
+11. **CheckForMetadata**: Determines if additional metadata processing needed
+12. **ProcessMetadata**: Handles optional metadata files
+13. **RecordSuccess/RecordFailure**: Updates final processing status
 
 ### AWS Lambda Functions
 
-- S3 Event Processor: Triggers processing pipeline
+#### S3EventProcessorLambda
+- **Purpose**: Entry point triggered by S3 upload events
+- **Trigger**: EventBridge rule on .zip file uploads
+- **Actions**: 
+  - Generates sessionId from userId+sessionName
+  - Records upload in ProcessingStatusTableV2
+  - Starts Step Function execution
+- **Environment**: `STATE_MACHINE_ARN`, `STATUS_TABLE`
 
-- Manifest Processor: Processes manifest files
+#### ManifestProcessorLambda
+- **Purpose**: Processes manifest.json files created by ECS container
+- **Trigger**: Step Function invocation
+- **Actions**:
+  - Parses manifest for processing results
+  - Updates processing status and duration
+  - Stores file metadata in FBCSPSessionFiles table
+  - Sends SNS notifications
+- **Environment**: `STATUS_TABLE`, `FILES_TABLE`, `SNS_TOPIC_ARN`
 
-- Classifier Processor: Processes classifier data
+#### ClassifierProcessorLambda
+- **Purpose**: Extracts FBCSP classifier parameters and T1 DA metrics
+- **Trigger**: Step Function invocation
+- **Actions**:
+  - Processes classifier JSON files
+  - Extracts EEG, CSP, CF, and MI parameters
+  - Fetches T1 results for DA.smooth.taskPeakDA_mean/std
+  - Stores in FBCSPClassifierParameters table
+- **Environment**: `CLASSIFIER_TABLE`
 
-- Metadata Processor: Processes metadata
+#### ResultsMetadataLambda
+- **Purpose**: Processes optional metadata JSON files
+- **Trigger**: Step Function invocation (conditional)
+- **Actions**: Updates processing status with metadata information
+- **Environment**: `STATUS_TABLE`
 
-- Status Check: Provides API for status queries
+#### GetStatusLambda
+- **Purpose**: Provides REST API for processing status queries
+- **Trigger**: API Gateway routes
+- **Endpoints**:
+  - `GET /api/status/{sessionId}` - Get specific session status
+  - `GET /api/status` - Get all sessions (with optional status filter)
+- **Features**: Includes ECS logs for failed/processing sessions
+- **Environment**: `STATUS_TABLE`
+
+#### AdminRetriggerLambda
+- **Purpose**: Admin tool to reprocess all uploaded files
+- **Trigger**: Manual console invocation only
+- **Actions**:
+  - Scans ProcessingStatusTableV2 for all sessions with uploadPath
+  - Restarts Step Function for each session
+  - Supports skipECS flag for testing
+- **Environment**: `STATUS_TABLE`, `STATE_MACHINE_ARN`
 
 ### Amazon ECS
-
-Runs EEG classification tasks in Fargate containers
+- **Cluster**: `EEG-Classifier-Cluster` (Fargate)
+- **Task Definition**: `EEGClassifierTask`
+- **Container**: `eeg-classifier` (1024 CPU, 4096 MB memory)
+- **Purpose**: Runs MATLAB-based EEG classification algorithms
+- **Outputs**: Creates manifest.json, classifier files, and T1 results
 
 ### DynamoDB Tables
 
-- ProcessingStatusTable: Tracks session processing status
+#### ProcessingStatusTableV2 (`EEGProcessingStatusV2`)
+- **Primary Key**: `sessionId` (Number)
+- **Purpose**: Tracks processing status for each session
+- **Fields**: sessionName, userId, status, startTime, endTime, uploadPath, processingDuration, resultsPath, exitCode, error
+- **Indexes**: SessionNameIndex (sessionName)
 
-- EEGClassifierTable: Stores classifier parameters
+#### EEGClassifierTable (`FBCSPClassifierParameters`)
+- **Primary Key**: `classifierId` (Number)
+- **Purpose**: Stores extracted classifier parameters and T1 DA metrics
+- **Fields**: sessionId, userId, sessionName, timestamp, fileName, s3Key, peakAccuracy, errorMargin, eeg, csp, cf, mi parameters
+- **Indexes**: UserIdTimestampIndex, SessionIdTimestampIndex
+
+#### FBCSPSessionFilesTable (`FBCSPSessionFiles`)
+- **Primary Key**: `sessionName` (HASH), `filePath` (RANGE)
+- **Purpose**: Tracks all files created during processing
+- **Fields**: sessionId, userId, createdAt, extension, fileName
+- **Indexes**: SessionIdIndex, UserIdCreatedAtIndex, SessionIdExtensionIndex, SessionIdFileNameIndex
+
+### Monitoring & Notifications
+- **SNS Topic**: `EEGProcessingNotifications` - Email alerts for processing completion
+- **CloudWatch Dashboard**: Real-time metrics for Step Functions, ECS, and Lambda performance
+- **CloudWatch Alarms**: Alerts for Step Function failures, ECS task failures, and Lambda errors
 
 ## Prerequisites
 Prerequisites
@@ -162,6 +239,58 @@ Purpose: Provides API endpoint for status checks
 Environment Variables:
 
 STATUS_TABLE: ProcessingStatusTable name
+
+## Scripts
+
+### Migration Scripts (`scripts/`)
+
+#### migrate-processing-status.js
+**Purpose**: Migrates data from old ProcessingStatusTable to ProcessingStatusTableV2
+**Usage**: 
+```bash
+cd scripts
+npm install
+node migrate-processing-status.js status-data.csv s3-objects.csv
+```
+**Features**:
+- Matches userId/sessionName from status CSV with S3 upload data
+- Generates sessionId using same hash function as runtime
+- Finds most recent .zip file for each session
+- Populates uploadPath field for admin retrigger functionality
+
+#### list-s3-objects.js
+**Purpose**: Exports all S3 objects to CSV with path components in separate columns
+**Usage**:
+```bash
+node list-s3-objects.js bucket-name > objects.csv
+```
+**Output**: CSV with Level1 (userId), Level2 (sessionName), Level3 (fileName), Size, LastModified
+
+### Admin Functions
+
+#### AdminRetriggerLambda
+**Purpose**: Reprocess all sessions that have upload data
+**Access**: AWS Lambda Console only (no API Gateway routes)
+**Usage**:
+1. Go to AWS Lambda Console
+2. Find `AdminRetriggerLambda` function
+3. Click "Test" tab
+4. Create test event:
+```json
+{
+  "skipECS": true,
+  "userId": "optional-user-filter"
+}
+```
+5. Click "Test" to execute
+
+**Parameters**:
+- `skipECS`: `true` to skip ECS processing (testing), `false` for full processing
+- `userId`: Optional filter to retrigger only specific user's sessions
+
+**Output**: Returns count of retriggered sessions and detailed results
+
+**Security**: Console-only access ensures only users with AWS Lambda permissions can execute
 
 ## Testing the pipeline
 1. Upload the test file
@@ -303,6 +432,32 @@ aws cloudformation delete-stack --stack-name AI4NG-EEG-Pipeline
 - Check API Gateway logs for errors
 
 - Verify DynamoDB table permissions
+
+## Data Flow Summary
+
+1. **Upload**: User uploads .zip file to S3 upload bucket
+2. **Trigger**: S3 event triggers S3EventProcessorLambda
+3. **Initialize**: Lambda records session in ProcessingStatusTableV2 and starts Step Function
+4. **Process**: Step Function launches ECS task to run MATLAB classification
+5. **Monitor**: Step Function waits for and processes manifest.json
+6. **Extract**: ClassifierProcessorLambda extracts parameters and T1 DA metrics
+7. **Complete**: Final status recorded, notifications sent
+8. **Query**: Users can check status via REST API
+9. **Admin**: Admins can retrigger processing via console Lambda
+
+## Troubleshooting Quick Reference
+
+### Common Issues
+- **Step Function not starting**: Check S3 event configuration and Lambda permissions
+- **ECS task failures**: Verify ECR image exists and task has proper IAM roles
+- **Manifest timeout**: Check ECS logs for MATLAB processing errors
+- **Classifier extraction fails**: Verify T1 results file exists and has required DA.smooth fields
+- **API 404 errors**: Ensure JWT token is valid and user has proper permissions
+
+### Key Log Locations
+- **Step Function**: `/aws/stepfunctions/<stack-name>-ProcessingStateMachine`
+- **ECS Container**: `/ecs/eeg-classifier`
+- **Lambda Functions**: `/aws/lambda/<stack-name>-<function-name>`
 
 ## Support
 For assistance, contact the AI4NG team at hss70@bath.ac.uk
