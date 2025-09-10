@@ -100,6 +100,31 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: expiry
         Enabled: true
+  ProcessingStatusTableV2:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: EEGProcessingStatusV2
+      AttributeDefinitions:
+        - AttributeName: sessionId
+          AttributeType: N
+        - AttributeName: sessionName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: sessionId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: SessionNameIndex
+          KeySchema:
+            - AttributeName: sessionName
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiry
+        Enabled: true
 
   EEGClassifierTable:
     Type: AWS::DynamoDB::Table
@@ -277,11 +302,17 @@ Resources:
       Environment:
         Variables:
           STATE_MACHINE_ARN: !Ref ProcessingStateMachine
+          STATUS_TABLE: !Ref ProcessingStatusTableV2
       Policies:
         - Statement:
             - Effect: Allow
               Action: states:StartExecution
               Resource: !Ref ProcessingStateMachine
+            - Effect: Allow
+              Action: 
+                - dynamodb:UpdateItem
+                - dynamodb:PutItem
+              Resource: !GetAtt ProcessingStatusTable.Arn
         - S3ReadPolicy:
             BucketName: !Ref EEGUploadBucketName
         - CloudWatchLogsFullAccess
@@ -308,7 +339,7 @@ Resources:
       MemorySize: 128
       Environment:
         Variables:
-          STATUS_TABLE: !Ref ProcessingStatusTable
+          STATUS_TABLE: !Ref ProcessingStatusTableV2
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ProcessingStatusTable
@@ -348,7 +379,7 @@ Resources:
       MemorySize: 256
       Environment:
         Variables:
-          STATUS_TABLE: !Ref ProcessingStatusTable
+          STATUS_TABLE: !Ref ProcessingStatusTableV2
           FILES_TABLE: !Ref FBCSPSessionFilesTable
           SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
       Policies:
@@ -398,7 +429,7 @@ Resources:
       MemorySize: 256
       Environment:
         Variables:
-          STATUS_TABLE: !Ref ProcessingStatusTable
+          STATUS_TABLE: !Ref ProcessingStatusTableV2
       Policies:
         - DynamoDBWritePolicy:
             TableName: !Ref ProcessingStatusTable
@@ -409,15 +440,25 @@ Resources:
         LogFormat: JSON
         LogGroup: !Ref ResultsMetadataLogGroup
 
-  SessionIdGeneratorLambdaV2:
+  AdminRetriggerLambda:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../src/lambdas/sessionIdGenerator/
+      CodeUri: ../src/lambdas/adminRetrigger/
       Handler: app.handler
       Runtime: nodejs22.x
-      Timeout: 10
-      MemorySize: 128
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          STATUS_TABLE: !Ref ProcessingStatusTableV2
+          STATE_MACHINE_ARN: !Ref ProcessingStateMachine
       Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ProcessingStatusTable
+        - Statement:
+            - Effect: Allow
+              Action: states:StartExecution
+              Resource: !Ref ProcessingStateMachine
         - CloudWatchLogsFullAccess
 
   ProcessingNotificationTopic:
@@ -770,7 +811,6 @@ Resources:
   # --- Step Functions ---
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
-    DependsOn: SessionIdGeneratorLambdaV2
     Properties:
       DefinitionUri: EEGProcessingStateMachine.asl.json
       DefinitionSubstitutions:
@@ -783,7 +823,8 @@ Resources:
         ManifestProcessorLambdaArn: !GetAtt ManifestProcessorLambda.Arn
         ClassifierProcessorLambdaArn: !GetAtt ClassifierProcessorLambda.Arn
         ResultsMetadataLambdaArn: !GetAtt ResultsMetadataLambda.Arn
-        SessionIdGeneratorLambdaArn: !GetAtt SessionIdGeneratorLambdaV2.Arn
+
+        ProcessingStatusTable: !Ref ProcessingStatusTableV2
         ResultsBucket: !Ref EEGResultsBucket
       Role: !GetAtt EEGStepFunctionRole.Arn
       Logging:
@@ -805,7 +846,7 @@ Outputs:
     Export:
       Name: EEGStatusApiUrl
   ProcessingStatusTable:
-    Value: !Ref ProcessingStatusTable
+    Value: !Ref ProcessingStatusTableV2
     Description: Name of the processing status DynamoDB table
     Export:
       Name: ProcessingStatusTableName

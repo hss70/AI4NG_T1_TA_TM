@@ -8,25 +8,10 @@
                 "pathParts.$": "States.StringSplit($.detail.object.key, '/')",
                 "userId.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 0)",
                 "sessionName.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1)",
-                "inputFile.$": "$.detail.object.key"
+                "inputFile.$": "$.detail.object.key",
+                "sessionId.$": "$.detail.sessionId"
             },
             "ResultPath": "$.sessionInfo",
-            "Next": "GenerateSessionId"
-        },
-        "GenerateSessionId": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-                "FunctionName": "${SessionIdGeneratorLambdaArn}",
-                "Payload": {
-                    "userId.$": "$.sessionInfo.userId",
-                    "sessionName.$": "$.sessionInfo.sessionName"
-                }
-            },
-            "ResultSelector": {
-                "sessionId.$": "$.Payload.sessionId"
-            },
-            "ResultPath": "$.sessionInfo.sessionId",
             "Next": "RecordProcessingStart"
         },
         "RecordProcessingStart": {
@@ -35,16 +20,15 @@
             "Parameters": {
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
-                    "sessionName": {
-                        "S.$": "$.sessionInfo.sessionName"
+                    "sessionId": {
+                        "N.$": "States.JsonToString($.sessionInfo.sessionId)"
                     }
                 },
-                "UpdateExpression": "SET #s = :status, #u = :user, #t = :time, #sid = :sessionId REMOVE #e",
+                "UpdateExpression": "SET #s = :status, #u = :user, #t = :time, sessionName = :sessionName REMOVE #e",
                 "ExpressionAttributeNames": {
                     "#s": "status",
                     "#u": "userId",
                     "#t": "startTime",
-                    "#sid": "sessionId",
                     "#e": "error"
                 },
                 "ExpressionAttributeValues": {
@@ -57,8 +41,8 @@
                     ":time": {
                         "S.$": "$$.Execution.StartTime"
                     },
-                    ":sessionId": {
-                        "N.$": "States.JsonToString($.sessionInfo.sessionId.sessionId)"
+                    ":sessionName": {
+                        "S.$": "$.sessionInfo.sessionName"
                     }
                 }
             },
@@ -122,7 +106,7 @@
                                 },
                                 {
                                     "Name": "SESSION_ID",
-                                    "Value.$": "States.JsonToString($.sessionInfo.sessionId.sessionId)"
+                                    "Value.$": "States.JsonToString($.sessionInfo.sessionId)"
                                 }
                             ]
                         }
@@ -360,8 +344,8 @@
             "Parameters": {
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
-                    "sessionName": {
-                        "S.$": "$.sessionInfo.sessionName"
+                    "sessionId": {
+                        "N.$": "States.JsonToString($.sessionInfo.sessionId)"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :endTime",
@@ -386,8 +370,8 @@
             "Parameters": {
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
-                    "sessionName": {
-                        "S.$": "$.sessionInfo.sessionName"
+                    "sessionId": {
+                        "N.$": "States.JsonToString($.sessionInfo.sessionId)"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :error, #t = :time",
