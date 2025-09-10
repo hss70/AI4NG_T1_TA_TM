@@ -342,15 +342,15 @@ Resources:
           STATUS_TABLE: !Ref ProcessingStatusTableV2
       Policies:
         - DynamoDBReadPolicy:
-            TableName: !Ref ProcessingStatusTable
+            TableName: !Ref ProcessingStatusTableV2
         - Statement:
             - Effect: Allow
               Action:
                 - dynamodb:Scan
                 - dynamodb:Query
               Resource:
-                - !GetAtt ProcessingStatusTable.Arn
-                - !Sub "${ProcessingStatusTable.Arn}/index/*"
+                - !GetAtt ProcessingStatusTableV2.Arn
+                - !Sub "${ProcessingStatusTableV2.Arn}/index/*"
             - Effect: Allow
               Action:
                 - logs:FilterLogEvents

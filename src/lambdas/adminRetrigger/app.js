@@ -1,6 +1,8 @@
-const AWS = require('aws-sdk');
-const stepFunctions = new AWS.StepFunctions();
-const dynamodb = new AWS.DynamoDB();
+const { SFNClient, StartExecutionCommand } = require('@aws-sdk/client-sfn');
+const { DynamoDBClient, ScanCommand } = require('@aws-sdk/client-dynamodb');
+
+const stepFunctions = new SFNClient();
+const dynamodb = new DynamoDBClient();
 
 exports.handler = async (event) => {
     try {
@@ -16,26 +18,29 @@ exports.handler = async (event) => {
             scanParams.ExpressionAttributeValues = { ':userId': { S: userId } };
         }
         
-        const sessions = await dynamodb.scan(scanParams).promise();
+        const sessions = await dynamodb.send(new ScanCommand(scanParams));
         const results = [];
         
         for (const item of sessions.Items) {
-            if (!item.uploadPath || !item.bucket) continue;
+            if (!item.uploadPath) continue;
             
             try {
                 const input = {
                     detail: {
-                        bucket: { name: item.bucket.S },
-                        object: { key: item.uploadPath.S }
+                        bucket: { name: 'ai4ngstore-dev' }, // hardcode bucket name
+                        object: { 
+                            key: item.uploadPath.S
+                        },
+                        sessionId: item.sessionId.N
                     },
                     skipECS
                 };
                 
-                const response = await stepFunctions.startExecution({
+                const response = await stepFunctions.send(new StartExecutionCommand({
                     stateMachineArn: process.env.STATE_MACHINE_ARN,
                     input: JSON.stringify(input),
                     name: `retrigger-${Date.now()}-${item.uploadPath.S.replace(/\//g, '-').slice(0, 40)}`
-                }).promise();
+                }));
                 
                 results.push({
                     sessionName: item.sessionName.S,

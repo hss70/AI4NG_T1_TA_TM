@@ -27,7 +27,7 @@ exports.handler = async (event) => {
             Key: {
                 sessionId: { N: sessionId.toString() }
             },
-            UpdateExpression: "SET sessionName = :sessionName, userId = :userId, #s = :status, startTime = :startTime, uploadPath = :uploadPath, bucket = :bucket",
+            UpdateExpression: "SET sessionName = :sessionName, userId = :userId, #s = :status, startTime = :startTime, uploadPath = :uploadPath",
             ExpressionAttributeNames: {
                 "#s": "status"
             },
@@ -36,8 +36,7 @@ exports.handler = async (event) => {
                 ":userId": { S: userId },
                 ":status": { S: 'TRIGGERED' },
                 ":startTime": { S: new Date().toISOString() },
-                ":uploadPath": { S: key },
-                ":bucket": { S: bucket }
+                ":uploadPath": { S: key }
             }
         }).promise();
 
