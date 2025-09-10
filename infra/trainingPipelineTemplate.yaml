@@ -683,7 +683,6 @@ Resources:
                   - !GetAtt ClassifierProcessorLambda.Arn
                   - !GetAtt ResultsMetadataLambda.Arn
                   - !GetAtt ManifestProcessorLambda.Arn
-                  - !GetAtt SessionIdGeneratorLambdaV2.Arn
               - Effect: Allow
                 Action:
                   - ecs:RunTask
