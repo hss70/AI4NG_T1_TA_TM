@@ -115,7 +115,7 @@ for i = 1:length(subjects)
         %classifier, trigger]. On 3 Channel EEG this means that columns E-I
         %are empty and cause an issue with the classfier training
         nCols = size(csvData, 2);
-        if(ChannelNum == 3 & nCols == 10)
+        if(channelNumber == 3 & nCols == 10)
             csvData(:, 5:9) = [];
         end
         
