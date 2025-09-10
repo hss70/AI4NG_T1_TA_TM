@@ -21,7 +21,7 @@
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
                     "sessionId": {
-                        "N.$": "States.JsonToString($.sessionInfo.sessionId)"
+                        "N.$": "$.sessionInfo.sessionId"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #u = :user, #t = :time, sessionName = :sessionName REMOVE #e",
