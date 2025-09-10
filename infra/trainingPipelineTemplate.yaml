@@ -312,7 +312,7 @@ Resources:
               Action: 
                 - dynamodb:UpdateItem
                 - dynamodb:PutItem
-              Resource: !GetAtt ProcessingStatusTable.Arn
+              Resource: !GetAtt ProcessingStatusTableV2.Arn
         - S3ReadPolicy:
             BucketName: !Ref EEGUploadBucketName
         - CloudWatchLogsFullAccess
@@ -384,7 +384,7 @@ Resources:
           SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
       Policies:
         - DynamoDBWritePolicy:
-            TableName: !Ref ProcessingStatusTable
+            TableName: !Ref ProcessingStatusTableV2
         - DynamoDBWritePolicy:
             TableName: !Ref FBCSPSessionFilesTable
         - S3ReadPolicy:
@@ -432,7 +432,7 @@ Resources:
           STATUS_TABLE: !Ref ProcessingStatusTableV2
       Policies:
         - DynamoDBWritePolicy:
-            TableName: !Ref ProcessingStatusTable
+            TableName: !Ref ProcessingStatusTableV2
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
         - CloudWatchLogsFullAccess
@@ -454,7 +454,7 @@ Resources:
           STATE_MACHINE_ARN: !Ref ProcessingStateMachine
       Policies:
         - DynamoDBReadPolicy:
-            TableName: !Ref ProcessingStatusTable
+            TableName: !Ref ProcessingStatusTableV2
         - Statement:
             - Effect: Allow
               Action: states:StartExecution
@@ -648,7 +648,7 @@ Resources:
                   - dynamodb:UpdateItem
                   - dynamodb:PutItem
                   - dynamodb:GetItem
-                Resource: !GetAtt ProcessingStatusTable.Arn
+                Resource: !GetAtt ProcessingStatusTableV2.Arn
         - PolicyName: ECRAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -711,7 +711,7 @@ Resources:
                 Resource: !GetAtt EEGResultsBucket.Arn
               - Effect: Allow
                 Action: dynamodb:UpdateItem
-                Resource: !GetAtt ProcessingStatusTable.Arn
+                Resource: !GetAtt ProcessingStatusTableV2.Arn
               - Effect: Allow
                 Action:
                   - logs:CreateLogDelivery
@@ -788,7 +788,7 @@ Resources:
             - Name: RESULTS_BUCKET
               Value: !Ref EEGResultsBucket
             - Name: STATUS_TABLE
-              Value: !Ref ProcessingStatusTable
+              Value: !Ref ProcessingStatusTableV2
             - Name: CLASSIFIER_TABLE
               Value: !Ref EEGClassifierTable
             - Name: PRIVATE_SG
@@ -813,7 +813,7 @@ Resources:
     Properties:
       DefinitionUri: EEGProcessingStateMachine.asl.json
       DefinitionSubstitutions:
-        ProcessingStatusTable: !Ref ProcessingStatusTable
+        ProcessingStatusTable: !Ref ProcessingStatusTableV2
         EEGFargateCluster: !GetAtt EEGFargateCluster.Arn
         EEGFargateTaskDefinition: !Ref EEGFargateTaskDefinition
         PrivateSG: !Ref PrivateSG
@@ -822,7 +822,6 @@ Resources:
         ManifestProcessorLambdaArn: !GetAtt ManifestProcessorLambda.Arn
         ClassifierProcessorLambdaArn: !GetAtt ClassifierProcessorLambda.Arn
         ResultsMetadataLambdaArn: !GetAtt ResultsMetadataLambda.Arn
-
         ProcessingStatusTable: !Ref ProcessingStatusTableV2
         ResultsBucket: !Ref EEGResultsBucket
       Role: !GetAtt EEGStepFunctionRole.Arn
