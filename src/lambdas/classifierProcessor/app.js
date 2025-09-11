@@ -1,6 +1,7 @@
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { DynamoDBClient, UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
 const { Readable } = require('stream');
+const { console } = require("inspector");
 
 const s3Client = new S3Client();
 const ddbClient = new DynamoDBClient();
@@ -231,6 +232,9 @@ async function fetchT1ResultsFromKey(bucket, t1Key) {
         }));
 
         const jsonString = await streamToString(Body);
+        console.log(JSON.stringify({ level: 'INFO', message: 'T1 results file fetched', t1Key }));
+        console.log(jsonString);
+
         const t1Data = JSON.parse(jsonString);
 
         const taskPeakDA_mean = t1Data?.DA?.smooth?.taskPeakDA_mean;
