@@ -70,7 +70,9 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
             ":sessionName": { S: sessionName },
             ":timestamp": { N: Date.now().toString() },
             ":fileName": { S: fileName },
-            ":s3Key": { S: classifierKey }
+            ":s3Key": { S: classifierKey },
+            ":peakAccuracy": { N: t1Results.taskPeakDA_mean.toString() },
+            ":errorMargin": { N: t1Results.taskPeakDA_std.toString() }
         };
 
         updateExpression.push("sessionId = :sessionId");
@@ -79,17 +81,8 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
         updateExpression.push("#ts = :timestamp");
         updateExpression.push("fileName = :fileName");
         updateExpression.push("s3Key = :s3Key");
-
-        // Add T1 results if available
-        if (t1Results) {
-            expressionAttributeValues[":peakAccuracy"] = { N: t1Results.taskPeakDA_mean.toString() };
-            expressionAttributeValues[":errorMargin"] = { N: t1Results.taskPeakDA_std.toString() };
-            updateExpression.push("peakAccuracy = :peakAccuracy");
-            updateExpression.push("errorMargin = :errorMargin");
-        }
-        else {
-            console.log(JSON.stringify({ level: 'WARN', message: 'T1 results not found', userId, sessionId, sessionName }));
-        }
+        updateExpression.push("peakAccuracy = :peakAccuracy");
+        updateExpression.push("errorMargin = :errorMargin");
 
         // Add parameter attributes
         Object.keys(params).forEach((key, index) => {
@@ -255,11 +248,11 @@ async function fetchT1ResultsFromKey(bucket, t1Key) {
         }
 
         console.log(JSON.stringify({
-            level: 'WARN',
+            level: 'Error',
             message: 'T1 results missing required fields',
             t1Key
         }));
-        return null;
+        throw new Error('T1 results missing required fields');
     } catch (error) {
         console.log(JSON.stringify({
             level: 'WARN',
@@ -267,6 +260,6 @@ async function fetchT1ResultsFromKey(bucket, t1Key) {
             t1Key,
             error: error.message
         }));
-        return null;
+        throw error;
     }
 }
