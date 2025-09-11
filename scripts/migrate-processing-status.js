@@ -27,24 +27,36 @@ async function migrateData(csvFilePath, s3CsvPath) {
         fs.createReadStream(s3CsvPath)
             .pipe(csv())
             .on('data', (row) => {
-                const userId = row.Level1;
+                // Skip empty rows
+                if (!row.Level1 && !row.Level2 && !row.Level3) return;
+
+                console.log('DEBUG row keys:', Object.keys(row));
+                console.log('DEBUG Level1 value:', JSON.stringify(row.Level1));
+                console.log('DEBUG Level1 value:', JSON.stringify(row[Object.keys(row)[0]]));
+
+                const userId = row[Object.keys(row)[0]];
                 const sessionName = row.Level2;
                 const fileName = row.Level3;
                 const lastModified = new Date(row.LastModified);
-                
+
+                console.log(`S3 Row: ${userId}/${sessionName}/${fileName} - ${lastModified}`);
+
                 if (userId && sessionName && fileName && fileName.endsWith('.zip')) {
                     const key = `${userId}|${sessionName}`;
                     const fullPath = `${userId}/${sessionName}/${fileName}`;
-                    
+
                     if (!latestUploads[key] || lastModified > latestUploads[key].lastModified) {
                         latestUploads[key] = { fullPath, lastModified };
+                        console.log(`Added upload: ${key} -> ${fullPath}`);
                     }
+                } else {
+                    console.log(`Skipped: missing data or not .zip`);
                 }
             })
             .on('end', resolve)
             .on('error', reject);
     });
-    
+
     const items = [];
 
     return new Promise((resolve, reject) => {
@@ -55,17 +67,22 @@ async function migrateData(csvFilePath, s3CsvPath) {
                 const uploadKey = `${row.userId}|${row.sessionName}`;
                 const upload = latestUploads[uploadKey];
 
+                console.log(`Status Row: ${row.userId}/${row.sessionName} -> Upload found: ${!!upload}`);
+                if (upload) {
+                    console.log(`  Upload path: ${upload.fullPath}`);
+                }
+
                 const item = {
                     sessionId: { N: sessionId.toString() },
                     sessionName: { S: row.sessionName },
                     userId: { S: row.userId },
                     status: { S: row.status }
                 };
-                
+
                 // Add upload path from S3 data
                 if (upload) {
                     item.uploadPath = { S: upload.fullPath };
-                    item.bucket = { S: 'ai4ng-eeg-upload-bucket-name' }; // Replace with actual bucket
+                    console.log(`  Added uploadPath to item: ${upload.fullPath}`);
                 }
 
                 // Add optional fields if they exist

@@ -345,7 +345,7 @@
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
                     "sessionId": {
-                        "N.$": "States.JsonToString($.sessionInfo.sessionId)"
+                        "N.$": "$.sessionInfo.sessionId"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :endTime",
@@ -371,7 +371,7 @@
                 "TableName": "${ProcessingStatusTable}",
                 "Key": {
                     "sessionId": {
-                        "N.$": "States.JsonToString($.sessionInfo.sessionId)"
+                        "N.$": "$.sessionInfo.sessionId"
                     }
                 },
                 "UpdateExpression": "SET #s = :status, #e = :error, #t = :time",
