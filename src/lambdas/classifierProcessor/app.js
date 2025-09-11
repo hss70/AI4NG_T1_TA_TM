@@ -10,15 +10,9 @@ exports.handler = async (event) => {
         console.log(JSON.stringify({ level: 'INFO', message: 'Classifier handler started', event }));
 
         // Handle direct Step Function invocation
-        if (event.s3Bucket && (event.s3Key || event.s3KeyClassifierFile)) {
+        if (event.s3Bucket && (event.s3Key || event.s3KeyClassifierFile) && event.sessionId) {
             await processDirectInvocation(event);
             return { status: 'success' };
-        }
-
-        // Handle S3 event records (legacy)
-        if (event.Records) {
-            await Promise.all(event.Records.map(processRecord));
-            return { status: 'success', processed: event.Records.length };
         }
 
         throw new Error('Invalid event format');
@@ -32,16 +26,10 @@ async function processDirectInvocation(event) {
     const bucket = event.s3Bucket;
     const classifierKey = event.s3KeyClassifierFile || event.s3Key; // backward compatibility
     const resultsKey = event.s3KeyResultsFile;
-    await processClassifierFile(bucket, classifierKey, resultsKey);
+    await processClassifierFile(bucket, classifierKey, resultsKey, event.sessionId);
 }
 
-async function processRecord(record) {
-    const bucket = record.s3.bucket.name;
-    const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
-    await processClassifierFile(bucket, key, null);
-}
-
-async function processClassifierFile(bucket, classifierKey, resultsKey = null) {
+async function processClassifierFile(bucket, classifierKey, resultsKey = null, sessionId) {
     // Validate path format: userId/sessionName/Online/userId/sessionName/filename.json
     const pathParts = classifierKey.split('/');
     if (pathParts.length < 6 || pathParts[2] !== 'Online') {
@@ -52,7 +40,6 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null) {
     const userId = pathParts[0];
     const sessionName = pathParts[1];
     const fileName = pathParts[pathParts.length - 1];
-    let sessionId;
 
     try {
         // Get JSON file from S3
@@ -68,18 +55,13 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null) {
         // Extract critical parameters
         const params = extractParameters(jsonData);
 
-        // Generate unique IDs
-        sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
-            a = ((a << 5) - a) + b.charCodeAt(0);
-            return a & a;
-        }, 0));
         const classifierId = Date.now() + Math.floor(Math.random() * 1000);
 
         // Fetch T1 results for DA metrics
-        const t1Results = resultsKey ? 
-            await fetchT1ResultsFromKey(bucket, resultsKey) : 
+        const t1Results = resultsKey ?
+            await fetchT1ResultsFromKey(bucket, resultsKey) :
             await fetchT1Results(bucket, userId, sessionName);
-        
+
         // Store in DynamoDB
         const updateExpression = [];
         const expressionAttributeValues = {
@@ -97,7 +79,7 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null) {
         updateExpression.push("#ts = :timestamp");
         updateExpression.push("fileName = :fileName");
         updateExpression.push("s3Key = :s3Key");
-        
+
         // Add T1 results if available
         if (t1Results) {
             expressionAttributeValues[":peakAccuracy"] = { N: t1Results.taskPeakDA_mean.toString() };
@@ -251,13 +233,13 @@ async function fetchT1ResultsFromKey(bucket, t1Key) {
             Bucket: bucket,
             Key: t1Key
         }));
-        
+
         const jsonString = await streamToString(Body);
         const t1Data = JSON.parse(jsonString);
-        
+
         const taskPeakDA_mean = t1Data?.DA?.smooth?.taskPeakDA_mean;
         const taskPeakDA_std = t1Data?.DA?.smooth?.taskPeakDA_std;
-        
+
         if (taskPeakDA_mean !== undefined && taskPeakDA_std !== undefined) {
             console.log(JSON.stringify({
                 level: 'INFO',
@@ -268,7 +250,7 @@ async function fetchT1ResultsFromKey(bucket, t1Key) {
             }));
             return { taskPeakDA_mean, taskPeakDA_std };
         }
-        
+
         console.log(JSON.stringify({
             level: 'WARN',
             message: 'T1 results missing required fields',

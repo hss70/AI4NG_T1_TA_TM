@@ -183,7 +183,7 @@
                 "Payload": {
                     "s3Bucket": "${ResultsBucket}",
                     "s3Key.$": "States.Format('{}/{}/manifest.json', $.sessionInfo.userId, $.sessionInfo.sessionName)",
-                    "sessionId": "$.sessionInfo.sessionId"
+                    "sessionId.$": "$.sessionInfo.sessionId"
                 }
             },
             "ResultSelector": {
@@ -271,7 +271,8 @@
                 "Payload": {
                     "s3Bucket": "${ResultsBucket}",
                     "s3KeyClassifierFile.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionName, $.sessionInfo.userId, $.sessionInfo.sessionName)",
-                    "s3KeyResultsFile.$": "States.Format('{}/{}/T1 [results].json', $.sessionInfo.userId, $.sessionInfo.sessionName)"
+                    "s3KeyResultsFile.$": "States.Format('{}/{}/T1 [results].json', $.sessionInfo.userId, $.sessionInfo.sessionName)",
+                    "sessionId.$": "$.sessionInfo.sessionId"
                 }
             },
             "ResultPath": "$.classifierResult",
@@ -314,7 +315,8 @@
                 "FunctionName": "${ResultsMetadataLambdaArn}",
                 "Payload": {
                     "s3Bucket": "${ResultsBucket}",
-                    "s3Key.$": "States.Format('{}/{}/{}', $.sessionInfo.userId, $.sessionInfo.sessionName, $.manifestOutput.manifest.metadataFile)"
+                    "s3Key.$": "States.Format('{}/{}/{}', $.sessionInfo.userId, $.sessionInfo.sessionName, $.manifestOutput.manifest.metadataFile)",
+                    "sessionId.$": "$.sessionInfo.sessionId"
                 }
             },
             "ResultPath": "$.metadataResult",
