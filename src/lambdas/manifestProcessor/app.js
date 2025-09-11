@@ -166,6 +166,7 @@ async function processManifestFromStepFunction(bucket, key, sessionId) {
         }));
 
         const manifestJson = await streamToString(Body);
+        console.log(`Manifest JSON: ${manifestJson}`);
         const manifest = JSON.parse(manifestJson);
 
         // Extract path components
