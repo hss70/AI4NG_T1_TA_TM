@@ -87,6 +87,9 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
             updateExpression.push("peakAccuracy = :peakAccuracy");
             updateExpression.push("errorMargin = :errorMargin");
         }
+        else {
+            console.log(JSON.stringify({ level: 'WARN', message: 'T1 results not found', userId, sessionId, sessionName }));
+        }
 
         // Add parameter attributes
         Object.keys(params).forEach((key, index) => {
