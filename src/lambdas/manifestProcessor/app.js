@@ -60,7 +60,7 @@ async function processManifestRecord(record) {
         const status = manifest.exitCode === 0 ? 'COMPLETED' : 'FAILED';
 
         // Update DynamoDB status
-        await updateStatusTable(sessionName, sessionId, userId, status, processingDuration, manifest);
+        await updateStatusTable(sessionId, status, processingDuration, manifest);
 
         // Store file metadata
         await storeFileMetadata(sessionName, sessionId, userId, manifest);
@@ -91,17 +91,16 @@ async function processManifestRecord(record) {
     }
 }
 
-async function updateStatusTable(sessionName, sessionId, userId, status, duration, manifest) {
+async function updateStatusTable(sessionId, status, duration, manifest) {
     const updateParams = {
         TableName: process.env.STATUS_TABLE,
-        Key: { sessionName: { S: sessionName } },
-        UpdateExpression: "SET #s = :status, userId = :userId, endTime = :endTime, " +
+        Key: { sessionId: { N: sessionId.toString() } },
+        UpdateExpression: "SET #s = :status, endTime = :endTime, " +
             "processingDuration = :duration, resultsPath = :resultsPath, " +
             "exitCode = :exitCode",
         ExpressionAttributeNames: { "#s": "status" },
         ExpressionAttributeValues: {
             ":status": { S: status },
-            ":userId": { S: userId },
             ":endTime": { N: manifest.endTime.toString() },
             ":duration": { N: duration.toString() },
             ":resultsPath": { S: manifest.resultsPath },

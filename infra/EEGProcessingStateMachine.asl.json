@@ -63,7 +63,7 @@
                             "BooleanEquals": true
                         }
                     ],
-                    "Next": "WaitForManifest"
+                    "Next": "CheckManifestExists"
                 }
             ],
             "Default": "LaunchECSTask"
