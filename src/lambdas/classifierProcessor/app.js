@@ -1,7 +1,6 @@
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { DynamoDBClient, UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
 const { Readable } = require('stream');
-const { console } = require("inspector");
 
 const s3Client = new S3Client();
 const ddbClient = new DynamoDBClient();
