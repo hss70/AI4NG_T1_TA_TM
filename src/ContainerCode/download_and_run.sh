@@ -1,8 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-# Log with SESSION_ID for CloudWatch filtering
-echo "[SESSION_ID=${SESSION_ID}] Starting EEG processing for session ${SESSION_ID}"
+# Log with SESSION_ID for CloudWatch filtering (strip quotes for display)
+SESSION_ID_CLEAN=${SESSION_ID//\"/}
+echo "[SESSION_ID=${SESSION_ID_CLEAN}] Starting EEG processing for session ${SESSION_ID_CLEAN}"
 
 # Set fixed environment variables
 export WORK_DIR="/app/work"
@@ -21,7 +22,7 @@ mkdir -p \
 cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Dependents/"
 
 # Download input file from S3
-echo "[SESSION_ID=${SESSION_ID}] Downloading $INPUT_FILE from $UPLOAD_BUCKET"
+echo "[SESSION_ID=${SESSION_ID_CLEAN}] Downloading $INPUT_FILE from $UPLOAD_BUCKET"
 aws s3 cp "s3://${UPLOAD_BUCKET}/${INPUT_FILE}" /app/input.zip
 
 # Unzip into session directory
@@ -64,10 +65,10 @@ fi
 export LD_LIBRARY_PATH="/opt/matlabruntime/R2024b/runtime/glnxa64:/opt/matlabruntime/R2024b/bin/glnxa64:/opt/matlabruntime/R2024b/sys/os/glnxa64:/opt/matlabruntime/R2024b/sys/opengl/lib/glnxa64:/opt/matlabruntime/R2024b/extern/bin/glnxa64:${LD_LIBRARY_PATH:-}"
 
 # Run MATLAB executable using the runner script
-echo "[SESSION_ID=${SESSION_ID}] Running MATLAB executable"
+echo "[SESSION_ID=${SESSION_ID_CLEAN}] Running MATLAB executable"
 start_time=$(date +%s)
 ./run_FBCSP_Training.sh ${MATLAB_RUNTIME_ROOT:-/opt/matlabruntime/R2024b} 2>&1 | while IFS= read -r line; do
-    echo "[SESSION_ID=${SESSION_ID}] $line"
+    echo "[SESSION_ID=${SESSION_ID_CLEAN}] $line"
 done
 EXIT_CODE=${PIPESTATUS[0]}
 end_time=$(date +%s)
@@ -83,7 +84,7 @@ MANIFEST="/app/output/manifest.json"
 echo '{' > "$MANIFEST"
 echo '  "userId": "'"$USER_ID"'",' >> "$MANIFEST"
 echo '  "sessionName": "'"$SESSION_NAME"'",' >> "$MANIFEST"
-echo '  "sessionId": "'$SESSION_ID'",' >> "$MANIFEST"
+echo '  "sessionId": "'"$SESSION_ID_CLEAN"'",' >> "$MANIFEST"
 echo '  "inputFile": "'"$INPUT_FILE"'",' >> "$MANIFEST"
 echo '  "startTime": '"$start_time"',' >> "$MANIFEST"
 echo '  "endTime": '"$end_time"',' >> "$MANIFEST"
@@ -114,7 +115,7 @@ echo '  ]' >> "$MANIFEST"
 echo '}' >> "$MANIFEST"
 
 # Upload results to S3
-echo "[SESSION_ID=${SESSION_ID}] Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
+echo "[SESSION_ID=${SESSION_ID_CLEAN}] Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
 aws s3 cp /app/output/ "s3://$RESULTS_BUCKET/$RESULTS_PATH/" --recursive
 
 # Output results for Step Function
