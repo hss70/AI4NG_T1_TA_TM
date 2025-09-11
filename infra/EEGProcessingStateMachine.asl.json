@@ -182,7 +182,8 @@
                 "FunctionName": "${ManifestProcessorLambdaArn}",
                 "Payload": {
                     "s3Bucket": "${ResultsBucket}",
-                    "s3Key.$": "States.Format('{}/{}/manifest.json', $.sessionInfo.userId, $.sessionInfo.sessionName)"
+                    "s3Key.$": "States.Format('{}/{}/manifest.json', $.sessionInfo.userId, $.sessionInfo.sessionName)",
+                    "sessionId": "$.sessionInfo.sessionId"
                 }
             },
             "ResultSelector": {

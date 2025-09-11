@@ -13,8 +13,8 @@ exports.handler = async (event) => {
         console.log(JSON.stringify({ level: 'INFO', message: 'Handler started', event }));
 
         // Handle Step Function input format
-        if (event.s3Bucket && event.s3Key) {
-            const result = await processManifestFromStepFunction(event.s3Bucket, event.s3Key);
+        if (event.s3Bucket && event.s3Key && event.sessionId) {
+            const result = await processManifestFromStepFunction(event.s3Bucket, event.s3Key, event.sessionId);
             return result;
         }
         // Handle S3 event format
@@ -48,12 +48,7 @@ async function processManifestRecord(record) {
         const pathParts = key.split('/');
         const userId = pathParts[0];
         const sessionName = pathParts[1];
-
-        // Generate consistent sessionId from userId + sessionName
-        const sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
-            a = ((a << 5) - a) + b.charCodeAt(0);
-            return a & a;
-        }, 0));
+        let sessionId = manifest.sessionId;
 
         // Calculate processing duration
         const processingDuration = manifest.endTime - manifest.startTime;
@@ -160,8 +155,8 @@ async function sendNotification(manifest, status, userId, sessionId) {
     await snsClient.send(command);
 }
 
-async function processManifestFromStepFunction(bucket, key) {
-    let sessionId, sessionName, userId;
+async function processManifestFromStepFunction(bucket, key, sessionId) {
+    let sessionName, userId;
 
     try {
         // Get manifest file from S3
@@ -177,11 +172,6 @@ async function processManifestFromStepFunction(bucket, key) {
         const pathParts = key.split('/');
         userId = pathParts[0];
         sessionName = pathParts[1];
-        // Generate consistent sessionId from userId + sessionName
-        sessionId = Math.abs((userId + sessionName).split('').reduce((a, b) => {
-            a = ((a << 5) - a) + b.charCodeAt(0);
-            return a & a;
-        }, 0));
 
         assert(userId == manifest.userId, 'User ID mismatch in manifest');
         assert(sessionName == manifest.sessionName, 'Session name mismatch in manifest');
@@ -192,7 +182,7 @@ async function processManifestFromStepFunction(bucket, key) {
         const status = manifest.exitCode === 0 ? 'COMPLETED' : 'FAILED';
 
         // Update DynamoDB status
-        await updateStatusTable(sessionName, sessionId, userId, status, processingDuration, manifest);
+        await updateStatusTable(sessionId, status, processingDuration, manifest);
 
         // Store file metadata
         await storeFileMetadata(sessionName, sessionId, userId, manifest);
