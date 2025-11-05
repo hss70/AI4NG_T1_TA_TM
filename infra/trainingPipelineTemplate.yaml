@@ -549,6 +549,30 @@ Resources:
         LogFormat: JSON
         LogGroup: !Ref RegisterDeviceLogGroup
 
+  NotifyClassifierReadyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/lambdas/notifyClassifierReady/
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeviceTokensTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:neuro-fcm-service-account-*
+      Environment:
+        Variables:
+          DEVICE_TABLE: !Ref DeviceTokensTable
+          FCM_SERVICE_ACCOUNT: "{{resolve:secretsmanager:neuro-fcm-service-account:SecretString}}"
+      Events:
+        SNSEvent:
+          Type: SNS
+          Properties:
+            Topic: !Ref ClassifierReadyTopic
+
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
