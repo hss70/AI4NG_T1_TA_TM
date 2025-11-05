@@ -303,7 +303,7 @@
             "Parameters": {
                 "TopicArn": "${ClassifierReadyTopicArn}",
                 "Subject": "Classifier Ready",
-                "Message.$": "States.JsonToString({\"type\": \"ClassifierReady\", \"userId\": $.sessionInfo.userId, \"sessionId\": $.sessionInfo.sessionId, \"sessionName\": $.sessionInfo.sessionName, \"classifier\": $.classifierResult.Payload})",
+                "Message.$": "States.JsonToString({'type': 'ClassifierReady', 'userId': $.sessionInfo.userId, 'sessionId': $.sessionInfo.sessionId, 'sessionName': $.sessionInfo.sessionName, 'classifier': $.classifierResult.Payload})",
                 "MessageAttributes": {
                     "eventType": {
                         "DataType": "String",
