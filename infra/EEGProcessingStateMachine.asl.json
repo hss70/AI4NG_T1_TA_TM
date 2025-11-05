@@ -276,7 +276,7 @@
                 }
             },
             "ResultPath": "$.classifierResult",
-            "Next": "CheckForMetadata",
+            "Next": "NotifyClassifierReady",
             "Retry": [
                 {
                     "ErrorEquals": [
@@ -294,6 +294,32 @@
                     ],
                     "ResultPath": "$.error",
                     "Next": "RecordFailure"
+                }
+            ]
+        },
+        "NotifyClassifierReady": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::sns:publish",
+            "Parameters": {
+                "TopicArn": "${ClassifierReadyTopicArn}",
+                "Subject": "Classifier Ready",
+                "Message.$": "States.JsonToString({\"type\": \"ClassifierReady\", \"userId\": $.sessionInfo.userId, \"sessionId\": $.sessionInfo.sessionId, \"sessionName\": $.sessionInfo.sessionName, \"classifier\": $.classifierResult.Payload})",
+                "MessageAttributes": {
+                    "eventType": {
+                        "DataType": "String",
+                        "StringValue": "ClassifierReady"
+                    }
+                }
+            },
+            "ResultPath": "$.notificationResult",
+            "Next": "CheckForMetadata",
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "ResultPath": "$.notificationError",
+                    "Next": "CheckForMetadata"
                 }
             ]
         },

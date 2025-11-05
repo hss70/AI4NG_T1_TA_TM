@@ -1,5 +1,5 @@
 name: Update Step Function Only
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'infra/EEGProcessingStateMachine.asl.json'
+      - "infra/EEGProcessingStateMachine.asl.json"
 
 jobs:
   update-stepfunction:
@@ -33,12 +33,12 @@ jobs:
           STATE_MACHINE_ARN=$(aws cloudformation list-exports \
             --query "Exports[?Name=='EEGProcessingStateMachineArn'].Value" \
             --output text)
-          
+
           if [ -z "$STATE_MACHINE_ARN" ]; then
             echo "::error::State machine ARN export not found"
             exit 1
           fi
-          
+
           echo "state_machine_arn=$STATE_MACHINE_ARN" >> $GITHUB_OUTPUT
 
       - name: Get CloudFormation outputs for substitutions
@@ -48,16 +48,16 @@ jobs:
             --stack-name ${{ env.STACK_NAME }} \
             --query 'Stacks[0].Outputs' \
             --output json)
-          
+
           # Extract required values for substitutions
           STATUS_TABLE=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ProcessingStatusTable") | .OutputValue // empty')
           RESULTS_BUCKET=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ResultsBucketName") | .OutputValue // empty')
-          
+
           if [ -z "$STATUS_TABLE" ] || [ -z "$RESULTS_BUCKET" ]; then
             echo "::error::Required stack outputs not found"
             exit 1
           fi
-          
+
           echo "status_table=$STATUS_TABLE" >> $GITHUB_OUTPUT
           echo "results_bucket=$RESULTS_BUCKET" >> $GITHUB_OUTPUT
 
@@ -67,18 +67,19 @@ jobs:
           STACK_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name ${{ env.STACK_NAME }})
           ECS_CLUSTER_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="EEGFargateCluster") | .PhysicalResourceId')
           TASK_DEF_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="EEGFargateTaskDefinition") | .PhysicalResourceId')
-          
+
           # Get Lambda ARNs
           MANIFEST_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="ManifestProcessorLambda") | .PhysicalResourceId')
           CLASSIFIER_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="ClassifierProcessorLambda") | .PhysicalResourceId')
           METADATA_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="ResultsMetadataLambda") | .PhysicalResourceId')
-          
+          TOPIC_ARN=$(echo "$STACK_RESOURCES" | jq -r '.StackResources[] | select(.LogicalResourceId=="ClassifierReadyTopic") | .PhysicalResourceId')
+
           # Get network info
           PRIVATE_SG=$(aws cloudformation list-exports --query "Exports[?Name=='NetworkStack-PrivateSG'].Value" --output text)
           SUBNETS=$(aws cloudformation list-exports --query "Exports[?Name=='NetworkStack-PrivateSubnetIds'].Value" --output text)
           SUBNET1=$(echo "$SUBNETS" | cut -d',' -f1)
           SUBNET2=$(echo "$SUBNETS" | cut -d',' -f2)
-          
+
           # Substitute all variables in ASL file using | delimiter to avoid issues with /
           sed -e "s|\${ProcessingStatusTable}|${{ steps.get_outputs.outputs.status_table }}|g" \
               -e "s|\${ResultsBucket}|${{ steps.get_outputs.outputs.results_bucket }}|g" \
@@ -87,14 +88,15 @@ jobs:
               -e "s|\${ManifestProcessorLambdaArn}|$MANIFEST_ARN|g" \
               -e "s|\${ClassifierProcessorLambdaArn}|$CLASSIFIER_ARN|g" \
               -e "s|\${ResultsMetadataLambdaArn}|$METADATA_ARN|g" \
+              -e "s|\${ClassifierReadyTopicArn}|$TOPIC_ARN|g" \
               -e "s|\${PrivateSG}|$PRIVATE_SG|g" \
               -e "s|\${PrivateSubnetId1}|$SUBNET1|g" \
               -e "s|\${PrivateSubnetId2}|$SUBNET2|g" \
               infra/EEGProcessingStateMachine.asl.json > /tmp/stepfunction-definition.json
-          
+
           # Update the state machine
           aws stepfunctions update-state-machine \
             --state-machine-arn ${{ steps.get_arn.outputs.state_machine_arn }} \
             --definition file:///tmp/stepfunction-definition.json
-          
+
           echo "::notice::Step Function definition updated successfully"

@@ -18,6 +18,10 @@ Parameters:
   PrivateSubnetId2:
     Type: String
     Description: Second private subnet ID
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
 
 Resources:
   # S3 Event Rule to trigger Lambda on new uploads. The entry point to this pipeline, triggered when EEG data is uploaded to the S3 bucket.
@@ -230,7 +234,40 @@ Resources:
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
 
+  DeviceTokensTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-DeviceTokens"
+      AttributeDefinitions:
+        - AttributeName: deviceId
+          AttributeType: S
+        - AttributeName: lastUserId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: deviceId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: userIdIndex
+          KeySchema:
+            - AttributeName: lastUserId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
   # --- API Gateway Integration ---
+  RegisterDeviceIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref SharedApiId
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RegisterDeviceLambda.Arn}/invocations
+      PayloadFormatVersion: "2.0"
+      IntegrationMethod: POST
+
   StatusIntegration:
     Type: AWS::ApiGatewayV2::Integration
     Properties:
@@ -257,6 +294,24 @@ Resources:
       AuthorizationType: JWT
       AuthorizerId: !ImportValue SharedApiAuthorizerId
       Target: !Sub integrations/${StatusIntegration}
+
+  DeviceRegisterRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SharedApiId
+      RouteKey: "POST /device/register"
+      AuthorizationType: JWT
+      AuthorizerId: !ImportValue SharedApiAuthorizerId
+      Target: !Sub integrations/${RegisterDeviceIntegration}
+
+  DeviceGetRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref SharedApiId
+      RouteKey: "GET /device/register"
+      AuthorizationType: JWT
+      AuthorizerId: !ImportValue SharedApiAuthorizerId
+      Target: !Sub integrations/${RegisterDeviceIntegration}
 
   # --- CloudWatch Log Groups ---
   S3EventProcessorLogGroup:
@@ -289,6 +344,12 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${AWS::StackName}-ResultsMetadata
       RetentionInDays: 14
 
+  RegisterDeviceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-RegisterDevice
+      RetentionInDays: 14
+
   # --- Lambda Functions ---
   # S3 Event Processor Lambda
   S3EventProcessorLambda:
@@ -309,7 +370,7 @@ Resources:
               Action: states:StartExecution
               Resource: !Ref ProcessingStateMachine
             - Effect: Allow
-              Action: 
+              Action:
                 - dynamodb:UpdateItem
                 - dynamodb:PutItem
               Resource: !GetAtt ProcessingStatusTableV2.Arn
@@ -367,6 +428,14 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/GET/api/status/*"
+
+  RegisterDeviceLambdaPermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt RegisterDeviceLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/*/device/register"
 
   # Manifest Processor Lambda
   ManifestProcessorLambda:
@@ -461,6 +530,25 @@ Resources:
               Resource: !Ref ProcessingStateMachine
         - CloudWatchLogsFullAccess
 
+  RegisterDeviceLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/lambdas/deviceRegistration/
+      Handler: app.handler
+      Runtime: nodejs22.x
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          DEVICE_TABLE: !Ref DeviceTokensTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DeviceTokensTable
+        - CloudWatchLogsFullAccess
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup: !Ref RegisterDeviceLogGroup
+
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -469,6 +557,13 @@ Resources:
       Subscription:
         - Protocol: email
           Endpoint: "hss70@bath.ac.uk"
+
+  # Topic to broadcast that a classifier is ready; subscribers can bridge to Android via FCM
+  ClassifierReadyTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: EEGClassifierReady
+      DisplayName: EEG Classifier Ready Notifications
 
   StatusQueue:
     Type: AWS::SQS::Queue
@@ -713,6 +808,9 @@ Resources:
                 Action: dynamodb:UpdateItem
                 Resource: !GetAtt ProcessingStatusTableV2.Arn
               - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref ClassifierReadyTopic
+              - Effect: Allow
                 Action:
                   - logs:CreateLogDelivery
                   - logs:GetLogDelivery
@@ -822,8 +920,8 @@ Resources:
         ManifestProcessorLambdaArn: !GetAtt ManifestProcessorLambda.Arn
         ClassifierProcessorLambdaArn: !GetAtt ClassifierProcessorLambda.Arn
         ResultsMetadataLambdaArn: !GetAtt ResultsMetadataLambda.Arn
-        ProcessingStatusTable: !Ref ProcessingStatusTableV2
         ResultsBucket: !Ref EEGResultsBucket
+        ClassifierReadyTopicArn: !Ref ClassifierReadyTopic
       Role: !GetAtt EEGStepFunctionRole.Arn
       Logging:
         Level: ALL
@@ -862,6 +960,12 @@ Outputs:
     Description: ARN of the EEG processing state machine
     Export:
       Name: EEGProcessingStateMachineArn
+
+  ClassifierReadyTopicArn:
+    Value: !Ref ClassifierReadyTopic
+    Description: ARN for the SNS topic that receives classifier-ready notifications
+    Export:
+      Name: EEGClassifierReadyTopicArn
   DashboardUrl:
     Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AWS::StackName}-EEG-Processing-Pipeline
     Description: URL to the CloudWatch Dashboard
@@ -883,3 +987,13 @@ Outputs:
     Description: Name of S3 event processor Lambda
     Export:
       Name: S3EventProcessorLambdaName
+  DeviceTokensTableName:
+    Value: !Ref DeviceTokensTable
+    Description: Name of the device tokens DynamoDB table
+    Export:
+      Name: DeviceTokensTableName
+  DeviceRegistrationApiUrl:
+    Value: !Sub https://${SharedApiId}.execute-api.${AWS::Region}.amazonaws.com/dev/device/register
+    Description: URL for device registration API
+    Export:
+      Name: DeviceRegistrationApiUrl

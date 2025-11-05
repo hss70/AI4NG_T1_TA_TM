@@ -43,6 +43,7 @@ Orchestrates the entire processing workflow:
 8. **CheckClassifierExists**: Verifies classifier JSON file exists
 9. **CheckT1ResultsExists**: Verifies T1 results JSON file exists
 10. **ProcessClassifier**: Extracts classifier parameters and T1 DA metrics
+11. **NotifyClassifierReady**: Publishes an event to SNS when the classifier is ready
 11. **CheckForMetadata**: Determines if additional metadata processing needed
 12. **ProcessMetadata**: Handles optional metadata files
 13. **RecordSuccess/RecordFailure**: Updates final processing status
@@ -79,6 +80,17 @@ Orchestrates the entire processing workflow:
 - **Environment**: `CLASSIFIER_TABLE`
 
 #### ResultsMetadataLambda
+### Classifier Ready Notifications
+
+- SNS Topic: `EEGClassifierReady`
+- Emitted by state `NotifyClassifierReady` immediately after `ProcessClassifier` succeeds.
+- Message payload (JSON):
+  - `type`: "ClassifierReady"
+  - `userId`, `sessionId`, `sessionName`
+  - `classifier`: Lambda result payload (currently `{ status: "success" }`)
+
+To deliver Android push notifications, subscribe a bridge service (e.g., a Lambda using Firebase Admin SDK or an SNS mobile push platform application) to this topic and map `userId` to device tokens.
+
 - **Purpose**: Processes optional metadata JSON files
 - **Trigger**: Step Function invocation (conditional)
 - **Actions**: Updates processing status with metadata information
