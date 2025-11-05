@@ -11,9 +11,11 @@ export const handler = async (event) => {
   };
 
   try {
-    if (event.httpMethod === "POST") {
+    const method = event.httpMethod || event.requestContext?.http?.method;
+    
+    if (method === "POST") {
       return await handleRegister(event, headers);
-    } else if (event.httpMethod === "GET") {
+    } else if (method === "GET") {
       return await handleGet(event, headers);
     } else {
       return {
