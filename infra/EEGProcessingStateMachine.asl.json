@@ -421,7 +421,7 @@
           }
         }
       },
-      "Next": "FailExecution
+      "Next": "FailExecution"
     },
     "FailExecution":{
       "Type": "Fail",
