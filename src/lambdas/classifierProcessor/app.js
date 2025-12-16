@@ -63,6 +63,9 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
             await fetchT1ResultsFromKey(bucket, resultsKey) :
             await fetchT1Results(bucket, userId, sessionName);
 
+        const t1ResultsTable =
+            await fetchT1ResultsTable(bucket, userId, sessionName);
+
         // Store in DynamoDB
         const updateExpression = [];
         const expressionAttributeValues = {
@@ -73,7 +76,9 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
             ":fileName": { S: fileName },
             ":s3Key": { S: classifierKey },
             ":peakAccuracy": { N: t1Results.taskPeakDA_mean.toString() },
-            ":errorMargin": { N: t1Results.taskPeakDA_std.toString() }
+            ":errorMargin": { N: t1Results.taskPeakDA_std.toString() },
+            ":timeInfo": { M: mapToDynamo(t1Results.timeInfo) },
+            ":resultsTable": { M: mapToDynamo(t1Results.t1ResultsTableData) }
         };
 
         updateExpression.push("sessionId = :sessionId");
@@ -84,6 +89,8 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
         updateExpression.push("s3Key = :s3Key");
         updateExpression.push("peakAccuracy = :peakAccuracy");
         updateExpression.push("errorMargin = :errorMargin");
+        updateExpression.push("timeInfo = :timeInfo");
+        updateExpression.push("resultsTable = :resultsTable");
 
         // Add parameter attributes
         Object.keys(params).forEach((key, index) => {
@@ -219,6 +226,49 @@ function mapToDynamo(obj) {
     return result;
 }
 
+async function fetchT1ResultsTable(bucket, userId, sessionName) {
+    const t1Key = `${userId}/${sessionName}/T1 [resultTable].json`;
+    return await fetchT1ResultTableFromKey(bucket, t1Key);
+}
+
+async function fetchT1ResultsTableFromKey(bucket, t1Key) {
+    try {
+        const { Body } = await s3Client.send(new GetObjectCommand({
+            Bucket: bucket,
+            Key: t1Key
+        }));
+
+        const jsonString = await streamToString(Body);
+        const t1ResultsTableData = JSON.parse(jsonString).T1_result_table;
+
+        if (t1ResultsTableData !== undefined) {
+            console.log(JSON.stringify({
+                level: 'INFO',
+                message: 'T1 results table extracted',
+                t1Key,
+                t1ResultsTableData
+            }));
+            return { t1ResultsTableData };
+        }
+
+        console.log(JSON.stringify({
+            level: 'Error',
+            message: 'T1 result table missing required fields',
+            t1Key
+        }));
+        throw new Error('T1 result table missing required fields');
+    } catch (error) {
+        console.log(JSON.stringify({
+            level: 'WARN',
+            message: 'T1 result table file not found or invalid',
+            t1Key,
+            error: error.message
+        }));
+        throw error;
+    }
+}
+
+
 async function fetchT1Results(bucket, userId, sessionName) {
     const t1Key = `${userId}/${sessionName}/T1 [results].json`;
     return await fetchT1ResultsFromKey(bucket, t1Key);
@@ -236,8 +286,9 @@ async function fetchT1ResultsFromKey(bucket, t1Key) {
 
         const taskPeakDA_mean = t1Data.T1_results.orig.DA.smooth.taskPeakDA_mean;
         const taskPeakDA_std = t1Data.T1_results.orig.DA.smooth.taskPeakDA_std;
+        const timeInfo = t1Data.T1_results.orig.timeInfo;
 
-        if (taskPeakDA_mean !== undefined && taskPeakDA_std !== undefined) {
+        if (taskPeakDA_mean !== undefined && taskPeakDA_std !== undefined && timeInfo !== undefined) {
             console.log(JSON.stringify({
                 level: 'INFO',
                 message: 'T1 results extracted',
@@ -245,7 +296,7 @@ async function fetchT1ResultsFromKey(bucket, t1Key) {
                 taskPeakDA_mean,
                 taskPeakDA_std
             }));
-            return { taskPeakDA_mean, taskPeakDA_std };
+            return { taskPeakDA_mean, taskPeakDA_std, timeInfo };
         }
 
         console.log(JSON.stringify({
