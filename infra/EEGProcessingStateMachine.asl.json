@@ -1,427 +1,432 @@
 {
-    "Comment": "Manifest-Driven EEG Processing Pipeline",
-    "StartAt": "ExtractSessionInfo",
-    "States": {
-        "ExtractSessionInfo": {
-            "Type": "Pass",
-            "Parameters": {
-                "pathParts.$": "States.StringSplit($.detail.object.key, '/')",
-                "userId.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 0)",
-                "sessionName.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1)",
-                "inputFile.$": "$.detail.object.key",
-                "sessionId.$": "$.detail.sessionId"
-            },
-            "ResultPath": "$.sessionInfo",
-            "Next": "RecordProcessingStart"
+  "Comment": "Manifest-Driven EEG Processing Pipeline",
+  "StartAt": "ExtractSessionInfo",
+  "States": {
+    "ExtractSessionInfo": {
+      "Type": "Pass",
+      "Parameters": {
+        "pathParts.$": "States.StringSplit($.detail.object.key, '/')",
+        "userId.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 0)",
+        "sessionName.$": "States.ArrayGetItem(States.StringSplit($.detail.object.key, '/'), 1)",
+        "inputFile.$": "$.detail.object.key",
+        "sessionId.$": "$.detail.sessionId"
+      },
+      "ResultPath": "$.sessionInfo",
+      "Next": "RecordProcessingStart"
+    },
+    "RecordProcessingStart": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "${ProcessingStatusTable}",
+        "Key": {
+          "sessionId": {
+            "N.$": "$.sessionInfo.sessionId"
+          }
         },
-        "RecordProcessingStart": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::dynamodb:updateItem",
-            "Parameters": {
-                "TableName": "${ProcessingStatusTable}",
-                "Key": {
-                    "sessionId": {
-                        "N.$": "$.sessionInfo.sessionId"
-                    }
-                },
-                "UpdateExpression": "SET #s = :status, #u = :user, #t = :time, sessionName = :sessionName REMOVE #e",
-                "ExpressionAttributeNames": {
-                    "#s": "status",
-                    "#u": "userId",
-                    "#t": "startTime",
-                    "#e": "error"
-                },
-                "ExpressionAttributeValues": {
-                    ":status": {
-                        "S": "PROCESSING"
-                    },
-                    ":user": {
-                        "S.$": "$.sessionInfo.userId"
-                    },
-                    ":time": {
-                        "S.$": "$$.Execution.StartTime"
-                    },
-                    ":sessionName": {
-                        "S.$": "$.sessionInfo.sessionName"
-                    }
-                }
-            },
-            "ResultPath": "$.dynamoResult",
-            "Next": "CheckSkipECS"
+        "UpdateExpression": "SET #s = :status, #u = :user, #t = :time, sessionName = :sessionName REMOVE #e",
+        "ExpressionAttributeNames": {
+          "#s": "status",
+          "#u": "userId",
+          "#t": "startTime",
+          "#e": "error"
         },
-        "CheckSkipECS": {
-            "Type": "Choice",
-            "Choices": [
-                {
-                    "And": [
-                        {
-                            "Variable": "$.skipECS",
-                            "IsPresent": true
-                        },
-                        {
-                            "Variable": "$.skipECS",
-                            "BooleanEquals": true
-                        }
-                    ],
-                    "Next": "CheckManifestExists"
-                }
-            ],
-            "Default": "LaunchECSTask"
-        },
-        "LaunchECSTask": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::ecs:runTask.sync",
-            "Parameters": {
-                "LaunchType": "FARGATE",
-                "Cluster": "${EEGFargateCluster}",
-                "TaskDefinition": "${EEGFargateTaskDefinition}",
-                "NetworkConfiguration": {
-                    "AwsvpcConfiguration": {
-                        "Subnets": [
-                            "${PrivateSubnetId1}",
-                            "${PrivateSubnetId2}"
-                        ],
-                        "SecurityGroups": [
-                            "${PrivateSG}"
-                        ],
-                        "AssignPublicIp": "DISABLED"
-                    }
-                },
-                "Overrides": {
-                    "ContainerOverrides": [
-                        {
-                            "Name": "eeg-classifier",
-                            "Environment": [
-                                {
-                                    "Name": "INPUT_FILE",
-                                    "Value.$": "$.sessionInfo.inputFile"
-                                },
-                                {
-                                    "Name": "USER_ID",
-                                    "Value.$": "$.sessionInfo.userId"
-                                },
-                                {
-                                    "Name": "SESSION_NAME",
-                                    "Value.$": "$.sessionInfo.sessionName"
-                                },
-                                {
-                                    "Name": "SESSION_ID",
-                                    "Value.$": "States.JsonToString($.sessionInfo.sessionId)"
-                                }
-                            ]
-                        }
-                    ]
-                }
-            },
-            "ResultPath": "$.ecsResult",
-            "Next": "WaitForManifest",
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "IntervalSeconds": 30,
-                    "MaxAttempts": 1,
-                    "BackoffRate": 2
-                }
-            ],
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "ResultPath": "$.error",
-                    "Next": "RecordFailure"
-                }
-            ]
-        },
-        "WaitForManifest": {
-            "Type": "Wait",
-            "Seconds": 30,
-            "Next": "CheckManifestExists"
-        },
-        "CheckManifestExists": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
-            "Parameters": {
-                "Bucket": "${ResultsBucket}",
-                "Key.$": "States.Format('{}/{}/manifest.json', $.sessionInfo.userId, $.sessionInfo.sessionName)"
-            },
-            "ResultPath": "$.manifestCheck",
-            "Next": "ProcessManifest",
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "S3.NotFound"
-                    ],
-                    "IntervalSeconds": 10,
-                    "MaxAttempts": 20,
-                    "BackoffRate": 1
-                }
-            ],
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "S3.NotFound"
-                    ],
-                    "Next": "WaitForManifest"
-                },
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "ResultPath": "$.error",
-                    "Next": "RecordFailure"
-                }
-            ]
-        },
-        "ProcessManifest": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-                "FunctionName": "${ManifestProcessorLambdaArn}",
-                "Payload": {
-                    "s3Bucket": "${ResultsBucket}",
-                    "s3Key.$": "States.Format('{}/{}/manifest.json', $.sessionInfo.userId, $.sessionInfo.sessionName)",
-                    "sessionId.$": "$.sessionInfo.sessionId"
-                }
-            },
-            "ResultSelector": {
-                "manifest.$": "$.Payload"
-            },
-            "ResultPath": "$.manifestOutput",
-            "Next": "CheckClassifierExists",
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "IntervalSeconds": 10,
-                    "MaxAttempts": 3,
-                    "BackoffRate": 1.5
-                }
-            ],
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "ResultPath": "$.error",
-                    "Next": "RecordFailure"
-                }
-            ]
-        },
-        "CheckClassifierExists": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
-            "Parameters": {
-                "Bucket": "${ResultsBucket}",
-                "Key.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionName, $.sessionInfo.userId, $.sessionInfo.sessionName)"
-            },
-            "ResultPath": "$.classifierCheck",
-            "Next": "CheckT1ResultsExists",
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "S3.NotFound"
-                    ],
-                    "ResultPath": "$.error",
-                    "Next": "RecordFailure"
-                },
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "ResultPath": "$.error",
-                    "Next": "RecordFailure"
-                }
-            ]
-        },
-        "CheckT1ResultsExists": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
-            "Parameters": {
-                "Bucket": "${ResultsBucket}",
-                "Key.$": "States.Format('{}/{}/T1 [results].json', $.sessionInfo.userId, $.sessionInfo.sessionName)"
-            },
-            "ResultPath": "$.t1Check",
-            "Next": "ProcessClassifier",
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "S3.NotFound"
-                    ],
-                    "ResultPath": "$.error",
-                    "Next": "RecordFailure"
-                },
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "ResultPath": "$.error",
-                    "Next": "RecordFailure"
-                }
-            ]
-        },
-        "ProcessClassifier": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-                "FunctionName": "${ClassifierProcessorLambdaArn}",
-                "Payload": {
-                    "s3Bucket": "${ResultsBucket}",
-                    "s3KeyClassifierFile.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionName, $.sessionInfo.userId, $.sessionInfo.sessionName)",
-                    "s3KeyResultsFile.$": "States.Format('{}/{}/T1 [results].json', $.sessionInfo.userId, $.sessionInfo.sessionName)",
-                    "sessionId.$": "$.sessionInfo.sessionId"
-                }
-            },
-            "ResultPath": "$.classifierResult",
-            "Next": "NotifyClassifierReady",
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "IntervalSeconds": 10,
-                    "MaxAttempts": 3,
-                    "BackoffRate": 1.5
-                }
-            ],
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "ResultPath": "$.error",
-                    "Next": "RecordFailure"
-                }
-            ]
-        },
-        "NotifyClassifierReady": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::sns:publish",
-            "Parameters": {
-                "TopicArn": "${ClassifierReadyTopicArn}",
-                "Subject": "Classifier Ready",
-                "Message.$": "States.Format('{\"type\": \"ClassifierReady\", \"userId\": \"{}\", \"sessionId\": \"{}\", \"sessionName\": \"{}\"}', $.sessionInfo.userId, $.sessionInfo.sessionId, $.sessionInfo.sessionName)",
-                "MessageAttributes": {
-                    "eventType": {
-                        "DataType": "String",
-                        "StringValue": "ClassifierReady"
-                    }
-                }
-            },
-            "ResultPath": "$.notificationResult",
-            "Next": "CheckForMetadata",
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "ResultPath": "$.notificationError",
-                    "Next": "CheckForMetadata"
-                }
-            ]
-        },
-        "CheckForMetadata": {
-            "Type": "Choice",
-            "Choices": [
-                {
-                    "Variable": "$.manifestOutput.manifest.hasMetadata",
-                    "BooleanEquals": true,
-                    "Next": "ProcessMetadata"
-                }
-            ],
-            "Default": "RecordSuccess"
-        },
-        "ProcessMetadata": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "Parameters": {
-                "FunctionName": "${ResultsMetadataLambdaArn}",
-                "Payload": {
-                    "s3Bucket": "${ResultsBucket}",
-                    "s3Key.$": "States.Format('{}/{}/{}', $.sessionInfo.userId, $.sessionInfo.sessionName, $.manifestOutput.manifest.metadataFile)",
-                    "sessionId.$": "$.sessionInfo.sessionId"
-                }
-            },
-            "ResultPath": "$.metadataResult",
-            "Next": "RecordSuccess",
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "IntervalSeconds": 10,
-                    "MaxAttempts": 3,
-                    "BackoffRate": 1.5
-                }
-            ],
-            "Catch": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "ResultPath": "$.error",
-                    "Next": "RecordFailure"
-                }
-            ]
-        },
-        "RecordSuccess": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::dynamodb:updateItem",
-            "Parameters": {
-                "TableName": "${ProcessingStatusTable}",
-                "Key": {
-                    "sessionId": {
-                        "N.$": "$.sessionInfo.sessionId"
-                    }
-                },
-                "UpdateExpression": "SET #s = :status, #e = :endTime",
-                "ExpressionAttributeNames": {
-                    "#s": "status",
-                    "#e": "endTime"
-                },
-                "ExpressionAttributeValues": {
-                    ":status": {
-                        "S": "SUCCESS"
-                    },
-                    ":endTime": {
-                        "S.$": "$$.State.EnteredTime"
-                    }
-                }
-            },
-            "End": true
-        },
-        "RecordFailure": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::dynamodb:updateItem",
-            "Parameters": {
-                "TableName": "${ProcessingStatusTable}",
-                "Key": {
-                    "sessionId": {
-                        "N.$": "$.sessionInfo.sessionId"
-                    }
-                },
-                "UpdateExpression": "SET #s = :status, #e = :error, #t = :time",
-                "ExpressionAttributeNames": {
-                    "#s": "status",
-                    "#e": "error",
-                    "#t": "endTime"
-                },
-                "ExpressionAttributeValues": {
-                    ":status": {
-                        "S": "FAILED"
-                    },
-                    ":error": {
-                        "S.$": "States.JsonToString($.error)"
-                    },
-                    ":time": {
-                        "S.$": "$$.State.EnteredTime"
-                    }
-                }
-            },
-            "End": true
+        "ExpressionAttributeValues": {
+          ":status": {
+            "S": "PROCESSING"
+          },
+          ":user": {
+            "S.$": "$.sessionInfo.userId"
+          },
+          ":time": {
+            "S.$": "$$.Execution.StartTime"
+          },
+          ":sessionName": {
+            "S.$": "$.sessionInfo.sessionName"
+          }
         }
+      },
+      "ResultPath": "$.dynamoResult",
+      "Next": "CheckSkipECS"
+    },
+    "CheckSkipECS": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "And": [
+            {
+              "Variable": "$.skipECS",
+              "IsPresent": true
+            },
+            {
+              "Variable": "$.skipECS",
+              "BooleanEquals": true
+            }
+          ],
+          "Next": "CheckManifestExists"
+        }
+      ],
+      "Default": "LaunchECSTask"
+    },
+    "LaunchECSTask": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::ecs:runTask.sync",
+      "Parameters": {
+        "LaunchType": "FARGATE",
+        "Cluster": "${EEGFargateCluster}",
+        "TaskDefinition": "${EEGFargateTaskDefinition}",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "Subnets": [
+              "${PrivateSubnetId1}",
+              "${PrivateSubnetId2}"
+            ],
+            "SecurityGroups": [
+              "${PrivateSG}"
+            ],
+            "AssignPublicIp": "DISABLED"
+          }
+        },
+        "Overrides": {
+          "ContainerOverrides": [
+            {
+              "Name": "eeg-classifier",
+              "Environment": [
+                {
+                  "Name": "INPUT_FILE",
+                  "Value.$": "$.sessionInfo.inputFile"
+                },
+                {
+                  "Name": "USER_ID",
+                  "Value.$": "$.sessionInfo.userId"
+                },
+                {
+                  "Name": "SESSION_NAME",
+                  "Value.$": "$.sessionInfo.sessionName"
+                },
+                {
+                  "Name": "SESSION_ID",
+                  "Value.$": "States.JsonToString($.sessionInfo.sessionId)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "ResultPath": "$.ecsResult",
+      "Next": "WaitForManifest",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 1,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "RecordFailure"
+        }
+      ]
+    },
+    "WaitForManifest": {
+      "Type": "Wait",
+      "Seconds": 30,
+      "Next": "CheckManifestExists"
+    },
+    "CheckManifestExists": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
+      "Parameters": {
+        "Bucket": "${ResultsBucket}",
+        "Key.$": "States.Format('{}/{}/manifest.json', $.sessionInfo.userId, $.sessionInfo.sessionName)"
+      },
+      "ResultPath": "$.manifestCheck",
+      "Next": "ProcessManifest",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "S3.NotFound"
+          ],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 20,
+          "BackoffRate": 1
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "S3.NotFound"
+          ],
+          "Next": "WaitForManifest"
+        },
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "RecordFailure"
+        }
+      ]
+    },
+    "ProcessManifest": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ManifestProcessorLambdaArn}",
+        "Payload": {
+          "s3Bucket": "${ResultsBucket}",
+          "s3Key.$": "States.Format('{}/{}/manifest.json', $.sessionInfo.userId, $.sessionInfo.sessionName)",
+          "sessionId.$": "$.sessionInfo.sessionId"
+        }
+      },
+      "ResultSelector": {
+        "manifest.$": "$.Payload"
+      },
+      "ResultPath": "$.manifestOutput",
+      "Next": "CheckClassifierExists",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 3,
+          "BackoffRate": 1.5
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "RecordFailure"
+        }
+      ]
+    },
+    "CheckClassifierExists": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
+      "Parameters": {
+        "Bucket": "${ResultsBucket}",
+        "Key.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionName, $.sessionInfo.userId, $.sessionInfo.sessionName)"
+      },
+      "ResultPath": "$.classifierCheck",
+      "Next": "CheckT1ResultsExists",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "S3.NotFound"
+          ],
+          "ResultPath": "$.error",
+          "Next": "RecordFailure"
+        },
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "RecordFailure"
+        }
+      ]
+    },
+    "CheckT1ResultsExists": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
+      "Parameters": {
+        "Bucket": "${ResultsBucket}",
+        "Key.$": "States.Format('{}/{}/T1 [results].json', $.sessionInfo.userId, $.sessionInfo.sessionName)"
+      },
+      "ResultPath": "$.t1Check",
+      "Next": "ProcessClassifier",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "S3.NotFound"
+          ],
+          "ResultPath": "$.error",
+          "Next": "RecordFailure"
+        },
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "RecordFailure"
+        }
+      ]
+    },
+    "ProcessClassifier": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ClassifierProcessorLambdaArn}",
+        "Payload": {
+          "s3Bucket": "${ResultsBucket}",
+          "s3KeyClassifierFile.$": "States.Format('{}/{}/Online/{}/{}/FBCSP_online_setup_prep_01 [online].json', $.sessionInfo.userId, $.sessionInfo.sessionName, $.sessionInfo.userId, $.sessionInfo.sessionName)",
+          "s3KeyResultsFile.$": "States.Format('{}/{}/T1 [results].json', $.sessionInfo.userId, $.sessionInfo.sessionName)",
+          "sessionId.$": "$.sessionInfo.sessionId"
+        }
+      },
+      "ResultPath": "$.classifierResult",
+      "Next": "NotifyClassifierReady",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 3,
+          "BackoffRate": 1.5
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "RecordFailure"
+        }
+      ]
+    },
+    "NotifyClassifierReady": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${ClassifierReadyTopicArn}",
+        "Subject": "Classifier Ready",
+        "Message.$": "States.Format('{\"type\": \"ClassifierReady\", \"userId\": \"{}\", \"sessionId\": \"{}\", \"sessionName\": \"{}\"}', $.sessionInfo.userId, $.sessionInfo.sessionId, $.sessionInfo.sessionName)",
+        "MessageAttributes": {
+          "eventType": {
+            "DataType": "String",
+            "StringValue": "ClassifierReady"
+          }
+        }
+      },
+      "ResultPath": "$.notificationResult",
+      "Next": "CheckForMetadata",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.notificationError",
+          "Next": "CheckForMetadata"
+        }
+      ]
+    },
+    "CheckForMetadata": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.manifestOutput.manifest.hasMetadata",
+          "BooleanEquals": true,
+          "Next": "ProcessMetadata"
+        }
+      ],
+      "Default": "RecordSuccess"
+    },
+    "ProcessMetadata": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ResultsMetadataLambdaArn}",
+        "Payload": {
+          "s3Bucket": "${ResultsBucket}",
+          "s3Key.$": "States.Format('{}/{}/{}', $.sessionInfo.userId, $.sessionInfo.sessionName, $.manifestOutput.manifest.metadataFile)",
+          "sessionId.$": "$.sessionInfo.sessionId"
+        }
+      },
+      "ResultPath": "$.metadataResult",
+      "Next": "RecordSuccess",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 3,
+          "BackoffRate": 1.5
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "RecordFailure"
+        }
+      ]
+    },
+    "RecordSuccess": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "${ProcessingStatusTable}",
+        "Key": {
+          "sessionId": {
+            "N.$": "$.sessionInfo.sessionId"
+          }
+        },
+        "UpdateExpression": "SET #s = :status, #e = :endTime",
+        "ExpressionAttributeNames": {
+          "#s": "status",
+          "#e": "endTime"
+        },
+        "ExpressionAttributeValues": {
+          ":status": {
+            "S": "SUCCESS"
+          },
+          ":endTime": {
+            "S.$": "$$.State.EnteredTime"
+          }
+        }
+      },
+      "End": true
+    },
+    "RecordFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "${ProcessingStatusTable}",
+        "Key": {
+          "sessionId": {
+            "N.$": "$.sessionInfo.sessionId"
+          }
+        },
+        "UpdateExpression": "SET #s = :status, #e = :error, #t = :time",
+        "ExpressionAttributeNames": {
+          "#s": "status",
+          "#e": "error",
+          "#t": "endTime"
+        },
+        "ExpressionAttributeValues": {
+          ":status": {
+            "S": "FAILED"
+          },
+          ":error": {
+            "S.$": "States.JsonToString($.error)"
+          },
+          ":time": {
+            "S.$": "$$.State.EnteredTime"
+          }
+        }
+      },
+      "Next": "FailExecution
+    },
+    "FailExecution":{
+      "Type": "Fail",
+      "Cause": "EEG processing pipeline failed",
+      "Error": "ProcessingError"
     }
+  }
 }
