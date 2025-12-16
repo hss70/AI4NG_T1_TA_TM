@@ -228,7 +228,7 @@ function mapToDynamo(obj) {
 
 async function fetchT1ResultsTable(bucket, userId, sessionName) {
     const t1Key = `${userId}/${sessionName}/T1 [resultTable].json`;
-    return await fetchT1ResultTableFromKey(bucket, t1Key);
+    return await fetchT1ResultsTableFromKey(bucket, t1Key);
 }
 
 async function fetchT1ResultsTableFromKey(bucket, t1Key) {
