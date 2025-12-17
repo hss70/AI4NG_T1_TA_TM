@@ -78,7 +78,7 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
             ":peakAccuracy": { N: t1Results.taskPeakDA_mean.toString() },
             ":errorMargin": { N: t1Results.taskPeakDA_std.toString() },
             ":timeInfo": { M: mapToDynamo(t1Results.timeInfo) },
-            ":resultsTable": { M: mapToDynamo(t1Results.t1ResultsTableData) }
+            ":resultsTable": { M: mapToDynamo(t1Results.T1_result_table) }
         };
 
         updateExpression.push("sessionId = :sessionId");
