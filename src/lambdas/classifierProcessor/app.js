@@ -206,6 +206,7 @@ function extractParameters(data) {
 // Helper to convert JS objects to DynamoDB attribute values
 function mapToDynamo(obj) {
     const result = {};
+    console.log('Mapping to Dynamo:', obj);
     for (const [key, value] of Object.entries(obj)) {
         if (Array.isArray(value)) {
             result[key] = {
