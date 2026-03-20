@@ -262,6 +262,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ai4ng-${Environment}-s3-event-processor
+      Role: !GetAtt S3EventProcessorLambdaRole.Arn
       Handler: app.handler
       Runtime: nodejs22.x
       CodeUri: ../src/lambdas/s3EventProcessor/
@@ -271,38 +272,59 @@ Resources:
         Variables:
           STATE_MACHINE_ARN: !Ref ProcessingStateMachine
           STATUS_TABLE: !Ref ProcessingStatusTableV2
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action: states:StartExecution
-              Resource: !Ref ProcessingStateMachine
-            - Effect: Allow
-              Action:
-                - dynamodb:UpdateItem
-                - dynamodb:PutItem
-              Resource: !GetAtt ProcessingStatusTableV2.Arn
-            - Effect: Allow
-              Action:
-                - s3:GetObject
-                - s3:ListBucket
-              Resource:
-                - Fn::Sub:
-                    - "arn:aws:s3:::${BucketName}"
-                    - BucketName:
-                        Fn::ImportValue:
-                          Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
-                - Fn::Sub:
-                    - "arn:aws:s3:::${BucketName}/*"
-                    - BucketName:
-                        Fn::ImportValue:
-                          Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref S3EventProcessorLogGroup
       Tags:
         Project: AI4NG
         Environment: !Ref Environment
-
+  S3EventProcessorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ai4ng-${Environment}-s3-event-processor-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub ai4ng-${Environment}-s3-event-processor-inline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Ref ProcessingStateMachine
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                  - dynamodb:PutItem
+                Resource: !GetAtt ProcessingStatusTableV2.Arn
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource:
+                  Fn::Sub:
+                    - arn:aws:s3:::${BucketName}
+                    - BucketName:
+                        Fn::ImportValue:
+                          Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource:
+                  Fn::Sub:
+                    - arn:aws:s3:::${BucketName}/*
+                    - BucketName:
+                        Fn::ImportValue:
+                          Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
   S3EventLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -315,6 +337,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ai4ng-${Environment}-manifest-processor
+      Role: !GetAtt ManifestProcessorLambdaRole.Arn
       CodeUri: ../src/lambdas/manifestProcessor/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -325,26 +348,58 @@ Resources:
           STATUS_TABLE: !Ref ProcessingStatusTableV2
           FILES_TABLE: !Ref FBCSPSessionFilesTable
           SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
-      Policies:
-        - DynamoDBWritePolicy:
-            TableName: !Ref ProcessingStatusTableV2
-        - DynamoDBWritePolicy:
-            TableName: !Ref FBCSPSessionFilesTable
-        - S3ReadPolicy:
-            BucketName: !Ref EEGResultsBucket
-        - SNSPublishMessagePolicy:
-            TopicName: !GetAtt ProcessingNotificationTopic.TopicName
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ManifestProcessorLogGroup
       Tags:
         Project: AI4NG
         Environment: !Ref Environment
+  ManifestProcessorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ai4ng-${Environment}-manifest-processor-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub ai4ng-${Environment}-manifest-processor-inline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !GetAtt ProcessingStatusTableV2.Arn
+                  - !GetAtt FBCSPSessionFilesTable.Arn
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt EEGResultsBucket.Arn
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "${EEGResultsBucket.Arn}/*"
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref ProcessingNotificationTopic
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   ClassifierProcessorLambda:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ai4ng-${Environment}-classifier-processor
+      Role: !GetAtt ClassifierProcessorLambdaRole.Arn
       CodeUri: ../src/lambdas/classifierProcessor/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -353,22 +408,54 @@ Resources:
       Environment:
         Variables:
           CLASSIFIER_TABLE: !Ref EEGClassifierTable
-      Policies:
-        - DynamoDBWritePolicy:
-            TableName: !Ref EEGClassifierTable
-        - S3ReadPolicy:
-            BucketName: !Ref EEGResultsBucket
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ClassifierProcessorLogGroup
       Tags:
         Project: AI4NG
         Environment: !Ref Environment
+  ClassifierProcessorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ai4ng-${Environment}-classifier-processor-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub ai4ng-${Environment}-classifier-processor-inline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                Resource: !GetAtt EEGClassifierTable.Arn
+              Resource: !GetAtt EEGClassifierTable.Arn
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt EEGResultsBucket.Arn
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "${EEGResultsBucket.Arn}/*"
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   ResultsMetadataLambda:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ai4ng-${Environment}-results-metadata
+      Role: !GetAtt ResultsMetadataLambdaRole.Arn
       CodeUri: ../src/lambdas/resultsMetadata/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -377,22 +464,51 @@ Resources:
       Environment:
         Variables:
           STATUS_TABLE: !Ref ProcessingStatusTableV2
-      Policies:
-        - DynamoDBWritePolicy:
-            TableName: !Ref ProcessingStatusTableV2
-        - S3ReadPolicy:
-            BucketName: !Ref EEGResultsBucket
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ResultsMetadataLogGroup
       Tags:
         Project: AI4NG
         Environment: !Ref Environment
-
+  ResultsMetadataLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ai4ng-${Environment}-results-metadata-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub ai4ng-${Environment}-results-metadata-inline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt ProcessingStatusTableV2.Arn
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt EEGResultsBucket.Arn
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "${EEGResultsBucket.Arn}/*"
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
   AdminRetriggerLambda:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ai4ng-${Environment}-admin-retrigger
+      Role: !GetAtt AdminRetriggerLambdaRole.Arn
       CodeUri: ../src/lambdas/adminRetrigger/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -402,19 +518,44 @@ Resources:
         Variables:
           STATUS_TABLE: !Ref ProcessingStatusTableV2
           STATE_MACHINE_ARN: !Ref ProcessingStateMachine
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref ProcessingStatusTableV2
-        - Statement:
-            - Effect: Allow
-              Action: states:StartExecution
-              Resource: !Ref ProcessingStateMachine
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref AdminRetriggerLogGroup
       Tags:
         Project: AI4NG
         Environment: !Ref Environment
+  AdminRetriggerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ai4ng-${Environment}-admin-retrigger-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub ai4ng-${Environment}-admin-retrigger-inline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource: !GetAtt ProcessingStatusTableV2.Arn
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !Ref ProcessingStateMachine
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
