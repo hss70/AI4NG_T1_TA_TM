@@ -3,28 +3,32 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo "Pre-build phase started on `date`"
+      - echo "Pre-build phase started on $(date)"
       - echo "Fetching ECR repository URI..."
-      - ECR_URI=$(aws cloudformation list-exports --query "Exports[?Name=='AI4NG-${Environment}-ClassifierECRRepositoryUri'].Value" --output text)
-      - test -n "$ECR_URI" || { echo "ERROR: ECR URI not found"; exit 1; }
-      - echo "ECR URI - $ECR_URI"
-      - ECR_REGISTRY=$(echo "$ECR_URI" | cut -d'/' -f1)
-      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - export ECR_URI=$(aws cloudformation list-exports --query "Exports[?Name=='AI4NG-${Environment}-ClassifierECRRepositoryUri'].Value | [0]" --output text)
+      - |
+        if [ -z "$ECR_URI" ] || [ "$ECR_URI" = "None" ]; then
+          echo "ERROR: ECR URI not found for export AI4NG-${Environment}-ClassifierECRRepositoryUri"
+          exit 1
+        fi
+      - echo "ECR URI: $ECR_URI"
+      - export ECR_REGISTRY=$(echo "$ECR_URI" | cut -d'/' -f1)
+      - export COMMIT_HASH=$(echo "${CODEBUILD_RESOLVED_SOURCE_VERSION:-manual}" | cut -c 1-7)
       - echo "Logging into ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
   build:
     commands:
       - echo "Building Docker image..."
       - cd src/ContainerCode
-      - docker build -t $ECR_URI:latest -t $ECR_URI:$COMMIT_HASH .
+      - docker build -t "$ECR_URI:latest" -t "$ECR_URI:$COMMIT_HASH" .
 
   post_build:
     commands:
       - echo "Pushing to ECR..."
-      - docker push $ECR_URI:latest
-      - docker push $ECR_URI:$COMMIT_HASH
-      - echo " Images pushed:"
+      - docker push "$ECR_URI:latest"
+      - docker push "$ECR_URI:$COMMIT_HASH"
+      - echo "Images pushed successfully"
       - echo "  $ECR_URI:latest"
       - echo "  $ECR_URI:$COMMIT_HASH"
 
