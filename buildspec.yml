@@ -26,7 +26,7 @@ phases:
     commands:
       - echo "Build phase started on `date`"
       - echo "Validating SAM template..."
-      - sam validate --template-file infra/trainingPipelineTemplate.yaml --lint
+      - sam validate --template-file infra/trainingPipelineTemplate.yaml
       - echo "Building SAM application..."
       - sam build --template-file infra/trainingPipelineTemplate.yaml
       - echo "Packaging SAM application..."
@@ -46,7 +46,6 @@ artifacts:
   files:
     - packaged.yaml
     - infra/parameters/dev.json
-    - infra/EEGProcessingStateMachine.asl.json
 
 cache:
   paths:
