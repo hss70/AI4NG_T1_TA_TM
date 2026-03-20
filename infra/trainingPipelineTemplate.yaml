@@ -438,7 +438,6 @@ Resources:
                   - dynamodb:PutItem
                   - dynamodb:GetItem
                 Resource: !GetAtt EEGClassifierTable.Arn
-              Resource: !GetAtt EEGClassifierTable.Arn
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !GetAtt EEGResultsBucket.Arn
