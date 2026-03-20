@@ -4,40 +4,29 @@ phases:
   pre_build:
     commands:
       - echo "Pre-build phase started on `date`"
-      - echo "Fetching ECR repository URI from CloudFormation exports..."
+      - echo "Fetching ECR repository URI..."
       - ECR_URI=$(aws cloudformation list-exports --query "Exports[?Name=='AI4NG-${Environment}-ClassifierECRRepositoryUri'].Value" --output text)
-      - |
-        if [ -z "$ECR_URI" ]; then
-          echo "ERROR: ECR repository URI export not found. Deploy infrastructure stack first."
-          exit 1
-        fi
+      - test -n "$ECR_URI" || { echo "ERROR: ECR URI not found"; exit 1; }
       - echo "ECR URI - $ECR_URI"
-      - ECR_REPOSITORY=$(echo "$ECR_URI" | cut -d'/' -f2)
-      - echo "ECR Repository - $ECR_REPOSITORY"
+      - ECR_REGISTRY=$(echo "$ECR_URI" | cut -d'/' -f1)
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - echo "Image will be tagged as latest and $COMMIT_HASH"
+      - echo "Logging into ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
   build:
     commands:
-      - echo "Build phase started on `date`"
       - echo "Building Docker image..."
       - cd src/ContainerCode
-      - docker build -t $ECR_REPOSITORY:latest .
-      - echo "Docker image built successfully"
+      - docker build -t $ECR_URI:latest -t $ECR_URI:$COMMIT_HASH .
 
   post_build:
     commands:
-      - echo "Post-build phase started on `date`"
-      - echo "Tagging Docker image..."
-      - docker tag $ECR_REPOSITORY:latest $ECR_URI:latest
-      - docker tag $ECR_REPOSITORY:latest $ECR_URI:$COMMIT_HASH
-      - echo "Pushing Docker image to ECR..."
+      - echo "Pushing to ECR..."
       - docker push $ECR_URI:latest
       - docker push $ECR_URI:$COMMIT_HASH
-      - echo "Docker image pushed successfully"
-      - echo "Image URIs:"
-      - echo "  - $ECR_URI:latest"
-      - echo "  - $ECR_URI:$COMMIT_HASH"
+      - echo " Images pushed:"
+      - echo "  $ECR_URI:latest"
+      - echo "  $ECR_URI:$COMMIT_HASH"
 
 cache:
   paths:
