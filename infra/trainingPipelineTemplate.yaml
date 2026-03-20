@@ -740,36 +740,6 @@ Resources:
       LogGroupName: !Sub /ecs/ai4ng-${Environment}-eeg-classifier
       RetentionInDays: 30
 
-  ClassifierECR:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Sub ai4ng-${Environment}-eeg-classifier
-      ImageTagMutability: MUTABLE
-      ImageScanningConfiguration:
-        ScanOnPush: true
-      LifecyclePolicy:
-        LifecyclePolicyText: |
-          {
-            "rules": [
-              {
-                "rulePriority": 1,
-                "description": "Keep last 10 images",
-                "selection": {
-                  "tagStatus": "tagged",
-                  "tagPrefixList": ["v"],
-                  "countType": "imageCountMoreThan",
-                  "countNumber": 10
-                },
-                "action": { "type": "expire" }
-              }
-            ]
-          }
-      Tags:
-        - Key: Project
-          Value: AI4NG
-        - Key: Environment
-          Value: !Ref Environment
-
   EEGFargateTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
@@ -783,7 +753,11 @@ Resources:
       TaskRoleArn: !GetAtt EEGTaskExecutionRole.Arn
       ContainerDefinitions:
         - Name: eeg-classifier
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ClassifierECR}:latest
+          Image: !Sub
+            - "${ECRUri}:latest"
+            - ECRUri:
+                Fn::ImportValue:
+                  Fn::Sub: AI4NG-${Environment}-ClassifierECRRepositoryUri
           Essential: true
           Environment:
             - Name: UPLOAD_BUCKET
@@ -971,18 +945,6 @@ Outputs:
     Value: !GetAtt EEGFargateCluster.Arn
     Export:
       Name: !Sub AI4NG-${Environment}-EEGFargateClusterArn
-
-  ClassifierECRRepositoryUri:
-    Description: URI for the ECR repository containing the classifier image
-    Value: !GetAtt ClassifierECR.RepositoryUri
-    Export:
-      Name: !Sub AI4NG-${Environment}-ClassifierECRRepositoryUri
-
-  ClassifierECRRepositoryArn:
-    Description: ARN of the ECR repository
-    Value: !GetAtt ClassifierECR.Arn
-    Export:
-      Name: !Sub AI4NG-${Environment}-ClassifierECRRepositoryArn
 
   EEGFargateTaskDefinitionArn:
     Description: ARN of the ECS task definition

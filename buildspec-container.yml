@@ -1,0 +1,27 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo "Fetching ECR repository URI from CloudFormation..."
+      - ECR_URI=$(aws cloudformation list-exports --query "Exports[?Name=='AI4NG-${Environment}-ClassifierECRRepositoryUri'].Value" --output text)
+      - test -n "$ECR_URI" || { echo "ERROR: ECR URI not found"; exit 1; }
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - echo "Building image for ECR - $ECR_URI"
+
+  build:
+    commands:
+      - cd src/ContainerCode
+      - docker build -t $ECR_URI:latest -t $ECR_URI:$COMMIT_HASH .
+
+  post_build:
+    commands:
+      - docker push $ECR_URI:latest
+      - docker push $ECR_URI:$COMMIT_HASH
+      - echo "✓ Images pushed successfully"
+      - echo "  Latest: $ECR_URI:latest"
+      - echo "  Commit: $ECR_URI:$COMMIT_HASH"
+
+cache:
+  paths:
+    - "/root/.docker/**/*"
