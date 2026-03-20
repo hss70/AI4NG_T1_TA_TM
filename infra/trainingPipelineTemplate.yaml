@@ -81,10 +81,10 @@ Resources:
                 "aws:SecureTransport": "false"
 
   # --- DynamoDB Tables ---
-  ProcessingStatusTableV2:
+  ProcessingStatusTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ai4ng-${Environment}-eeg-processing-status-v2
+      TableName: !Sub ai4ng-${Environment}-eeg-processing-status
       AttributeDefinitions:
         - AttributeName: sessionId
           AttributeType: N
@@ -271,7 +271,7 @@ Resources:
       Environment:
         Variables:
           STATE_MACHINE_ARN: !Ref ProcessingStateMachine
-          STATUS_TABLE: !Ref ProcessingStatusTableV2
+          STATUS_TABLE: !Ref ProcessingStatusTable
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref S3EventProcessorLogGroup
@@ -303,7 +303,7 @@ Resources:
                 Action:
                   - dynamodb:UpdateItem
                   - dynamodb:PutItem
-                Resource: !GetAtt ProcessingStatusTableV2.Arn
+                Resource: !GetAtt ProcessingStatusTable.Arn
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource:
@@ -345,7 +345,7 @@ Resources:
       MemorySize: 256
       Environment:
         Variables:
-          STATUS_TABLE: !Ref ProcessingStatusTableV2
+          STATUS_TABLE: !Ref ProcessingStatusTable
           FILES_TABLE: !Ref FBCSPSessionFilesTable
           SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
       LoggingConfig:
@@ -378,7 +378,7 @@ Resources:
                   - dynamodb:UpdateItem
                   - dynamodb:BatchWriteItem
                 Resource:
-                  - !GetAtt ProcessingStatusTableV2.Arn
+                  - !GetAtt ProcessingStatusTable.Arn
                   - !GetAtt FBCSPSessionFilesTable.Arn
               - Effect: Allow
                 Action: s3:ListBucket
@@ -462,7 +462,7 @@ Resources:
       MemorySize: 256
       Environment:
         Variables:
-          STATUS_TABLE: !Ref ProcessingStatusTableV2
+          STATUS_TABLE: !Ref ProcessingStatusTable
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ResultsMetadataLogGroup
@@ -491,7 +491,7 @@ Resources:
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
-                Resource: !GetAtt ProcessingStatusTableV2.Arn
+                Resource: !GetAtt ProcessingStatusTable.Arn
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !GetAtt EEGResultsBucket.Arn
@@ -515,7 +515,7 @@ Resources:
       MemorySize: 256
       Environment:
         Variables:
-          STATUS_TABLE: !Ref ProcessingStatusTableV2
+          STATUS_TABLE: !Ref ProcessingStatusTable
           STATE_MACHINE_ARN: !Ref ProcessingStateMachine
       LoggingConfig:
         LogFormat: JSON
@@ -546,7 +546,7 @@ Resources:
                   - dynamodb:GetItem
                   - dynamodb:Query
                   - dynamodb:Scan
-                Resource: !GetAtt ProcessingStatusTableV2.Arn
+                Resource: !GetAtt ProcessingStatusTable.Arn
               - Effect: Allow
                 Action: states:StartExecution
                 Resource: !Ref ProcessingStateMachine
@@ -763,7 +763,7 @@ Resources:
                   - dynamodb:UpdateItem
                   - dynamodb:PutItem
                   - dynamodb:GetItem
-                Resource: !GetAtt ProcessingStatusTableV2.Arn
+                Resource: !GetAtt ProcessingStatusTable.Arn
         - PolicyName: ECRAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -836,7 +836,7 @@ Resources:
                 Resource: !GetAtt EEGResultsBucket.Arn
               - Effect: Allow
                 Action: dynamodb:UpdateItem
-                Resource: !GetAtt ProcessingStatusTableV2.Arn
+                Resource: !GetAtt ProcessingStatusTable.Arn
               - Effect: Allow
                 Action: sns:Publish
                 Resource: !Ref ClassifierReadyTopic
@@ -907,7 +907,7 @@ Resources:
             - Name: RESULTS_BUCKET
               Value: !Ref EEGResultsBucket
             - Name: STATUS_TABLE
-              Value: !Ref ProcessingStatusTableV2
+              Value: !Ref ProcessingStatusTable
             - Name: CLASSIFIER_TABLE
               Value: !Ref EEGClassifierTable
             - Name: ENVIRONMENT
@@ -938,7 +938,7 @@ Resources:
       Name: !Sub ai4ng-${Environment}-eeg-processing-state-machine
       DefinitionUri: EEGProcessingStateMachine.asl.json
       DefinitionSubstitutions:
-        ProcessingStatusTable: !Ref ProcessingStatusTableV2
+        ProcessingStatusTable: !Ref ProcessingStatusTable
         EEGFargateCluster: !GetAtt EEGFargateCluster.Arn
         EEGFargateTaskDefinition: !Ref EEGFargateTaskDefinition
         PrivateSG:
@@ -989,13 +989,13 @@ Outputs:
   # --- DynamoDB Tables ---
   ProcessingStatusTableName:
     Description: Name of the processing status DynamoDB table
-    Value: !Ref ProcessingStatusTableV2
+    Value: !Ref ProcessingStatusTable
     Export:
       Name: !Sub AI4NG-${Environment}-ProcessingStatusTableName
 
   ProcessingStatusTableArn:
     Description: ARN of the processing status DynamoDB table
-    Value: !GetAtt ProcessingStatusTableV2.Arn
+    Value: !GetAtt ProcessingStatusTable.Arn
     Export:
       Name: !Sub AI4NG-${Environment}-ProcessingStatusTableArn
 
