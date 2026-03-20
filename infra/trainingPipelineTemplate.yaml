@@ -1,33 +1,26 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: EEG Processing Pipeline with Manifest-Driven Workflow
+Description: AI4NG EEG Processing Pipeline with Manifest-Driven Workflow
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
-  SharedApiId:
-    Type: String
-    Description: ID of the shared API Gateway
-  EEGUploadBucketName:
-    Type: String
-    Description: Name of the existing EEG upload bucket
-  PrivateSG:
-    Type: String
-    Description: Security group ID for private resources
-  PrivateSubnetId1:
-    Type: String
-    Description: First private subnet ID
-  PrivateSubnetId2:
-    Type: String
-    Description: Second private subnet ID
   Environment:
     Type: String
     Default: dev
-    AllowedValues: [dev, prod]
+    AllowedValues: [dev, staging, prod]
+
+  NotificationEmail:
+    Type: String
+    Description: Email address for processing notifications
+    Default: hss70@bath.ac.uk
+    AllowedPattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+    ConstraintDescription: Must be a valid email address
 
 Resources:
-  # S3 Event Rule to trigger Lambda on new uploads. The entry point to this pipeline, triggered when EEG data is uploaded to the S3 bucket.
+  # S3 Event Rule to trigger Lambda on new uploads
   S3UploadEventRule:
     Type: AWS::Events::Rule
     Properties:
+      Name: !Sub ai4ng-${Environment}-eeg-upload-event-rule
       EventPattern:
         source:
           - aws.s3
@@ -36,18 +29,20 @@ Resources:
         detail:
           bucket:
             name:
-              - !Ref EEGUploadBucketName
+              - Fn::ImportValue:
+                  Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
           object:
             key:
               - suffix: ".zip"
       Targets:
         - Arn: !GetAtt S3EventProcessorLambda.Arn
           Id: S3UploadEventTarget
+
   # --- S3 Buckets ---
   EEGResultsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub ai4ng-eeg-results-${AWS::AccountId}-${AWS::Region}
+      BucketName: !Sub ai4ng-${Environment}-eeg-results-${AWS::AccountId}
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption:
@@ -59,6 +54,13 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
 
   EEGResultsBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -67,7 +69,7 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: DenyUnencryptedUploads
+          - Sid: DenyInsecureTransport
             Effect: Deny
             Principal: "*"
             Action: "s3:*"
@@ -79,35 +81,10 @@ Resources:
                 "aws:SecureTransport": "false"
 
   # --- DynamoDB Tables ---
-  ProcessingStatusTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: EEGProcessingStatus
-      AttributeDefinitions:
-        - AttributeName: sessionName
-          AttributeType: S
-        - AttributeName: sessionId
-          AttributeType: N
-      KeySchema:
-        - AttributeName: sessionName
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: SessionIdIndex
-          KeySchema:
-            - AttributeName: sessionId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      BillingMode: PAY_PER_REQUEST
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      TimeToLiveSpecification:
-        AttributeName: expiry
-        Enabled: true
   ProcessingStatusTableV2:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: EEGProcessingStatusV2
+      TableName: !Sub ai4ng-${Environment}-eeg-processing-status-v2
       AttributeDefinitions:
         - AttributeName: sessionId
           AttributeType: N
@@ -129,11 +106,16 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: expiry
         Enabled: true
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   EEGClassifierTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: FBCSPClassifierParameters
+      TableName: !Sub ai4ng-${Environment}-fbcsp-classifier-parameters
       AttributeDefinitions:
         - AttributeName: classifierId
           AttributeType: N
@@ -166,11 +148,16 @@ Resources:
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   FBCSPSessionFilesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: FBCSPSessionFiles
+      TableName: !Sub ai4ng-${Environment}-fbcsp-session-files
       AttributeDefinitions:
         - AttributeName: sessionName
           AttributeType: S
@@ -233,128 +220,48 @@ Resources:
       BillingMode: PAY_PER_REQUEST
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
-
-  DeviceTokensTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub "${AWS::StackName}-DeviceTokens"
-      AttributeDefinitions:
-        - AttributeName: deviceId
-          AttributeType: S
-        - AttributeName: lastUserId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: deviceId
-          KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
-      GlobalSecondaryIndexes:
-        - IndexName: userIdIndex
-          KeySchema:
-            - AttributeName: lastUserId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      TimeToLiveSpecification:
-        AttributeName: ttl
-        Enabled: true
-
-  # --- API Gateway Integration ---
-  RegisterDeviceIntegration:
-    Type: AWS::ApiGatewayV2::Integration
-    Properties:
-      ApiId: !Ref SharedApiId
-      IntegrationType: AWS_PROXY
-      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RegisterDeviceLambda.Arn}/invocations
-      PayloadFormatVersion: "2.0"
-      IntegrationMethod: POST
-
-  StatusIntegration:
-    Type: AWS::ApiGatewayV2::Integration
-    Properties:
-      ApiId: !Ref SharedApiId
-      IntegrationType: AWS_PROXY
-      IntegrationUri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetStatusLambda.Arn}/invocations
-      PayloadFormatVersion: "2.0"
-      IntegrationMethod: POST
-
-  StatusRoute:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref SharedApiId
-      RouteKey: "GET /api/status/{sessionId}"
-      AuthorizationType: JWT
-      AuthorizerId: !ImportValue SharedApiAuthorizerId
-      Target: !Sub integrations/${StatusIntegration}
-
-  StatusAllRoute:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref SharedApiId
-      RouteKey: "GET /api/status"
-      AuthorizationType: JWT
-      AuthorizerId: !ImportValue SharedApiAuthorizerId
-      Target: !Sub integrations/${StatusIntegration}
-
-  DeviceRegisterRoute:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref SharedApiId
-      RouteKey: "POST /device/register"
-      AuthorizationType: JWT
-      AuthorizerId: !ImportValue SharedApiAuthorizerId
-      Target: !Sub integrations/${RegisterDeviceIntegration}
-
-  DeviceGetRoute:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref SharedApiId
-      RouteKey: "GET /device/register"
-      AuthorizationType: JWT
-      AuthorizerId: !ImportValue SharedApiAuthorizerId
-      Target: !Sub integrations/${RegisterDeviceIntegration}
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   # --- CloudWatch Log Groups ---
   S3EventProcessorLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-S3EventProcessor
-      RetentionInDays: 14
-
-  GetStatusLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-GetStatus
+      LogGroupName: !Sub /aws/lambda/ai4ng-${Environment}-s3-event-processor
       RetentionInDays: 14
 
   ManifestProcessorLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-ManifestProcessor
+      LogGroupName: !Sub /aws/lambda/ai4ng-${Environment}-manifest-processor
       RetentionInDays: 14
 
   ClassifierProcessorLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-ClassifierProcessor
+      LogGroupName: !Sub /aws/lambda/ai4ng-${Environment}-classifier-processor
       RetentionInDays: 14
 
   ResultsMetadataLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-ResultsMetadata
+      LogGroupName: !Sub /aws/lambda/ai4ng-${Environment}-results-metadata
       RetentionInDays: 14
 
-  RegisterDeviceLogGroup:
+  AdminRetriggerLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-RegisterDevice
+      LogGroupName: !Sub /aws/lambda/ai4ng-${Environment}-admin-retrigger
       RetentionInDays: 14
 
   # --- Lambda Functions ---
-  # S3 Event Processor Lambda
   S3EventProcessorLambda:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ai4ng-${Environment}-s3-event-processor
       Handler: app.handler
       Runtime: nodejs22.x
       CodeUri: ../src/lambdas/s3EventProcessor/
@@ -374,14 +281,28 @@ Resources:
                 - dynamodb:UpdateItem
                 - dynamodb:PutItem
               Resource: !GetAtt ProcessingStatusTableV2.Arn
-        - S3ReadPolicy:
-            BucketName: !Ref EEGUploadBucketName
-        - CloudWatchLogsFullAccess
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                - Fn::Sub:
+                    - "arn:aws:s3:::${BucketName}"
+                    - BucketName:
+                        Fn::ImportValue:
+                          Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
+                - Fn::Sub:
+                    - "arn:aws:s3:::${BucketName}/*"
+                    - BucketName:
+                        Fn::ImportValue:
+                          Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref S3EventProcessorLogGroup
+      Tags:
+        Project: AI4NG
+        Environment: !Ref Environment
 
-  # Permission for EventBridge to invoke Lambda
   S3EventLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -390,57 +311,10 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt S3UploadEventRule.Arn
 
-  GetStatusLambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ../src/lambdas/statusCheck/
-      Handler: app.handler
-      Runtime: nodejs22.x
-      Timeout: 10
-      MemorySize: 128
-      Environment:
-        Variables:
-          STATUS_TABLE: !Ref ProcessingStatusTableV2
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref ProcessingStatusTableV2
-        - Statement:
-            - Effect: Allow
-              Action:
-                - dynamodb:Scan
-                - dynamodb:Query
-              Resource:
-                - !GetAtt ProcessingStatusTableV2.Arn
-                - !Sub "${ProcessingStatusTableV2.Arn}/index/*"
-            - Effect: Allow
-              Action:
-                - logs:FilterLogEvents
-              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ecs/eeg-classifier:*"
-        - CloudWatchLogsFullAccess
-      LoggingConfig:
-        LogFormat: JSON
-        LogGroup: !Ref GetStatusLogGroup
-
-  GetStatusLambdaPermissions:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt GetStatusLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/GET/api/status/*"
-
-  RegisterDeviceLambdaPermissions:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt RegisterDeviceLambda.Arn
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SharedApiId}/*/*/device/register"
-
-  # Manifest Processor Lambda
   ManifestProcessorLambda:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ai4ng-${Environment}-manifest-processor
       CodeUri: ../src/lambdas/manifestProcessor/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -460,15 +334,17 @@ Resources:
             BucketName: !Ref EEGResultsBucket
         - SNSPublishMessagePolicy:
             TopicName: !GetAtt ProcessingNotificationTopic.TopicName
-        - CloudWatchLogsFullAccess
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ManifestProcessorLogGroup
+      Tags:
+        Project: AI4NG
+        Environment: !Ref Environment
 
-  # Classifier Processor Lambda
   ClassifierProcessorLambda:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ai4ng-${Environment}-classifier-processor
       CodeUri: ../src/lambdas/classifierProcessor/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -482,15 +358,17 @@ Resources:
             TableName: !Ref EEGClassifierTable
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
-        - CloudWatchLogsFullAccess
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ClassifierProcessorLogGroup
+      Tags:
+        Project: AI4NG
+        Environment: !Ref Environment
 
-  # Results Metadata Lambda
   ResultsMetadataLambda:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ai4ng-${Environment}-results-metadata
       CodeUri: ../src/lambdas/resultsMetadata/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -504,14 +382,17 @@ Resources:
             TableName: !Ref ProcessingStatusTableV2
         - S3ReadPolicy:
             BucketName: !Ref EEGResultsBucket
-        - CloudWatchLogsFullAccess
       LoggingConfig:
         LogFormat: JSON
         LogGroup: !Ref ResultsMetadataLogGroup
+      Tags:
+        Project: AI4NG
+        Environment: !Ref Environment
 
   AdminRetriggerLambda:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ai4ng-${Environment}-admin-retrigger
       CodeUri: ../src/lambdas/adminRetrigger/
       Handler: app.handler
       Runtime: nodejs22.x
@@ -528,77 +409,43 @@ Resources:
             - Effect: Allow
               Action: states:StartExecution
               Resource: !Ref ProcessingStateMachine
-        - CloudWatchLogsFullAccess
-
-  RegisterDeviceLambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ../src/lambdas/deviceRegistration/
-      Handler: app.handler
-      Runtime: nodejs22.x
-      Timeout: 10
-      MemorySize: 128
-      Environment:
-        Variables:
-          DEVICE_TABLE: !Ref DeviceTokensTable
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref DeviceTokensTable
-        - CloudWatchLogsFullAccess
       LoggingConfig:
         LogFormat: JSON
-        LogGroup: !Ref RegisterDeviceLogGroup
-
-  NotifyClassifierReadyFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ../src/lambdas/notifyClassifierReady/
-      Handler: index.handler
-      Runtime: nodejs20.x
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref DeviceTokensTable
-        - Statement:
-            - Effect: Allow
-              Action:
-                - secretsmanager:GetSecretValue
-              Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:neuro-fcm-service-account-*
-      Environment:
-        Variables:
-          DEVICE_TABLE: !Ref DeviceTokensTable
-          FCM_SERVICE_ACCOUNT: "{{resolve:secretsmanager:neuro-fcm-service-account:SecretString}}"
-      Events:
-        SNSEvent:
-          Type: SNS
-          Properties:
-            Topic: !Ref ClassifierReadyTopic
+        LogGroup: !Ref AdminRetriggerLogGroup
+      Tags:
+        Project: AI4NG
+        Environment: !Ref Environment
 
   ProcessingNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: EEGProcessingNotifications
-      DisplayName: EEG Processing Notifications
+      TopicName: !Sub ai4ng-${Environment}-eeg-processing-notifications
+      DisplayName: AI4NG EEG Processing Notifications
       Subscription:
         - Protocol: email
-          Endpoint: "hss70@bath.ac.uk"
+          Endpoint: !Ref NotificationEmail
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
-  # Topic to broadcast that a classifier is ready; subscribers can bridge to Android via FCM
   ClassifierReadyTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: EEGClassifierReady
-      DisplayName: EEG Classifier Ready Notifications
-
-  StatusQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: EEG-Status-Queue
+      TopicName: !Sub ai4ng-${Environment}-eeg-classifier-ready
+      DisplayName: AI4NG EEG Classifier Ready Notifications
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   # --- CloudWatch Alarms ---
   StepFunctionFailureAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: !Sub ${AWS::StackName}-StepFunction-Failures
+      AlarmName: !Sub ai4ng-${Environment}-stepfunction-failures
       AlarmDescription: Alert when Step Function executions fail
       MetricName: ExecutionsFailed
       Namespace: AWS/States
@@ -616,7 +463,7 @@ Resources:
   ECSTaskFailureAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: !Sub ${AWS::StackName}-ECS-Task-Failures
+      AlarmName: !Sub ai4ng-${Environment}-ecs-task-failures
       AlarmDescription: Alert when ECS tasks fail
       MetricName: TasksStoppedReason
       Namespace: AWS/ECS
@@ -634,7 +481,7 @@ Resources:
   LambdaErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: !Sub ${AWS::StackName}-Lambda-Errors
+      AlarmName: !Sub ai4ng-${Environment}-lambda-errors
       AlarmDescription: Alert when Lambda functions error
       MetricName: Errors
       Namespace: AWS/Lambda
@@ -650,7 +497,7 @@ Resources:
   EEGProcessingDashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties:
-      DashboardName: !Sub ${AWS::StackName}-EEG-Processing-Pipeline
+      DashboardName: !Sub ai4ng-${Environment}-eeg-processing-pipeline
       DashboardBody: !Sub |
         {
           "widgets": [
@@ -680,7 +527,7 @@ Resources:
               "width": 24,
               "height": 6,
               "properties": {
-                "query": "SOURCE '/aws/lambda/AI4NGUploadLambda'\nSOURCE '/aws/lambda/${AWS::StackName}-S3EventProcessor'\nSOURCE '/aws/lambda/${AWS::StackName}-ManifestProcessor'\nSOURCE '/aws/lambda/${AWS::StackName}-ClassifierProcessor'\nSOURCE '/ecs/eeg-classifier'\nSOURCE '/aws/stepfunctions/${AWS::StackName}-ProcessingStateMachine'\n| fields @timestamp, level, message, sessionId, sessionName, userId\n| filter ispresent(sessionId)\n| sort @timestamp desc\n| limit 100",
+                "query": "SOURCE '/aws/lambda/ai4ng-${Environment}-s3-event-processor'\nSOURCE '/aws/lambda/ai4ng-${Environment}-manifest-processor'\nSOURCE '/aws/lambda/ai4ng-${Environment}-classifier-processor'\nSOURCE '/ecs/ai4ng-${Environment}-eeg-classifier'\nSOURCE '/aws/stepfunctions/ai4ng-${Environment}-processing-state-machine'\n| fields @timestamp, level, message, sessionId, sessionName, userId\n| filter ispresent(sessionId)\n| sort @timestamp desc\n| limit 100",
                 "region": "${AWS::Region}",
                 "title": "Session Logs (Filter by sessionId)",
                 "view": "table"
@@ -712,7 +559,7 @@ Resources:
               "height": 6,
               "properties": {
                 "metrics": [
-                  [ "AWS/Lambda", "Duration", "FunctionName", "${S3EventProcessorLambda}" ],
+                  [ "AWS/Lambda", "Duration", "FunctionName", "ai4ng-${Environment}-s3-event-processor" ],
                   [ ".", "Errors", ".", "." ],
                   [ ".", "Invocations", ".", "." ]
                 ],
@@ -730,6 +577,7 @@ Resources:
   EEGTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub ai4ng-${Environment}-ecs-task-execution-role
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -749,8 +597,16 @@ Resources:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource:
-                  - !Sub "arn:aws:s3:::${EEGUploadBucketName}"
-                  - !Sub "arn:aws:s3:::${EEGUploadBucketName}/*"
+                  - Fn::Sub:
+                      - "arn:aws:s3:::${BucketName}"
+                      - BucketName:
+                          Fn::ImportValue:
+                            Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
+                  - Fn::Sub:
+                      - "arn:aws:s3:::${BucketName}/*"
+                      - BucketName:
+                          Fn::ImportValue:
+                            Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
               - Effect: Allow
                 Action:
                   - s3:PutObject
@@ -779,11 +635,16 @@ Resources:
                   - ecr:GetDownloadUrlForLayer
                   - ecr:BatchGetImage
                 Resource: "*"
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
-  # --- Step Function Execution Role ---
   EEGStepFunctionRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub ai4ng-${Environment}-stepfunction-execution-role
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -819,7 +680,12 @@ Resources:
                 Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctions*
               - Effect: Allow
                 Action: s3:GetObject
-                Resource: !Sub "arn:aws:s3:::${EEGUploadBucketName}/*"
+                Resource:
+                  Fn::Sub:
+                    - "arn:aws:s3:::${BucketName}/*"
+                    - BucketName:
+                        Fn::ImportValue:
+                          Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
               - Effect: Allow
                 Action:
                   - s3:HeadObject
@@ -845,29 +711,39 @@ Resources:
                   - logs:DescribeResourcePolicies
                   - logs:DescribeLogGroups
                 Resource: "*"
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   # --- ECS Resources ---
   EEGFargateCluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: EEG-Classifier-Cluster
+      ClusterName: !Sub ai4ng-${Environment}-eeg-classifier-cluster
       ClusterSettings:
         - Name: containerInsights
           Value: enabled
       Configuration:
         ExecuteCommandConfiguration:
           Logging: DEFAULT
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   ClassifierLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /ecs/eeg-classifier
+      LogGroupName: !Sub /ecs/ai4ng-${Environment}-eeg-classifier
       RetentionInDays: 30
 
   ClassifierECR:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: eeg-classifier
+      RepositoryName: !Sub ai4ng-${Environment}-eeg-classifier
       ImageTagMutability: MUTABLE
       ImageScanningConfiguration:
         ScanOnPush: true
@@ -888,11 +764,16 @@ Resources:
               }
             ]
           }
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   EEGFargateTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: EEGClassifierTask
+      Family: !Sub ai4ng-${Environment}-eeg-classifier-task
       Cpu: "1024"
       Memory: "4096"
       NetworkMode: awsvpc
@@ -906,41 +787,58 @@ Resources:
           Essential: true
           Environment:
             - Name: UPLOAD_BUCKET
-              Value: !Ref EEGUploadBucketName
+              Value:
+                Fn::ImportValue:
+                  Fn::Sub: AI4NG-${Environment}-EEGUploadBucketName
             - Name: RESULTS_BUCKET
               Value: !Ref EEGResultsBucket
             - Name: STATUS_TABLE
               Value: !Ref ProcessingStatusTableV2
             - Name: CLASSIFIER_TABLE
               Value: !Ref EEGClassifierTable
-            - Name: PRIVATE_SG
-              Value: !Ref PrivateSG
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: !Ref ClassifierLogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: eeg-classifier
+      Tags:
+        - Key: Project
+          Value: AI4NG
+        - Key: Environment
+          Value: !Ref Environment
 
   # --- CloudWatch Log Groups for Step Functions ---
   StepFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub /aws/stepfunctions/${AWS::StackName}-ProcessingStateMachine
+      LogGroupName: !Sub /aws/stepfunctions/ai4ng-${Environment}-processing-state-machine
       RetentionInDays: 30
 
   # --- Step Functions ---
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
+      Name: !Sub ai4ng-${Environment}-eeg-processing-state-machine
       DefinitionUri: EEGProcessingStateMachine.asl.json
       DefinitionSubstitutions:
         ProcessingStatusTable: !Ref ProcessingStatusTableV2
         EEGFargateCluster: !GetAtt EEGFargateCluster.Arn
         EEGFargateTaskDefinition: !Ref EEGFargateTaskDefinition
-        PrivateSG: !Ref PrivateSG
-        PrivateSubnetId1: !Ref PrivateSubnetId1
-        PrivateSubnetId2: !Ref PrivateSubnetId2
+        PrivateSG:
+          Fn::ImportValue: NetworkStack-PrivateSG
+        PrivateSubnetId1: !Select
+          - 0
+          - !Split
+            - ","
+            - Fn::ImportValue: NetworkStack-PrivateSubnetIds
+        PrivateSubnetId2: !Select
+          - 1
+          - !Split
+            - ","
+            - Fn::ImportValue: NetworkStack-PrivateSubnetIds
         ManifestProcessorLambdaArn: !GetAtt ManifestProcessorLambda.Arn
         ClassifierProcessorLambdaArn: !GetAtt ClassifierProcessorLambda.Arn
         ResultsMetadataLambdaArn: !GetAtt ResultsMetadataLambda.Arn
@@ -958,66 +856,210 @@ Resources:
       Tags:
         AI4NG: "true"
         TrainingPipeline: "true"
-
+        Project: AI4NG
+        Environment: !Ref Environment
 Outputs:
-  StatusApiUrl:
-    Value: !Sub https://${SharedApiId}.execute-api.${AWS::Region}.amazonaws.com/dev/api/status/
-    Description: URL for status checking API
-    Export:
-      Name: EEGStatusApiUrl
-  ProcessingStatusTable:
-    Value: !Ref ProcessingStatusTableV2
-    Description: Name of the processing status DynamoDB table
-    Export:
-      Name: ProcessingStatusTableName
-  ResultsBucketName:
+  # --- S3 Buckets ---
+  EEGResultsBucketName:
+    Description: S3 bucket name for EEG processing results
     Value: !Ref EEGResultsBucket
     Export:
-      Name: EEGResultsBucketName
-  ECRRepositoryUri:
-    Value: !GetAtt ClassifierECR.RepositoryUri
-    Description: URI for the ECR repository containing the classifier image
+      Name: !Sub AI4NG-${Environment}-EEGResultsBucketName
+
+  EEGResultsBucketArn:
+    Description: ARN of the EEG results bucket
+    Value: !GetAtt EEGResultsBucket.Arn
     Export:
-      Name: EEGClassifierECRUri
-  ProcessingStateMachineArn:
-    Value: !Ref ProcessingStateMachine
-    Description: ARN of the EEG processing state machine
+      Name: !Sub AI4NG-${Environment}-EEGResultsBucketArn
+
+  # --- DynamoDB Tables ---
+  ProcessingStatusTableName:
+    Description: Name of the processing status DynamoDB table
+    Value: !Ref ProcessingStatusTableV2
     Export:
-      Name: EEGProcessingStateMachineArn
+      Name: !Sub AI4NG-${Environment}-ProcessingStatusTableName
+
+  ProcessingStatusTableArn:
+    Description: ARN of the processing status DynamoDB table
+    Value: !GetAtt ProcessingStatusTableV2.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-ProcessingStatusTableArn
+
+  EEGClassifierTableName:
+    Description: Name of the FBCSP classifier parameters table
+    Value: !Ref EEGClassifierTable
+    Export:
+      Name: !Sub AI4NG-${Environment}-EEGClassifierTableName
+
+  EEGClassifierTableArn:
+    Description: ARN of the FBCSP classifier parameters table
+    Value: !GetAtt EEGClassifierTable.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-EEGClassifierTableArn
+
+  FBCSPSessionFilesTableName:
+    Description: Name of the FBCSP session files table
+    Value: !Ref FBCSPSessionFilesTable
+    Export:
+      Name: !Sub AI4NG-${Environment}-FBCSPSessionFilesTableName
+
+  FBCSPSessionFilesTableArn:
+    Description: ARN of the FBCSP session files table
+    Value: !GetAtt FBCSPSessionFilesTable.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-FBCSPSessionFilesTableArn
+
+  # --- Lambda Functions ---
+  S3EventProcessorLambdaName:
+    Description: Name of S3 event processor Lambda
+    Value: !Ref S3EventProcessorLambda
+    Export:
+      Name: !Sub AI4NG-${Environment}-S3EventProcessorLambdaName
+
+  S3EventProcessorLambdaArn:
+    Description: ARN of S3 event processor Lambda
+    Value: !GetAtt S3EventProcessorLambda.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-S3EventProcessorLambdaArn
+
+  ManifestProcessorLambdaArn:
+    Description: ARN of manifest processor Lambda
+    Value: !GetAtt ManifestProcessorLambda.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-ManifestProcessorLambdaArn
+
+  ClassifierProcessorLambdaArn:
+    Description: ARN of classifier processor Lambda
+    Value: !GetAtt ClassifierProcessorLambda.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-ClassifierProcessorLambdaArn
+
+  ResultsMetadataLambdaArn:
+    Description: ARN of results metadata Lambda
+    Value: !GetAtt ResultsMetadataLambda.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-ResultsMetadataLambdaArn
+
+  AdminRetriggerLambdaArn:
+    Description: ARN of admin retrigger Lambda
+    Value: !GetAtt AdminRetriggerLambda.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-AdminRetriggerLambdaArn
+
+  # --- SNS Topics ---
+  ProcessingNotificationTopicArn:
+    Description: ARN of the processing notification SNS topic
+    Value: !Ref ProcessingNotificationTopic
+    Export:
+      Name: !Sub AI4NG-${Environment}-ProcessingNotificationTopicArn
 
   ClassifierReadyTopicArn:
-    Value: !Ref ClassifierReadyTopic
     Description: ARN for the SNS topic that receives classifier-ready notifications
+    Value: !Ref ClassifierReadyTopic
     Export:
-      Name: EEGClassifierReadyTopicArn
+      Name: !Sub AI4NG-${Environment}-ClassifierReadyTopicArn
+
+  # --- ECS Resources ---
+  EEGFargateClusterName:
+    Description: Name of the ECS Fargate cluster
+    Value: !Ref EEGFargateCluster
+    Export:
+      Name: !Sub AI4NG-${Environment}-EEGFargateClusterName
+
+  EEGFargateClusterArn:
+    Description: ARN of the ECS Fargate cluster
+    Value: !GetAtt EEGFargateCluster.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-EEGFargateClusterArn
+
+  ClassifierECRRepositoryUri:
+    Description: URI for the ECR repository containing the classifier image
+    Value: !GetAtt ClassifierECR.RepositoryUri
+    Export:
+      Name: !Sub AI4NG-${Environment}-ClassifierECRRepositoryUri
+
+  ClassifierECRRepositoryArn:
+    Description: ARN of the ECR repository
+    Value: !GetAtt ClassifierECR.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-ClassifierECRRepositoryArn
+
+  EEGFargateTaskDefinitionArn:
+    Description: ARN of the ECS task definition
+    Value: !Ref EEGFargateTaskDefinition
+    Export:
+      Name: !Sub AI4NG-${Environment}-EEGFargateTaskDefinitionArn
+
+  # --- Step Functions ---
+  ProcessingStateMachineArn:
+    Description: ARN of the EEG processing state machine
+    Value: !Ref ProcessingStateMachine
+    Export:
+      Name: !Sub AI4NG-${Environment}-ProcessingStateMachineArn
+
+  ProcessingStateMachineName:
+    Description: Name of the EEG processing state machine
+    Value: !GetAtt ProcessingStateMachine.Name
+    Export:
+      Name: !Sub AI4NG-${Environment}-ProcessingStateMachineName
+
+  # --- CloudWatch Resources ---
+  StepFunctionLogGroupName:
+    Description: Name of the Step Function log group
+    Value: !Ref StepFunctionLogGroup
+    Export:
+      Name: !Sub AI4NG-${Environment}-StepFunctionLogGroupName
+
+  ClassifierLogGroupName:
+    Description: Name of the ECS classifier log group
+    Value: !Ref ClassifierLogGroup
+    Export:
+      Name: !Sub AI4NG-${Environment}-ClassifierLogGroupName
+
+  DashboardName:
+    Description: Name of the CloudWatch Dashboard
+    Value: !Ref EEGProcessingDashboard
+    Export:
+      Name: !Sub AI4NG-${Environment}-DashboardName
+
+  # --- IAM Roles ---
+  EEGTaskExecutionRoleArn:
+    Description: ARN of the ECS task execution role
+    Value: !GetAtt EEGTaskExecutionRole.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-EEGTaskExecutionRoleArn
+
+  EEGStepFunctionRoleArn:
+    Description: ARN of the Step Function execution role
+    Value: !GetAtt EEGStepFunctionRole.Arn
+    Export:
+      Name: !Sub AI4NG-${Environment}-EEGStepFunctionRoleArn
+
+  # --- Utility Outputs (Non-Exported) ---
   DashboardUrl:
-    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AWS::StackName}-EEG-Processing-Pipeline
     Description: URL to the CloudWatch Dashboard
-    Export:
-      Name: EEGProcessingDashboardUrl2
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=ai4ng-${Environment}-eeg-processing-pipeline
+
   LogInsightsQuery:
-    Value: !Sub |
-      SOURCE '/aws/lambda/AI4NGUploadLambda'
-      SOURCE '/aws/lambda/${AWS::StackName}-S3EventProcessor'
-      SOURCE '/aws/lambda/${AWS::StackName}-ManifestProcessor'
-      SOURCE '/aws/lambda/${AWS::StackName}-ClassifierProcessor'
-      SOURCE '/ecs/eeg-classifier'
-      | fields @timestamp, level, message, sessionId, sessionName, userId, error
-      | filter sessionId = "YOUR_SESSION_ID"
-      | sort @timestamp asc
     Description: CloudWatch Logs Insights query to track sessionId across all services
-  S3EventProcessorLambdaName:
-    Value: !Ref S3EventProcessorLambda
-    Description: Name of S3 event processor Lambda
-    Export:
-      Name: S3EventProcessorLambdaName
-  DeviceTokensTableName:
-    Value: !Ref DeviceTokensTable
-    Description: Name of the device tokens DynamoDB table
-    Export:
-      Name: DeviceTokensTableName
-  DeviceRegistrationApiUrl:
-    Value: !Sub https://${SharedApiId}.execute-api.${AWS::Region}.amazonaws.com/dev/device/register
-    Description: URL for device registration API
-    Export:
-      Name: DeviceRegistrationApiUrl
+    Value: !Sub
+      - |
+        SOURCE '${UploadLogGroup}'
+        SOURCE '/aws/lambda/${S3EventProcessorLambda}'
+        SOURCE '/aws/lambda/${ManifestProcessorLambda}'
+        SOURCE '/aws/lambda/${ClassifierProcessorLambda}'
+        SOURCE '/ecs/ai4ng-${Environment}-eeg-classifier'
+        | fields @timestamp, level, message, sessionId, sessionName, userId, error
+        | filter sessionId = "YOUR_SESSION_ID"
+        | sort @timestamp asc
+      - UploadLogGroup:
+          Fn::ImportValue:
+            Fn::Sub: AI4NG-${Environment}-UploadLambdaLogGroupName
+
+  StateMachineConsoleUrl:
+    Description: URL to view the Step Function in AWS Console
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/states/home?region=${AWS::Region}#/statemachines/view/${ProcessingStateMachine}
+
+  ECSClusterConsoleUrl:
+    Description: URL to view the ECS cluster in AWS Console
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/ecs/v2/clusters/ai4ng-${Environment}-eeg-classifier-cluster?region=${AWS::Region}

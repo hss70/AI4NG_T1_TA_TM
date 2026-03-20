@@ -1,0 +1,53 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "Installing SAM CLI..."
+      - pip install aws-sam-cli
+      - sam --version
+      - aws --version
+
+  pre_build:
+    commands:
+      - echo "Pre-build phase started on `date`"
+      - echo "Fetching artifact bucket from CloudFormation exports..."
+      - ARTIFACT_BUCKET=$(aws cloudformation list-exports --query "Exports[?Name=='AI4NG-${Environment}-SamArtifactBucketName'].Value" --output text)
+      - echo "Using artifact bucket - $ARTIFACT_BUCKET"
+      - |
+        if [ -z "$ARTIFACT_BUCKET" ]; then
+          echo "ERROR: Artifact bucket not found. Ensure AI4NG-Infra-Shared artifact-store stack is deployed."
+          exit 1
+        fi
+
+  build:
+    commands:
+      - echo "Build phase started on `date`"
+      - echo "Validating SAM template..."
+      - sam validate --template-file infra/trainingPipelineTemplate.yaml --lint
+      - echo "Building SAM application..."
+      - sam build --template-file infra/trainingPipelineTemplate.yaml
+      - echo "Packaging SAM application..."
+      - sam package
+        --template-file .aws-sam/build/template.yaml
+        --s3-bucket $ARTIFACT_BUCKET
+        --s3-prefix AI4NG-T1-Training-${Environment}
+        --output-template-file packaged.yaml
+      - echo "Package complete"
+
+  post_build:
+    commands:
+      - echo "Post-build phase started on `date`"
+      - echo "Build completed successfully"
+
+artifacts:
+  files:
+    - packaged.yaml
+    - infra/parameters/dev.json
+    - infra/EEGProcessingStateMachine.asl.json
+
+cache:
+  paths:
+    - "/root/.cache/pip/**/*"
