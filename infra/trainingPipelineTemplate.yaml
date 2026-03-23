@@ -94,6 +94,8 @@ Resources:
           AttributeType: S
         - AttributeName: startTime
           AttributeType: S
+        - AttributeName: entityType
+          AttributeType: S
       KeySchema:
         - AttributeName: sessionId
           KeyType: HASH
@@ -107,6 +109,14 @@ Resources:
         - IndexName: StatusStartTimeIndex
           KeySchema:
             - AttributeName: status
+              KeyType: HASH
+            - AttributeName: startTime
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: EntityTypeStartTimeIndex
+          KeySchema:
+            - AttributeName: entityType
               KeyType: HASH
             - AttributeName: startTime
               KeyType: RANGE
