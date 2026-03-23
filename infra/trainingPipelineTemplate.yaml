@@ -94,8 +94,6 @@ Resources:
           AttributeType: S
         - AttributeName: startTime
           AttributeType: S
-        - AttributeName: entityType
-          AttributeType: S
       KeySchema:
         - AttributeName: sessionId
           KeyType: HASH
