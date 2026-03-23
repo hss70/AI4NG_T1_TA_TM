@@ -80,7 +80,7 @@ Resources:
               Bool:
                 "aws:SecureTransport": "false"
 
-  # --- DynamoDB Tables ---
+    # --- DynamoDB Tables ---
   ProcessingStatusTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -90,6 +90,12 @@ Resources:
           AttributeType: N
         - AttributeName: sessionName
           AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: startTime
+          AttributeType: S
+        - AttributeName: entityType
+          AttributeType: S
       KeySchema:
         - AttributeName: sessionId
           KeyType: HASH
@@ -98,6 +104,14 @@ Resources:
           KeySchema:
             - AttributeName: sessionName
               KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: StatusStartTimeIndex
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: startTime
+              KeyType: RANGE
           Projection:
             ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
