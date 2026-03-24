@@ -893,8 +893,8 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: EEGClassifierTask
-      Cpu: "1024"
-      Memory: "4096"
+      Cpu: "2048"
+      Memory: "8192"
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
