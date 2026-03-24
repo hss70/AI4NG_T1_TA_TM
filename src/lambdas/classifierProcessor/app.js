@@ -65,14 +65,6 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
 
         const t1ResultsTable =
             await fetchT1ResultsTable(bucket, userId, sessionName);
-        
-        console.log(JSON.stringify({
-            level: 'INFO',
-            message: 'T1 data fetched',
-            hasT1ResultsTable: !!t1ResultsTable,
-            hasT1ResultsTableData: !!t1ResultsTable?.t1ResultsTableData,
-            t1ResultsTableKeys: t1ResultsTable ? Object.keys(t1ResultsTable) : []
-        }));
 
         // Store in DynamoDB
         const updateExpression = [];
@@ -107,16 +99,6 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
             updateExpression.push(`${key} = ${attrName}`);
         });
 
-        console.log(JSON.stringify({
-            level: 'INFO',
-            message: 'Writing to DynamoDB',
-            classifierId,
-            tableName: process.env.CLASSIFIER_TABLE,
-            updateExpression: updateExpression.join(", "),
-            hasResultsTable: !!t1ResultsTable?.t1ResultsTableData,
-            hasTimeInfo: !!t1Results?.timeInfo
-        }));
-
         await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.CLASSIFIER_TABLE,
             Key: { classifierId: { N: classifierId.toString() } },
@@ -129,13 +111,12 @@ async function processClassifierFile(bucket, classifierKey, resultsKey = null, s
 
         console.log(JSON.stringify({
             level: 'INFO',
-            message: 'DynamoDB write successful - Classifier processed',
+            message: 'Classifier processed',
             sessionId,
             sessionName,
             userId,
             classifierId,
-            fileName,
-            tableName: process.env.CLASSIFIER_TABLE
+            fileName
         }));
     } catch (error) {
         console.error(JSON.stringify({
