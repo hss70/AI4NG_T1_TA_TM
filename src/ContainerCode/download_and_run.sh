@@ -1,110 +1,144 @@
 #!/bin/bash
 set -euo pipefail
 
-# Log with SESSION_ID for CloudWatch filtering (strip quotes for display)
-SESSION_ID_CLEAN=${SESSION_ID//\"/}
-echo "[SESSION_ID=${SESSION_ID_CLEAN}] Starting EEG processing for session ${SESSION_ID_CLEAN}"
+script_start_ms=$(python3 - <<'PY'
+import time
+print(int(time.perf_counter() * 1000))
+PY
+)
 
-# Set fixed environment variables
+ts() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
+
+now_ms() {
+  python3 - <<'PY'
+import time
+print(int(time.perf_counter() * 1000))
+PY
+}
+
+SESSION_ID_CLEAN=${SESSION_ID//\"/}
+
+log() {
+  local message="$1"
+  echo "[SESSION_ID=${SESSION_ID_CLEAN}] $(ts) $message"
+}
+
+log_timing() {
+  local step="$1"
+  local elapsed_ms="$2"
+  echo "[SESSION_ID=${SESSION_ID_CLEAN}] $(ts) TIMING step=${step} elapsedMs=${elapsed_ms}"
+}
+
+run_timed() {
+  local step="$1"
+  shift
+  local start_ms end_ms elapsed_ms
+
+  log "START step=${step}"
+  start_ms=$(now_ms)
+  "$@"
+  end_ms=$(now_ms)
+  elapsed_ms=$((end_ms - start_ms))
+  log "END step=${step}"
+  log_timing "$step" "$elapsed_ms"
+}
+
+log "Starting EEG processing for session ${SESSION_ID_CLEAN}"
+
 export WORK_DIR="/app/work"
-export HOME_DIR="$WORK_DIR"  # For MATLAB compatibility
+export HOME_DIR="$WORK_DIR"
 export WORK_PATH="$WORK_DIR/Work"
 export OUTPUT_DIR="$WORK_DIR/Results"
 
-# Create required directories
-mkdir -p \
+run_timed "mkdirs" mkdir -p \
   "$WORK_DIR/Dependents" \
   "$WORK_PATH/CSV/$USER_ID/$SESSION_NAME" \
   "$WORK_PATH/Results" \
   "/app/output"
 
-# Copy the EEG channel locations file to Dependents
-cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Dependents/"
+run_timed "copy_dependents" cp /app/Standard-10-20-Cap81.locs "$WORK_DIR/Dependents/"
 
-# Download input file from S3
-echo "[SESSION_ID=${SESSION_ID_CLEAN}] Downloading $INPUT_FILE from $UPLOAD_BUCKET"
-aws s3 cp "s3://${UPLOAD_BUCKET}/${INPUT_FILE}" /app/input.zip
+log "Downloading $INPUT_FILE from $UPLOAD_BUCKET"
+run_timed "s3_download_input" aws s3 cp "s3://${UPLOAD_BUCKET}/${INPUT_FILE}" /app/input.zip
 
-# Unzip into session directory
-echo "Unzipping input file to $WORK_PATH/CSV/$USER_ID/$SESSION_NAME"
-unzip -o /app/input.zip -d "$WORK_PATH/CSV/$USER_ID/$SESSION_NAME"
+log "Unzipping input file to $WORK_PATH/CSV/$USER_ID/$SESSION_NAME"
+run_timed "unzip_input" unzip -o /app/input.zip -d "$WORK_PATH/CSV/$USER_ID/$SESSION_NAME"
 
-# Generate results path
 RESULTS_PATH="$USER_ID/$SESSION_NAME"
 
-# Load metadata and set critical variables
 METADATA_FILE="$WORK_PATH/CSV/$USER_ID/$SESSION_NAME/metadata.json"
 if [[ -f "$METADATA_FILE" ]]; then
-    echo "Loading metadata from $METADATA_FILE"
-    # Extract required parameters
+    log "Loading metadata from $METADATA_FILE"
+    metadata_start_ms=$(now_ms)
+
     export EEGChannels=$(jq -r '.EEGChannels' "$METADATA_FILE")
     export Frequency=$(jq -r '.Frequency' "$METADATA_FILE")
-    
-    # Set MATLAB-required variables
     export channelNum="$EEGChannels"
     export sampleRate="$Frequency"
     export downSampleRate="$Frequency"
-    
-    # Export other metadata fields as environment variables
+
     while IFS="=" read -r key value; do
-        key="${key//[^a-zA-Z0-9_]/_}"  # Sanitize key
+        key="${key//[^a-zA-Z0-9_]/_}"
         if [[ ! $key =~ ^(USER_ID|SESSION_NAME|INPUT_FILE|UPLOAD_BUCKET|RESULTS_BUCKET)$ ]]; then
             export "$key"="$value"
-            echo "Set env: $key : $value"
         fi
     done < <(jq -r 'to_entries[] | "\(.key)=\(.value | tostring)"' "$METADATA_FILE")
-    
-    # Upload metadata file to S3 results after processing
-    aws s3 cp "$METADATA_FILE" "s3://$RESULTS_BUCKET/$RESULTS_PATH/metadata.json"
+
+    metadata_end_ms=$(now_ms)
+    log_timing "metadata_parse_and_export" "$((metadata_end_ms - metadata_start_ms))"
+
+    run_timed "s3_upload_metadata" aws s3 cp "$METADATA_FILE" "s3://$RESULTS_BUCKET/$RESULTS_PATH/metadata.json"
 else
-    echo "ERROR: metadata.json not found in input ZIP"
+    log "ERROR: metadata.json not found in input ZIP"
     exit 1
 fi
 
-# Set MATLAB Runtime library path
 export LD_LIBRARY_PATH="/opt/matlabruntime/R2024b/runtime/glnxa64:/opt/matlabruntime/R2024b/bin/glnxa64:/opt/matlabruntime/R2024b/sys/os/glnxa64:/opt/matlabruntime/R2024b/sys/opengl/lib/glnxa64:/opt/matlabruntime/R2024b/extern/bin/glnxa64:${LD_LIBRARY_PATH:-}"
 
-# Run MATLAB executable using the runner script
-echo "[SESSION_ID=${SESSION_ID_CLEAN}] Running MATLAB executable"
-start_time=$(date +%s)
-./run_FBCSP_Training.sh ${MATLAB_RUNTIME_ROOT:-/opt/matlabruntime/R2024b} 2>&1 | while IFS= read -r line; do
-    echo "[SESSION_ID=${SESSION_ID_CLEAN}] $line"
+log "Running MATLAB executable"
+matlab_start_epoch=$(date +%s)
+matlab_start_ms=$(now_ms)
+
+./run_FBCSP_Training.sh "${MATLAB_RUNTIME_ROOT:-/opt/matlabruntime/R2024b}" 2>&1 | while IFS= read -r line; do
+    echo "[SESSION_ID=${SESSION_ID_CLEAN}] $(ts) MATLAB $line"
 done
 EXIT_CODE=${PIPESTATUS[0]}
-end_time=$(date +%s)
 
-# Exit immediately if MATLAB failed
+matlab_end_ms=$(now_ms)
+matlab_end_epoch=$(date +%s)
+log_timing "matlab_total" "$((matlab_end_ms - matlab_start_ms))"
+
 if [[ $EXIT_CODE -ne 0 ]]; then
-    echo "ERROR: MATLAB execution failed with exit code $EXIT_CODE"
+    log "ERROR: MATLAB execution failed with exit code $EXIT_CODE"
     exit $EXIT_CODE
 fi
 
-# Create manifest file
 MANIFEST="/app/output/manifest.json"
 echo '{' > "$MANIFEST"
 echo '  "userId": "'"$USER_ID"'",' >> "$MANIFEST"
 echo '  "sessionName": "'"$SESSION_NAME"'",' >> "$MANIFEST"
 echo '  "sessionId": "'"$SESSION_ID_CLEAN"'",' >> "$MANIFEST"
 echo '  "inputFile": "'"$INPUT_FILE"'",' >> "$MANIFEST"
-echo '  "startTime": '"$start_time"',' >> "$MANIFEST"
-echo '  "endTime": '"$end_time"',' >> "$MANIFEST"
+echo '  "startTime": '"$matlab_start_epoch"',' >> "$MANIFEST"
+echo '  "endTime": '"$matlab_end_epoch"',' >> "$MANIFEST"
 echo '  "resultsPath": "'"$RESULTS_PATH"'",' >> "$MANIFEST"
 echo '  "exitCode": '"$EXIT_CODE"',' >> "$MANIFEST"
 echo '  "outputFiles": [' >> "$MANIFEST"
 
-# Copy all files and directories recursively
+copy_output_start_ms=$(now_ms)
 cp -r "$OUTPUT_DIR"/* /app/output/ 2>/dev/null || true
+copy_output_end_ms=$(now_ms)
+log_timing "copy_output_files" "$((copy_output_end_ms - copy_output_start_ms))"
 
-# List all output files recursively
 first_file=true
 while IFS= read -r -d '' file; do
     if [ -f "$file" ]; then
         if [ "$first_file" = false ]; then
             echo ',' >> "$MANIFEST"
         fi
-        # Get relative path from /app/output/
         relative_path="${file#/app/output/}"
-        echo "Adding to manifest: $relative_path"
         echo -n '    "'"$relative_path"'"' >> "$MANIFEST"
         first_file=false
     fi
@@ -114,9 +148,10 @@ echo '' >> "$MANIFEST"
 echo '  ]' >> "$MANIFEST"
 echo '}' >> "$MANIFEST"
 
-# Upload results to S3
-echo "[SESSION_ID=${SESSION_ID_CLEAN}] Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
-aws s3 cp /app/output/ "s3://$RESULTS_BUCKET/$RESULTS_PATH/" --recursive
+log "Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
+run_timed "s3_upload_results" aws s3 cp /app/output/ "s3://$RESULTS_BUCKET/$RESULTS_PATH/" --recursive
 
-# Output results for Step Function
+script_end_ms=$(now_ms)
+log_timing "script_total" "$((script_end_ms - script_start_ms))"
+
 echo '{"resultsPath": "'"$RESULTS_PATH"'"}'
