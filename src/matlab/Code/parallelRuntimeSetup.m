@@ -1,175 +1,183 @@
-function parCore = parallelRuntimeSetup(parCore)
-% Configure deployed parallel profile support and open a local pool when enabled.
+function poolInfo = parallelRuntimeSetup(defaultWorkers)
+% Configure local container-safe parallel execution for MATLAB Runtime.
 
-if nargin == 0 || isempty(parCore)
-    parCore = struct();
+if nargin == 0 || isempty(defaultWorkers) || ~isnumeric(defaultWorkers) || ~isfinite(defaultWorkers)
+    defaultWorkers = 1;
 end
 
-parCore.profileConfigured = false;
-parCore.profileStatus = 'not_checked';
-parCore.poolStatus = 'not_checked';
-parCore.poolWorkerCount = 0;
+poolInfo = struct( ...
+    'enabled', false, ...
+    'requestedWorkers', double(0), ...
+    'actualWorkers', double(0), ...
+    'usedProfileFile', "", ...
+    'status', "serial");
 
-parCore = applyParallelEnvOverrides(parCore);
-parCore = applyDeployedParallelProfile(parCore);
-parCore = ensureParallelPool(parCore);
-logParallelStatus(parCore);
-
-end
-
-function parCore = applyParallelEnvOverrides(parCore)
 enabledValue = strtrim(getenv('PARALLEL_ENABLED'));
-workerValue = strtrim(getenv('PARALLEL_WORKERS'));
-locationValue = strtrim(getenv('PARALLEL_LOCATION'));
-reopenValue = strtrim(getenv('PARALLEL_REOPEN'));
-closeValue = strtrim(getenv('PARALLEL_CLOSE_AT_END'));
+workersValue = strtrim(getenv('PARALLEL_WORKERS'));
+profileValue = strtrim(getenv('PARALLEL_PROFILE_FILE'));
 
-if isempty(enabledValue)
+fprintf('Parallel setup: env PARALLEL_ENABLED=%s PARALLEL_WORKERS=%s PARALLEL_PROFILE_FILE=%s\n', ...
+    valueOrUnset(enabledValue), valueOrUnset(workersValue), valueOrUnset(profileValue));
+
+if ~isTruthy(enabledValue)
+    fprintf('Parallel setup: running serial because PARALLEL_ENABLED is not enabled.\n');
+    fprintf('Parallel setup: final status=%s requestedWorkers=%g actualWorkers=%g usedProfileFile=%s\n', ...
+        char(poolInfo.status), poolInfo.requestedWorkers, poolInfo.actualWorkers, char(poolInfo.usedProfileFile));
     return;
 end
 
-if isTruthy(enabledValue)
-    parCore.parforUsed = 1;
+availableCores = getAvailableCoreCount();
+requestedWorkers = resolveRequestedWorkers(workersValue, defaultWorkers);
+actualWorkers = max(1, min(requestedWorkers, availableCores));
+
+poolInfo.requestedWorkers = double(requestedWorkers);
+
+if isInsideParallelWorker()
+    fprintf('Parallel setup: running serial because execution is already inside a parallel worker.\n');
+    fprintf('Parallel setup: final status=%s requestedWorkers=%g actualWorkers=%g usedProfileFile=%s\n', ...
+        char(poolInfo.status), poolInfo.requestedWorkers, poolInfo.actualWorkers, char(poolInfo.usedProfileFile));
+    return;
+end
+
+if actualWorkers ~= requestedWorkers
+    fprintf('Parallel setup: clamped requested workers from %d to %d based on available cores.\n', ...
+        requestedWorkers, actualWorkers);
 else
-    parCore.parforUsed = 0;
+    fprintf('Parallel setup: requested worker count resolved to %d.\n', requestedWorkers);
 end
 
-if ~isempty(workerValue)
-    workerCount = str2double(workerValue);
-    if ~isnan(workerCount) && isfinite(workerCount) && workerCount >= 0
-        parCore.number_basis = floor(workerCount);
+poolInfo = configureOptionalProfile(profileValue, poolInfo);
+
+try
+    currentPool = gcp('nocreate');
+    if isempty(currentPool)
+        processesCluster = parcluster('Processes');
+        processesCluster.JobStorageLocation = tempdir;
+        fprintf('Parallel setup: starting local Processes pool with %d workers and JobStorageLocation=%s\n', ...
+            actualWorkers, processesCluster.JobStorageLocation);
+        currentPool = parpool(processesCluster, actualWorkers);
+    elseif currentPool.NumWorkers ~= actualWorkers
+        fprintf('Parallel setup: restarting existing pool from %d to %d workers.\n', ...
+            currentPool.NumWorkers, actualWorkers);
+        delete(currentPool);
+        processesCluster = parcluster('Processes');
+        processesCluster.JobStorageLocation = tempdir;
+        currentPool = parpool(processesCluster, actualWorkers);
+    else
+        fprintf('Parallel setup: reusing existing pool with %d workers.\n', currentPool.NumWorkers);
     end
+
+    poolInfo.enabled = true;
+    poolInfo.actualWorkers = double(currentPool.NumWorkers);
+    poolInfo.status = "parallel";
+    fprintf('Parallel setup: pool startup succeeded with %d workers.\n', currentPool.NumWorkers);
+catch ex
+    poolInfo.enabled = false;
+    poolInfo.actualWorkers = 0;
+    poolInfo.status = "serial_fallback";
+    warning('parallelRuntimeSetup:PoolStartupFailed', ...
+        'Parallel pool startup failed. Falling back to serial execution. Details: %s', ...
+        ex.message);
+    fprintf('Parallel setup: serial fallback reason=%s\n', ex.message);
 end
 
-if ~isempty(locationValue)
-    parCore.location = locationValue;
-elseif ~isfield(parCore, 'location') || isempty(parCore.location)
-    parCore.location = 'local';
+fprintf('Parallel setup: final status=%s requestedWorkers=%g actualWorkers=%g usedProfileFile=%s\n', ...
+    char(poolInfo.status), poolInfo.requestedWorkers, poolInfo.actualWorkers, char(poolInfo.usedProfileFile));
+
 end
 
-if ~isempty(reopenValue)
-    parCore.reOpenIfOpen = double(isTruthy(reopenValue));
+function poolInfo = configureOptionalProfile(profileValue, poolInfo)
+if isempty(profileValue)
+    fprintf('Parallel setup: no profile file provided; using built-in local Processes configuration.\n');
+    return;
 end
 
-if ~isempty(closeValue)
-    parCore.closeAtEnd = double(isTruthy(closeValue));
-end
-end
-
-function parCore = applyDeployedParallelProfile(parCore)
-profilePath = getParallelProfilePath();
-parCore.profilePath = profilePath;
-
-if isempty(profilePath)
-    parCore.profileStatus = 'not_found';
-    fprintf('Parallel profile not found. Continuing without bundled profile.\n');
+resolvedProfile = resolveProfilePath(profileValue);
+if isempty(resolvedProfile)
+    fprintf('Parallel setup: profile file "%s" was provided but not found; using built-in local Processes configuration.\n', ...
+        profileValue);
     return;
 end
 
 if exist('setmcruserdata', 'file') ~= 2
-    parCore.profileStatus = 'setmcruserdata_unavailable';
-    fprintf('setmcruserdata is not available in this MATLAB context. Profile path resolved to %s\n', profilePath);
+    fprintf('Parallel setup: setmcruserdata is unavailable; skipping optional profile file %s\n', resolvedProfile);
     return;
 end
 
 try
-    setmcruserdata('ParallelProfile', profilePath);
-    parCore.profileConfigured = true;
-    parCore.profileStatus = 'configured';
-    fprintf('Parallel profile configured: %s\n', profilePath);
+    setmcruserdata('ParallelProfile', resolvedProfile);
+    poolInfo.usedProfileFile = string(resolvedProfile);
+    fprintf('Parallel setup: optional profile file configured: %s\n', resolvedProfile);
 catch ex
-    parCore.profileStatus = 'configuration_failed';
-    warning('parallelRuntimeSetup:ProfileConfigFailed', ...
-        'Unable to configure deployed parallel profile "%s": %s', ...
-        profilePath, ex.message);
+    fprintf('Parallel setup: optional profile file %s could not be configured (%s); using built-in local Processes configuration.\n', ...
+        resolvedProfile, ex.message);
 end
 end
 
-function parCore = ensureParallelPool(parCore)
-if ~isfield(parCore, 'parforUsed') || parCore.parforUsed ~= 1
-    parCore.poolStatus = 'disabled';
+function requestedWorkers = resolveRequestedWorkers(workersValue, defaultWorkers)
+requestedWorkers = sanitizeWorkerCount(defaultWorkers);
+
+if isempty(workersValue)
+    fprintf('Parallel setup: PARALLEL_WORKERS is not set; using default worker count %d.\n', requestedWorkers);
     return;
 end
 
-if ~isfield(parCore, 'number_basis') || isempty(parCore.number_basis)
-    parCore.number_basis = 0;
+parsedWorkers = str2double(workersValue);
+if isnan(parsedWorkers) || ~isfinite(parsedWorkers) || parsedWorkers < 1
+    fprintf('Parallel setup: PARALLEL_WORKERS=%s is invalid; using default worker count %d.\n', ...
+        workersValue, requestedWorkers);
+    return;
 end
 
-if ~isfield(parCore, 'reOpenIfOpen') || isempty(parCore.reOpenIfOpen)
-    parCore.reOpenIfOpen = 0;
+requestedWorkers = sanitizeWorkerCount(parsedWorkers);
 end
 
-if ~isfield(parCore, 'closeAtEnd') || isempty(parCore.closeAtEnd)
-    parCore.closeAtEnd = 0;
+function workerCount = sanitizeWorkerCount(workerCount)
+workerCount = floor(double(workerCount));
+if ~isfinite(workerCount) || workerCount < 1
+    workerCount = 1;
+end
 end
 
-if ~isfield(parCore, 'location') || isempty(parCore.location)
-    parCore.location = 'local';
-end
+function availableCores = getAvailableCoreCount()
+availableCores = NaN;
 
-if parCore.number_basis == -1
-    if ~isfield(parCore, 'number') || isempty(parCore.number)
-        warning('parallelRuntimeSetup:DynamicWorkersUnavailable', ...
-            'Parallel worker count requested as dynamic (-1), but no computed worker count was supplied. Running serial.');
-        parCore.parforUsed = 0;
-        parCore.poolStatus = 'dynamic_worker_resolution_failed';
+try
+    processesCluster = parcluster('Processes');
+    clusterWorkers = floor(double(processesCluster.NumWorkers));
+    if isfinite(clusterWorkers) && clusterWorkers >= 1
+        availableCores = clusterWorkers;
+        fprintf('Parallel setup: detected available cores from Processes cluster=%d.\n', availableCores);
         return;
     end
-else
-    parCore.number = parCore.number_basis;
-end
-
-if parCore.number <= 0
-    warning('parallelRuntimeSetup:InvalidWorkerCount', ...
-        'Parallel worker count resolved to %d. Running serial.', parCore.number);
-    parCore.parforUsed = 0;
-    parCore.poolStatus = 'invalid_worker_count';
-    return;
+catch
 end
 
 try
-    currentPool = gcp('nocreate');
-    if isempty(currentPool) || parCore.reOpenIfOpen == 1
-        if ~isempty(currentPool)
-            delete(currentPool);
-        end
-        parpool(parCore.location, parCore.number);
-    end
-    currentPool = gcp('nocreate');
-    if isempty(currentPool)
-        parCore.poolStatus = 'not_open';
-    else
-        parCore.poolStatus = 'open';
-        parCore.poolWorkerCount = currentPool.NumWorkers;
-    end
-catch ex
-    warning('parallelRuntimeSetup:PoolInitFailed', ...
-        'Parallel pool initialization failed. Falling back to serial execution. Details: %s', ...
-        ex.message);
-    parCore.parforUsed = 0;
-    parCore.poolStatus = 'fallback_serial';
-end
-end
-
-function profilePath = getParallelProfilePath()
-profilePath = '';
-
-envProfile = strtrim(getenv('PARALLEL_PROFILE_FILE'));
-if ~isempty(envProfile)
-    if exist(envProfile, 'file') == 2
-        profilePath = envProfile;
+    featureCores = floor(double(feature('numcores')));
+    if isfinite(featureCores) && featureCores >= 1
+        availableCores = featureCores;
+        fprintf('Parallel setup: detected available cores from feature(''numcores'')=%d.\n', availableCores);
         return;
     end
-    bundledProfile = which(envProfile);
-    if ~isempty(bundledProfile)
-        profilePath = bundledProfile;
-        return;
-    end
+catch
 end
 
-defaultProfile = which('deployLocal.mlsettings');
-if ~isempty(defaultProfile)
-    profilePath = defaultProfile;
+availableCores = 1;
+fprintf('Parallel setup: available core detection failed; defaulting to %d.\n', availableCores);
+end
+
+function resolvedProfile = resolveProfilePath(profileValue)
+resolvedProfile = '';
+
+if exist(profileValue, 'file') == 2
+    resolvedProfile = profileValue;
+    return;
+end
+
+bundledProfile = which(profileValue);
+if ~isempty(bundledProfile)
+    resolvedProfile = bundledProfile;
 end
 end
 
@@ -177,33 +185,18 @@ function tf = isTruthy(value)
 tf = any(strcmpi(value, {'1', 'true', 'yes', 'on'}));
 end
 
-function logParallelStatus(parCore)
-if ~isfield(parCore, 'parforUsed')
-    parforUsedValue = 0;
-else
-    parforUsedValue = parCore.parforUsed;
+function tf = isInsideParallelWorker()
+tf = false;
+
+try
+    currentTask = getCurrentTask();
+    tf = ~isempty(currentTask);
+catch
+end
 end
 
-if ~isfield(parCore, 'location') || isempty(parCore.location)
-    locationValue = 'local';
-else
-    locationValue = parCore.location;
+function value = valueOrUnset(value)
+if isempty(value)
+    value = '(unset)';
 end
-
-if ~isfield(parCore, 'number_basis') || isempty(parCore.number_basis)
-    requestedWorkers = NaN;
-else
-    requestedWorkers = parCore.number_basis;
-end
-
-if ~isfield(parCore, 'number') || isempty(parCore.number)
-    resolvedWorkers = NaN;
-else
-    resolvedWorkers = parCore.number;
-end
-
-fprintf(['Parallel runtime status: enabled=%d location=%s requestedWorkers=%g ', ...
-    'resolvedWorkers=%g profileStatus=%s poolStatus=%s poolWorkers=%d\n'], ...
-    parforUsedValue, locationValue, requestedWorkers, resolvedWorkers, ...
-    parCore.profileStatus, parCore.poolStatus, parCore.poolWorkerCount);
 end

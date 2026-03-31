@@ -37,27 +37,6 @@ end
 
 parallelRuntimeDiagnostics('startup-preflight');
 
-parallelProfilePath = strtrim(getenv('PARALLEL_PROFILE_FILE'));
-if ~isempty(parallelProfilePath) && exist(parallelProfilePath, 'file') ~= 2
-    parallelProfilePath = which(parallelProfilePath);
-end
-if isempty(parallelProfilePath)
-    parallelProfilePath = which('deployLocal.mlsettings');
-end
-
-if ~isempty(parallelProfilePath)
-    try
-        setmcruserdata('ParallelProfile', parallelProfilePath);
-        fprintf('Configured deployed parallel profile: %s\n', parallelProfilePath);
-    catch ex
-        warning('FBCSP_Training:ParallelProfileConfigFailed', ...
-            'Unable to configure deployed parallel profile "%s": %s', ...
-            parallelProfilePath, ex.message);
-    end
-else
-    fprintf('No bundled deployed parallel profile was found at startup.\n');
-end
-
 T1_proper;
 %clear gets called in T1 so might as well clear here for clarity
 clear;

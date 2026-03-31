@@ -140,13 +140,18 @@ end
 % Parfor Core Initialization
 % __________________________
 
-if w.parCore.parforUsed == 1        % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)
-% if w.parCore.number_basis ~= 0      % =0:not used parfor, >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-  if w.parCore.number_basis == -1   % =0:not used parfor, >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-    w.parCore.number = size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber;
-  end
-  w.parCore = parallelRuntimeSetup(w.parCore);
+defaultWorkers = size(autorun.tt.used.subjects,2) * ...
+    size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber;
+if isfield(w.parCore, 'number_basis') && ~isempty(w.parCore.number_basis) && w.parCore.number_basis > 0
+    defaultWorkers = w.parCore.number_basis;
 end
+poolInfo = parallelRuntimeSetup(defaultWorkers);
+w.parCore.parforUsed = double(poolInfo.enabled);
+w.parCore.number_basis = poolInfo.requestedWorkers;
+w.parCore.number = poolInfo.actualWorkers;
+w.parCore.enabled = poolInfo.enabled;
+w.parCore.status = char(poolInfo.status);
+w.parCore.usedProfileFile = char(poolInfo.usedProfileFile);
 autorun.tt.parCore = w.parCore;
 
 % _________

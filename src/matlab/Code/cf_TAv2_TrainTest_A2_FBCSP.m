@@ -11,83 +11,15 @@
 
 %% VA Setup (A2 FBCSP) parfor setup
 
-parallelEnabledEnv = strtrim(getenv('PARALLEL_ENABLED'));
-parallelWorkersEnv = strtrim(getenv('PARALLEL_WORKERS'));
-parallelLocationEnv = strtrim(getenv('PARALLEL_LOCATION'));
+TM.parfor.perm.parforUsed = 0;
+TM.parfor.perm.number_basis = -1;
+TM.parfor.perm.reOpenIfOpen = 0;
+TM.parfor.perm.closeAtEnd = 0;
 
-%     TM.parfor.perm.parforUsed = 0;       % =0:parfor NOT used, =1:parfor, =2:parfor_with_parDir (will initialized and used during code execution)  % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-%     TM.parfor.core.parforUsed = 0;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-%     % 
-    TM.parfor.perm.parforUsed = 0;       % =0:parfor NOT used, =1:parfor, =2:parfor_with_parDir (will initialized and used during code execution)  % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-    TM.parfor.core.parforUsed = 0;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-    if any(strcmpi(parallelEnabledEnv, {'1','true','yes','on'}))
-        TM.parfor.perm.parforUsed = 1;
-        TM.parfor.core.parforUsed = 1;
-    end
-%     % 
-%     TM.parfor.perm.parforUsed = 1;       % =0:parfor NOT used, =1:parfor, =2:parfor_with_parDir (will initialized and used during code execution)  % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-%     TM.parfor.core.parforUsed = 0;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-%     % 
-%     TM.parfor.perm.parforUsed = 2;       % =0:parfor NOT used, =1:parfor, =2:parfor_with_parDir (will initialized and used during code execution)  % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-%     TM.parfor.core.parforUsed = 0;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-    
-    if TM.parfor.perm.parforUsed == 1   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-        % TM.parfor.perm.location = 'HPCServerProfile1';
-        % % TM.parfor.perm.number_basis = -1;    % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-        % TM.parfor.perm.number_basis = 101;    % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-        % TM.parfor.perm.reOpenIfOpen = 0;     % =1:close and open with TM.parfor.perm.number at start, =0:keep open with the same workers if open 
-        % TM.parfor.perm.closeAtEnd = 0;       % =1:close parpool after run, =0:keep open parpool after run 
-    
-        % %  !!! THIS IS FOR X-core local RUN !!!
-        % TM.parfor.perm.location = 'local';
-        % TM.parfor.perm.number_basis = 4;    % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-        % TM.parfor.perm.reOpenIfOpen = 0;     % =1:close and open with TM.parfor.perm.number at start, =0:keep open with the same workers if open 
-        % TM.parfor.perm.closeAtEnd = 0;       % =1:close parpool after run, =0:keep open parpool after run 
-        
-        %  !!! THIS IS FOR X-core local RUN !!!
-        TM.parfor.perm.location = 'local';
-        TM.parfor.perm.number_basis = 8;    % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-        TM.parfor.perm.reOpenIfOpen = 0;     % =1:close and open with TM.parfor.perm.number at start, =0:keep open with the same workers if open 
-        TM.parfor.perm.closeAtEnd = 0;       % =1:close parpool after run, =0:keep open parpool after run 
-        if ~isempty(parallelLocationEnv)
-            TM.parfor.perm.location = parallelLocationEnv;
-        end
-        if ~isempty(parallelWorkersEnv)
-            workerCount = str2double(parallelWorkersEnv);
-            if ~isnan(workerCount) && isfinite(workerCount) && workerCount >= 0
-                TM.parfor.perm.number_basis = floor(workerCount);
-            end
-        end
-    end
-    
-    if TM.parfor.core.parforUsed == 1    % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-        % TM.parfor.core.location = 'HPCServerProfile1';
-        % % TM.parfor.core.number_basis = -1;    % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-        % TM.parfor.core.number_basis = 101;    % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-        % TM.parfor.core.reOpenIfOpen = 0;     % =1:close and open with TM.parfor.core.number at start, =0:keep open with the same workers if open 
-        % TM.parfor.core.closeAtEnd = 0;       % =1:close parpool after run, =0:keep open parpool after run 
-    
-        % %  !!! THIS IS FOR X-core local RUN !!!
-        % TM.parfor.core.location = 'local';
-        % TM.parfor.core.number_basis = 4;    % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-        % TM.parfor.core.reOpenIfOpen = 0;     % =1:close and open with TM.parfor.core.number at start, =0:keep open with the same workers if open 
-        % TM.parfor.core.closeAtEnd = 0;       % =1:close parpool after run, =0:keep open parpool after run 
-        
-        %  !!! THIS IS FOR X-core local RUN !!!
-        TM.parfor.core.location = 'local';
-        TM.parfor.core.number_basis = 8;    % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
-        TM.parfor.core.reOpenIfOpen = 0;     % =1:close and open with TM.parfor.perm.number at start, =0:keep open with the same workers if open 
-        TM.parfor.core.closeAtEnd = 0;       % =1:close parpool after run, =0:keep open parpool after run 
-        if ~isempty(parallelLocationEnv)
-            TM.parfor.core.location = parallelLocationEnv;
-        end
-        if ~isempty(parallelWorkersEnv)
-            workerCount = str2double(parallelWorkersEnv);
-            if ~isnan(workerCount) && isfinite(workerCount) && workerCount >= 0
-                TM.parfor.core.number_basis = floor(workerCount);
-            end
-        end
-    end
+TM.parfor.core.parforUsed = 0;
+TM.parfor.core.number_basis = -1;
+TM.parfor.core.reOpenIfOpen = 0;
+TM.parfor.core.closeAtEnd = 0;
 
 
 %% VA Setup (A2 FBCSP) Common setup
