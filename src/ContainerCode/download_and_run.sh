@@ -51,6 +51,12 @@ export WORK_DIR="/app/work"
 export HOME_DIR="$WORK_DIR"
 export WORK_PATH="$WORK_DIR/Work"
 export OUTPUT_DIR="$WORK_DIR/Results"
+export PARALLEL_ENABLED="${PARALLEL_ENABLED:-0}"
+export PARALLEL_WORKERS="${PARALLEL_WORKERS:-4}"
+export PARALLEL_LOCATION="${PARALLEL_LOCATION:-local}"
+export PARALLEL_PROFILE_FILE="${PARALLEL_PROFILE_FILE:-deployLocal.mlsettings}"
+
+log "Parallel configuration enabled=${PARALLEL_ENABLED} workers=${PARALLEL_WORKERS} location=${PARALLEL_LOCATION} profile=${PARALLEL_PROFILE_FILE}"
 
 run_timed "mkdirs" mkdir -p \
   "$WORK_DIR/Dependents" \
