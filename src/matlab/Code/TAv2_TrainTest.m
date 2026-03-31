@@ -146,13 +146,8 @@ end
     % if w.parCore.number_basis ~= 0      % =0:not used parfor, >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
       if w.parCore.number_basis == -1   % =0:not used parfor, >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
         w.parCore.number = size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber;
-      else
-        w.parCore.number = w.parCore.number_basis;
       end
-      if isempty(gcp('nocreate')) || (w.parCore.reOpenIfOpen == 1)
-        delete(gcp('nocreate'))     % parpool close
-        parpool (w.parCore.location, w.parCore.number)       % open cores
-      end
+      w.parCore = parallelRuntimeSetup(w.parCore);
     end
     autorun.tt.parCore = w.parCore;
     
