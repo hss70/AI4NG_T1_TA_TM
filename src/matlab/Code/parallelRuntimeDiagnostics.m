@@ -1,50 +1,83 @@
 function parallelRuntimeDiagnostics(stageName)
-% Print preflight information for deployed parallel execution.
+% Log container-safe parallel diagnostics for deployed MATLAB Runtime jobs.
 
 if nargin == 0 || isempty(stageName)
-    stageName = 'unspecified';
+    stageName = 'startup';
 end
 
-parallelEnabled = strtrim(getenv('PARALLEL_ENABLED'));
-parallelWorkers = strtrim(getenv('PARALLEL_WORKERS'));
-parallelLocation = strtrim(getenv('PARALLEL_LOCATION'));
-parallelProfileFile = strtrim(getenv('PARALLEL_PROFILE_FILE'));
+parallelEnabled = valueOrUnset(strtrim(getenv('PARALLEL_ENABLED')));
+parallelWorkers = valueOrUnset(strtrim(getenv('PARALLEL_WORKERS')));
+parallelProfileFile = valueOrUnset(strtrim(getenv('PARALLEL_PROFILE_FILE')));
+hostName = getHostName();
+availableCores = getAvailableCoreCount();
 
-if isempty(parallelEnabled)
-    parallelEnabled = '(unset)';
-end
-if isempty(parallelWorkers)
-    parallelWorkers = '(unset)';
-end
-if isempty(parallelLocation)
-    parallelLocation = '(unset)';
-end
-if isempty(parallelProfileFile)
-    parallelProfileFile = '(unset)';
-end
-
-fprintf('Parallel preflight [%s]: enabled=%s workers=%s location=%s profile=%s\n', ...
-    stageName, parallelEnabled, parallelWorkers, parallelLocation, parallelProfileFile);
-
-resolvedProfilePath = which('deployLocal.mlsettings');
-if isempty(resolvedProfilePath)
-    fprintf('Parallel preflight [%s]: bundled deployLocal.mlsettings not found on MATLAB path.\n', stageName);
-else
-    fprintf('Parallel preflight [%s]: bundled profile found at %s\n', stageName, resolvedProfilePath);
-end
-
-fprintf('Parallel preflight [%s]: setmcruserdataAvailable=%d isdeployed=%d\n', ...
-    stageName, exist('setmcruserdata', 'file') == 2, isdeployed);
+fprintf('Parallel diagnostics [%s]: matlabVersion=%s\n', stageName, version);
+fprintf('Parallel diagnostics [%s]: hostname=%s\n', stageName, hostName);
+fprintf('Parallel diagnostics [%s]: PARALLEL_ENABLED=%s PARALLEL_WORKERS=%s PARALLEL_PROFILE_FILE=%s\n', ...
+    stageName, parallelEnabled, parallelWorkers, parallelProfileFile);
+fprintf('Parallel diagnostics [%s]: setmcruserdataAvailable=%d isdeployed=%d tempdir=%s availableCores=%d\n', ...
+    stageName, exist('setmcruserdata', 'file') == 2, isdeployed, tempdir, availableCores);
 
 try
     currentPool = gcp('nocreate');
     if isempty(currentPool)
-        fprintf('Parallel preflight [%s]: no existing parallel pool is open.\n', stageName);
+        fprintf('Parallel diagnostics [%s]: existingPool=open:false workers=0\n', stageName);
     else
-        fprintf('Parallel preflight [%s]: existing pool is open with %d workers.\n', ...
+        fprintf('Parallel diagnostics [%s]: existingPool=open:true workers=%d\n', ...
             stageName, currentPool.NumWorkers);
     end
 catch ex
-    fprintf('Parallel preflight [%s]: pool inspection failed: %s\n', stageName, ex.message);
+    fprintf('Parallel diagnostics [%s]: existingPool=inspection_failed reason=%s\n', ...
+        stageName, ex.message);
+end
+end
+
+function hostName = getHostName()
+hostName = strtrim(getenv('HOSTNAME'));
+if ~isempty(hostName)
+    return;
+end
+
+hostName = strtrim(getenv('COMPUTERNAME'));
+if ~isempty(hostName)
+    return;
+end
+
+[status, cmdout] = system('hostname');
+if status == 0
+    hostName = strtrim(cmdout);
+else
+    hostName = 'unknown';
+end
+end
+
+function availableCores = getAvailableCoreCount()
+availableCores = NaN;
+
+try
+    processesCluster = parcluster('Processes');
+    clusterWorkers = floor(double(processesCluster.NumWorkers));
+    if isfinite(clusterWorkers) && clusterWorkers >= 1
+        availableCores = clusterWorkers;
+        return;
+    end
+catch
+end
+
+try
+    featureCores = floor(double(feature('numcores')));
+    if isfinite(featureCores) && featureCores >= 1
+        availableCores = featureCores;
+        return;
+    end
+catch
+end
+
+availableCores = 1;
+end
+
+function value = valueOrUnset(value)
+if isempty(value)
+    value = '(unset)';
 end
 end
