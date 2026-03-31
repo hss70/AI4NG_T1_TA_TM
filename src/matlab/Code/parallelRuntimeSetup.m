@@ -18,6 +18,7 @@ profileValue = strtrim(getenv('PARALLEL_PROFILE_FILE'));
 
 fprintf('Parallel setup: env PARALLEL_ENABLED=%s PARALLEL_WORKERS=%s PARALLEL_PROFILE_FILE=%s\n', ...
     valueOrUnset(enabledValue), valueOrUnset(workersValue), valueOrUnset(profileValue));
+fprintf('Parallel setup: defaultWorkers input=%g\n', defaultWorkers);
 
 if ~isTruthy(enabledValue)
     fprintf('Parallel setup: running serial because PARALLEL_ENABLED is not enabled.\n');
@@ -45,6 +46,7 @@ if actualWorkers ~= requestedWorkers
 else
     fprintf('Parallel setup: requested worker count resolved to %d.\n', requestedWorkers);
 end
+fprintf('Parallel setup: final requested workers=%d actual target workers=%d\n', requestedWorkers, actualWorkers);
 
 poolInfo = configureOptionalProfile(profileValue, poolInfo);
 
@@ -118,18 +120,20 @@ function requestedWorkers = resolveRequestedWorkers(workersValue, defaultWorkers
 requestedWorkers = sanitizeWorkerCount(defaultWorkers);
 
 if isempty(workersValue)
-    fprintf('Parallel setup: PARALLEL_WORKERS is not set; using default worker count %d.\n', requestedWorkers);
+    fprintf('Parallel setup: worker selection source=fallback_default value=%d because PARALLEL_WORKERS is not set.\n', requestedWorkers);
     return;
 end
 
 parsedWorkers = str2double(workersValue);
 if isnan(parsedWorkers) || ~isfinite(parsedWorkers) || parsedWorkers < 1
-    fprintf('Parallel setup: PARALLEL_WORKERS=%s is invalid; using default worker count %d.\n', ...
+    fprintf('Parallel setup: worker selection source=fallback_default value=%d because PARALLEL_WORKERS=%s is invalid.\n', ...
         workersValue, requestedWorkers);
     return;
 end
 
 requestedWorkers = sanitizeWorkerCount(parsedWorkers);
+fprintf('Parallel setup: worker selection source=env_override value=%d from PARALLEL_WORKERS=%s.\n', ...
+    requestedWorkers, workersValue);
 end
 
 function workerCount = sanitizeWorkerCount(workerCount)

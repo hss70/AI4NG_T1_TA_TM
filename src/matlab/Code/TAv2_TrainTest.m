@@ -142,12 +142,19 @@ end
     cf_TAv2_TrainTest_A2_FBCSP
     w.parCore = TM.parfor.perm;
 
-    defaultWorkers = size(autorun.tt.used.subjects,2) * ...
-        size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber;
+    defaultWorkers = 1;
     if isfield(w.parCore, 'number_basis') && ~isempty(w.parCore.number_basis) && w.parCore.number_basis > 0
         defaultWorkers = w.parCore.number_basis;
+    elseif isfield(VA_TRANS, 'autorun') && isfield(VA_TRANS.autorun, 'used') && ...
+            isfield(VA_TRANS.autorun.used, 'subjects') && isfield(VA_TRANS.autorun.used, 'sessions')
+        defaultWorkers = size(VA_TRANS.autorun.used.subjects,2) * ...
+            size(VA_TRANS.autorun.used.sessions,2) * c.tt.folds.outerFoldNumber;
     end
+    fprintf('TAv2_TrainTest: defaultWorkers hint=%g before parallelRuntimeSetup\n', defaultWorkers);
     poolInfo = parallelRuntimeSetup(defaultWorkers);
+    fprintf('TAv2_TrainTest: poolInfo enabled=%d requestedWorkers=%g actualWorkers=%g status=%s usedProfileFile=%s\n', ...
+        poolInfo.enabled, poolInfo.requestedWorkers, poolInfo.actualWorkers, ...
+        char(poolInfo.status), char(poolInfo.usedProfileFile));
     w.parCore.parforUsed = double(poolInfo.enabled);
     w.parCore.number_basis = poolInfo.requestedWorkers;
     w.parCore.number = poolInfo.actualWorkers;
