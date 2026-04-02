@@ -15,7 +15,7 @@
 %     TM.parfor.core.parforUsed = 0;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
 %     % 
     TM.parfor.perm.parforUsed = 0;       % =0:parfor NOT used, =1:parfor, =2:parfor_with_parDir (will initialized and used during code execution)  % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-    TM.parfor.core.parforUsed = 0;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
+    TM.parfor.core.parforUsed = 1;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
 %     % 
 %     TM.parfor.perm.parforUsed = 1;       % =0:parfor NOT used, =1:parfor, =2:parfor_with_parDir (will initialized and used during code execution)  % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
 %     TM.parfor.core.parforUsed = 0;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
