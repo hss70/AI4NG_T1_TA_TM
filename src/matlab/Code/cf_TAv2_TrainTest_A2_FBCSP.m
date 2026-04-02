@@ -15,8 +15,13 @@
 %     TM.parfor.core.parforUsed = 0;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
 %     % 
     TM.parfor.perm.parforUsed = 0;       % =0:parfor NOT used, =1:parfor, =2:parfor_with_parDir (will initialized and used during code execution)  % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-    TM.parfor.core.parforUsed = 1;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
-%     % 
+    parForUsed = str2double(getenv('PARALLEL_ENABLED'));
+    if ~isnan(parForUsed)
+        TM.parfor.core.parforUsed = parForUsed; 
+    else
+        TM.parfor.core.parforUsed = 0;   % fallback default   % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
+    end
+    %     % 
 %     TM.parfor.perm.parforUsed = 1;       % =0:parfor NOT used, =1:parfor, =2:parfor_with_parDir (will initialized and used during code execution)  % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
 %     TM.parfor.core.parforUsed = 0;       % =0:parfor NOT used, =1:parfor (will initialized and used during code execution)   % !!!!!!!!!!!!!!!! CHECK THIS !!!!!!!!!!!!!!!! 
 %     % 
