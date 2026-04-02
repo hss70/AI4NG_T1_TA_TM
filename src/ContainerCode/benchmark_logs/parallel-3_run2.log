@@ -1,0 +1,211 @@
+[LOCAL] 2026-04-02T14:54:49Z Parallel enabled=1 workers=3 profile='(unset)'
+[LOCAL] 2026-04-02T14:54:49Z LOCAL_SKIP_MATLAB=0
+[LOCAL] 2026-04-02T14:54:49Z LOCAL TEST MODE: Using mounted test data
+[LOCAL] 2026-04-02T14:54:49Z Unzipping input file
+Archive:  /app/input.zip
+  inflating: /app/work/Work/CSV/test-user/test-session/metadata.json  
+  inflating: /app/work/Work/CSV/test-user/test-session/data.csv  
+[LOCAL] 2026-04-02T14:54:49Z Loading metadata
+[LOCAL] 2026-04-02T14:54:49Z Set env: EEGChannels=8
+[LOCAL] 2026-04-02T14:54:49Z Set env: TriggerChannels=1
+[LOCAL] 2026-04-02T14:54:49Z Set env: RunClassifier=false
+[LOCAL] 2026-04-02T14:54:49Z Set env: Notch=0
+[LOCAL] 2026-04-02T14:54:49Z Set env: DeviceFilter=false
+[LOCAL] 2026-04-02T14:54:49Z Set env: Resolution=0
+[LOCAL] 2026-04-02T14:54:49Z Set env: Frequency=125.0
+[LOCAL] 2026-04-02T14:54:49Z Set env: HardwareFilter=true
+[LOCAL] 2026-04-02T14:54:49Z Set env: SquareWaveTestMode=false
+[LOCAL] 2026-04-02T14:54:49Z Set env: Classifier=null
+[LOCAL] 2026-04-02T14:54:49Z === DEBUG ===
+[LOCAL] 2026-04-02T14:54:49Z WORK_DIR: /app/work
+[LOCAL] 2026-04-02T14:54:49Z OUTPUT_DIR: /app/work/Results
+[LOCAL] 2026-04-02T14:54:49Z MCR_CACHE_ROOT: /tmp/mcr-cache
+[LOCAL] 2026-04-02T14:54:49Z MATLAB_PREFDIR: /tmp/matlab-prefs
+[LOCAL] 2026-04-02T14:54:49Z Files:
+/app/work/Work/CSV/test-user/test-session/metadata.json
+/app/work/Work/CSV/test-user/test-session/data.csv
+/app/work/Dependents/Standard-10-20-Cap81.locs
+[LOCAL] 2026-04-02T14:54:49Z =============
+[LOCAL] 2026-04-02T14:54:49Z Running MATLAB executable
+[LOCAL] 2026-04-02T14:54:49Z MATLAB ------------------------------------------
+[LOCAL] 2026-04-02T14:54:49Z MATLAB Setting up environment variables
+[LOCAL] 2026-04-02T14:54:49Z MATLAB ---
+[LOCAL] 2026-04-02T14:54:49Z MATLAB LD_LIBRARY_PATH is .:/opt/matlabruntime/R2024b/runtime/glnxa64:/opt/matlabruntime/R2024b/bin/glnxa64:/opt/matlabruntime/R2024b/sys/os/glnxa64:/opt/matlabruntime/R2024b/sys/opengl/lib/glnxa64
+[LOCAL] 2026-04-02T14:54:57Z MATLAB Converting CSV files in: /app/work/Work/CSV
+[LOCAL] 2026-04-02T14:54:57Z MATLAB Output MAT files will be saved in: /app/work/Work/SourceData (EEG_rec)
+[LOCAL] 2026-04-02T14:54:57Z MATLAB JSON converted to MATLAB struct and saved.
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Converting: /app/work/Work/CSV/test-user/test-session/data.csv
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Saved: /app/work/Work/SourceData (EEG_rec)/test-user/test-session/EEG_rec.mat
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Batch CSV-to-MAT conversion complete.
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB dataDir =
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB     '/app/work/Work/SourceData (EEG_rec)'
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB chanlocDir =
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB     '/app/work/Dependents'
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB dir0 =
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB     '/app/work/Work/SourceData (EEG_rec)'
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB ________________________
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Processing (#1/1) ...
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB ans =
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB     'downsample is off'
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB     "loading "    "/app/work/Work/SourceData (EEG..."
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB ans =
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB     'downsample is off'
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Prep plus (EEG):
+[LOCAL] 2026-04-02T14:54:59Z MATLAB SubjID2: 1/1, SessionID2: 1/1
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Loading EEG_rec dataset ...
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Dataset loading: DONE
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Saving config structure ...
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Saving autorun structure ...
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Saving EEG_validation structure ...
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Running: Finished
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Prep plus (EEG):
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Loading A09_EEG_validation_01 [EEG_validation].mat ...
+[LOCAL] 2026-04-02T14:54:59Z MATLAB At /app/work/Work/TrainTest/Prep plus/EEG/A09_EEG_validation_01 [EEG_validation].mat ...
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Dataset loading: DONE
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Loading EEG_rec dataset ...
+[LOCAL] 2026-04-02T14:54:59Z MATLAB Dataset loading: DONE
+[LOCAL] 2026-04-02T14:54:59Z MATLAB 
+[LOCAL] 2026-04-02T14:54:59Z MATLAB SubjID2: 1/1, SessionID2: 1/1, BandID: 3/12
+[LOCAL] 2026-04-02T14:55:04Z MATLAB SubjID2: 1/1, SessionID2: 1/1, BandID: 4/12
+[LOCAL] 2026-04-02T14:55:04Z MATLAB SubjID2: 1/1, SessionID2: 1/1, BandID: 5/12
+[LOCAL] 2026-04-02T14:55:04Z MATLAB SubjID2: 1/1, SessionID2: 1/1, BandID: 6/12
+[LOCAL] 2026-04-02T14:55:04Z MATLAB Saving tr{SubjID2,SessionID2} structure ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Saving config structure ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Saving autorun structure ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB 
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Running: Finished
+[LOCAL] 2026-04-02T14:55:05Z MATLAB 
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Elapsed time is 5.514376 seconds.
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Prep plus (EEG):
+[LOCAL] 2026-04-02T14:55:05Z MATLAB 
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Loading A10_offlineClass_prep_01 [autorun].mat ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Loading A10_offlineClass_prep_01 [config].mat ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB SubjID2: 1/1, SessionID2: 1/1
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Loading tr{1,1}.mat ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Dataset loading: DONE
+[LOCAL] 2026-04-02T14:55:05Z MATLAB 
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Saving tr_validMask structure ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB 
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Running: Finished
+[LOCAL] 2026-04-02T14:55:05Z MATLAB 
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Prep plus (EEG):
+[LOCAL] 2026-04-02T14:55:05Z MATLAB 
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Loading A10_offlineClass_prep_01 [autorun].mat ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Loading A10_offlineClass_prep_01 [config].mat ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB SubjID2: 1/1, SessionID2: 1/1
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Loading tr{1,1}.mat ...
+[LOCAL] 2026-04-02T14:55:05Z MATLAB Saving classTrials{1,1} structure ...
+[LOCAL] 2026-04-02T14:55:06Z MATLAB 
+[LOCAL] 2026-04-02T14:55:06Z MATLAB Saving config structure ...
+[LOCAL] 2026-04-02T14:55:06Z MATLAB Saving autorun structure ...
+[LOCAL] 2026-04-02T14:55:06Z MATLAB 
+[LOCAL] 2026-04-02T14:55:06Z MATLAB Running: Finished
+[LOCAL] 2026-04-02T14:55:06Z MATLAB 
+[LOCAL] 2026-04-02T14:55:06Z MATLAB Elapsed time is 0.701553 seconds.
+[LOCAL] 2026-04-02T14:55:06Z MATLAB TM(0) trainTest: 1/4
+[LOCAL] 2026-04-02T14:55:08Z MATLAB Starting parallel pool (parpool) using the 'Processes' profile ...
+[LOCAL] 2026-04-02T14:55:22Z MATLAB Connected to parallel pool with 3 workers.
+[LOCAL] 2026-04-02T14:55:22Z MATLAB 
+[LOCAL] 2026-04-02T14:55:22Z MATLAB ans = 
+[LOCAL] 2026-04-02T14:55:22Z MATLAB 
+[LOCAL] 2026-04-02T14:55:22Z MATLAB  ProcessPool with properties: 
+[LOCAL] 2026-04-02T14:55:22Z MATLAB 
+[LOCAL] 2026-04-02T14:55:23Z MATLAB             Connected: true
+[LOCAL] 2026-04-02T14:55:23Z MATLAB            NumWorkers: 3
+[LOCAL] 2026-04-02T14:55:23Z MATLAB                  Busy: false
+[LOCAL] 2026-04-02T14:55:23Z MATLAB               Cluster: Processes (Local Cluster)
+[LOCAL] 2026-04-02T14:55:23Z MATLAB         AttachedFiles: {}
+[LOCAL] 2026-04-02T14:55:23Z MATLAB     AutoAddClientPath: true
+[LOCAL] 2026-04-02T14:55:23Z MATLAB             FileStore: [1x1 parallel.FileStore]
+[LOCAL] 2026-04-02T14:55:23Z MATLAB            ValueStore: [1x1 parallel.ValueStore]
+[LOCAL] 2026-04-02T14:55:23Z MATLAB           IdleTimeout: 30 minutes (30 minutes remaining)
+[LOCAL] 2026-04-02T14:55:23Z MATLAB           SpmdEnabled: true
+[LOCAL] 2026-04-02T14:55:23Z MATLAB 
+[LOCAL] 2026-04-02T14:57:12Z MATLAB TM(0) trainTest: 2/4
+[LOCAL] 2026-04-02T14:58:58Z MATLAB TM(0) trainTest: 3/4
+[LOCAL] 2026-04-02T15:00:45Z MATLAB TM(0) trainTest: 4/4
+[LOCAL] 2026-04-02T15:02:35Z MATLAB TM(0) DA eval ...
+[LOCAL] 2026-04-02T15:02:39Z MATLAB Copy: Standard-10-20-Cap81.locs ...
+[LOCAL] 2026-04-02T15:02:39Z MATLAB DONE.
+[LOCAL] 2026-04-02T15:02:39Z MATLAB Loading /app/work/Work/TrainTest/Prep plus/EEG/tr{1,1}.mat ...
+[LOCAL] 2026-04-02T15:02:44Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/DA plot.json
+[LOCAL] 2026-04-02T15:02:45Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/DA plot (smoothed).json
+[LOCAL] 2026-04-02T15:02:46Z MATLAB Preparing Freq and Topoplots
+[LOCAL] 2026-04-02T15:02:46Z MATLAB Loading data files ...
+[LOCAL] 2026-04-02T15:02:46Z MATLAB readlocs(): 'loc' format assumed from file extension
+[LOCAL] 2026-04-02T15:02:47Z MATLAB Dataset loading: DONE
+[LOCAL] 2026-04-02T15:02:47Z MATLAB 
+[LOCAL] 2026-04-02T15:02:47Z MATLAB Common codes for topoplots ...
+[LOCAL] 2026-04-02T15:02:47Z MATLAB CSP/MI weight topoplot ...
+[LOCAL] 2026-04-02T15:02:49Z MATLAB Warning: Using interpolated shading in scalp topographies prevent to export them as vectorized figures
+[LOCAL] 2026-04-02T15:02:49Z MATLAB > In topoplot (line 549)
+[LOCAL] 2026-04-02T15:02:49Z MATLAB In VAv2_Hacked_VB_FBCSP_eval_figures_func_01 (line 588)
+[LOCAL] 2026-04-02T15:02:49Z MATLAB In TAv2_TrainTest (line 676)
+[LOCAL] 2026-04-02T15:02:49Z MATLAB In T1_proper (line 237)
+[LOCAL] 2026-04-02T15:02:49Z MATLAB In FBCSP_Training (line 38)
+[LOCAL] 2026-04-02T15:02:50Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:02:51Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask1,class1,band0).json
+[LOCAL] 2026-04-02T15:02:51Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:02:52Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask2,class1,band0).json
+[LOCAL] 2026-04-02T15:02:53Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:02:54Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask1,class1,band1.json
+[LOCAL] 2026-04-02T15:02:54Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:02:55Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask1,class1,band2.json
+[LOCAL] 2026-04-02T15:02:55Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:02:56Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask1,class1,band3.json
+[LOCAL] 2026-04-02T15:02:56Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:02:57Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask1,class1,band4.json
+[LOCAL] 2026-04-02T15:02:57Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:02:57Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask2,class1,band1.json
+[LOCAL] 2026-04-02T15:02:57Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:02:58Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask2,class1,band2.json
+[LOCAL] 2026-04-02T15:02:58Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:02:59Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask2,class1,band3.json
+[LOCAL] 2026-04-02T15:02:59Z MATLAB Warning: When plotting pvalues in totoplot, use option 'conv' to minimize extrapolation effects
+[LOCAL] 2026-04-02T15:03:00Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/CSP-MI topoplot (restTask2,class1,band4.json
+[LOCAL] 2026-04-02T15:03:00Z MATLAB Frequency evaluation v4 ...
+[LOCAL] 2026-04-02T15:03:04Z MATLAB Saved JSON config: /app/work/Work/TrainTest/- Fig/heatmap (Freq v4).json
+[LOCAL] 2026-04-02T15:03:04Z MATLAB Saving VA_TRANS structure ...
+[LOCAL] 2026-04-02T15:03:04Z MATLAB Saving result structure ...
+[LOCAL] 2026-04-02T15:03:04Z MATLAB Saving T1_results ...
+[LOCAL] 2026-04-02T15:03:04Z MATLAB Saving T1_result_table ...
+[LOCAL] 2026-04-02T15:03:04Z MATLAB Loading EEG_validation ...
+[LOCAL] 2026-04-02T15:03:04Z MATLAB Loading autorun ...
+[LOCAL] 2026-04-02T15:03:04Z MATLAB Loading config ...
+[LOCAL] 2026-04-02T15:03:04Z MATLAB Loading w0_matrix for ClassPair1 ...
+[LOCAL] 2026-04-02T15:03:05Z MATLAB Dataset loading: DONE
+[LOCAL] 2026-04-02T15:03:05Z MATLAB 
+[LOCAL] 2026-04-02T15:03:05Z MATLAB Autosave (it may take some minutes):
+[LOCAL] 2026-04-02T15:03:05Z MATLAB Saving config structure ...
+[LOCAL] 2026-04-02T15:03:05Z MATLAB Saving online structure ...
+[LOCAL] 2026-04-02T15:03:05Z MATLAB 
+[LOCAL] 2026-04-02T15:03:05Z MATLAB Running: Finished
+[LOCAL] 2026-04-02T15:03:05Z MATLAB 
+[LOCAL] 2026-04-02T15:03:09Z MATLAB File reorganization complete!
+[LOCAL] 2026-04-02T15:03:09Z MATLAB   Files processed: 72
+[LOCAL] 2026-04-02T15:03:09Z MATLAB   Files converted to JSON: 32
+[LOCAL] 2026-04-02T15:03:09Z MATLAB   Files skipped: 0
+{"resultsPath": "test-user/test-session/results"}

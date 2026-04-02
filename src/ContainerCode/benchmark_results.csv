@@ -1,0 +1,16 @@
+label,parallel_enabled,workers,run_number,duration_ms,duration_s,log_file
+serial,0,1,1,867985,867.985,benchmark_logs/serial_run1.log
+serial,0,1,2,824154,824.154,benchmark_logs/serial_run2.log
+serial,0,1,3,835851,835.851,benchmark_logs/serial_run3.log
+parallel-1,1,1,1,814492,814.492,benchmark_logs/parallel-1_run1.log
+parallel-1,1,1,2,835217,835.217,benchmark_logs/parallel-1_run2.log
+parallel-1,1,1,3,832535,832.535,benchmark_logs/parallel-1_run3.log
+parallel-2,1,2,1,505547,505.547,benchmark_logs/parallel-2_run1.log
+parallel-2,1,2,2,515366,515.366,benchmark_logs/parallel-2_run2.log
+parallel-2,1,2,3,502070,502.070,benchmark_logs/parallel-2_run3.log
+parallel-3,1,3,1,522555,522.555,benchmark_logs/parallel-3_run1.log
+parallel-3,1,3,2,505338,505.338,benchmark_logs/parallel-3_run2.log
+parallel-3,1,3,3,508924,508.924,benchmark_logs/parallel-3_run3.log
+parallel-4,1,4,1,526064,526.064,benchmark_logs/parallel-4_run1.log
+parallel-4,1,4,2,501355,501.355,benchmark_logs/parallel-4_run2.log
+parallel-4,1,4,3,507114,507.114,benchmark_logs/parallel-4_run3.log

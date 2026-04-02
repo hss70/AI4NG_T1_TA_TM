@@ -1,3 +1,4 @@
+
 clear;
 % This script compiles the MATLAB code for the FBCSP training script
 cd Code
