@@ -58,7 +58,12 @@
         
         %  !!! THIS IS FOR X-core local RUN !!!
         TM.parfor.core.location = 'local';
-        TM.parfor.core.number_basis = 8;    % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
+        envWorkers = str2double(getenv('PARALLEL_WORKERS'));
+        if ~isnan(envWorkers) && envWorkers > 0
+            TM.parfor.perm.number_basis = envWorkers;
+        else
+            TM.parfor.perm.number_basis = 8;   % fallback default   % >0:number of parfor cores, =-1:number of used cores will equal:(size(autorun.tt.used.subjects,2) * size(autorun.tt.used.sessions,2) * c.tt.folds.outerFoldNumber) 
+        end
         TM.parfor.core.reOpenIfOpen = 0;     % =1:close and open with TM.parfor.perm.number at start, =0:keep open with the same workers if open 
         TM.parfor.core.closeAtEnd = 0;       % =1:close parpool after run, =0:keep open parpool after run 
     end
