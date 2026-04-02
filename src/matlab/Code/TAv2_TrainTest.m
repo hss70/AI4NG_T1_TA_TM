@@ -143,24 +143,51 @@ end
     w.parCore = TM.parfor.perm;
 
     defaultWorkers = 1;
-    if isfield(w.parCore, 'number_basis') && ~isempty(w.parCore.number_basis) && w.parCore.number_basis > 0
-        defaultWorkers = w.parCore.number_basis;
-    elseif isfield(VA_TRANS, 'autorun') && isfield(VA_TRANS.autorun, 'used') && ...
-            isfield(VA_TRANS.autorun.used, 'subjects') && isfield(VA_TRANS.autorun.used, 'sessions')
-        defaultWorkers = size(VA_TRANS.autorun.used.subjects,2) * ...
-            size(VA_TRANS.autorun.used.sessions,2) * c.tt.folds.outerFoldNumber;
+    if isfield(w.parCore, 'number_basis') && ~isempty(w.parCore.number_basis)
+        if w.parCore.number_basis > 0
+            defaultWorkers = w.parCore.number_basis;
+        elseif w.parCore.number_basis == -1
+            if exist('autorun', 'var') && isstruct(autorun) && ...
+                    isfield(autorun, 'tt') && isstruct(autorun.tt) && ...
+                    isfield(autorun.tt, 'used') && isstruct(autorun.tt.used) && ...
+                    isfield(autorun.tt.used, 'subjects') && ~isempty(autorun.tt.used.subjects) && ...
+                    isfield(autorun.tt.used, 'sessions') && ~isempty(autorun.tt.used.sessions) && ...
+                    exist('c', 'var') && isstruct(c) && ...
+                    isfield(c, 'tt') && isstruct(c.tt) && ...
+                    isfield(c.tt, 'folds') && isstruct(c.tt.folds) && ...
+                    isfield(c.tt.folds, 'outerFoldNumber') && ~isempty(c.tt.folds.outerFoldNumber)
+
+                defaultWorkers = size(autorun.tt.used.subjects, 2) * ...
+                                 size(autorun.tt.used.sessions, 2) * ...
+                                 c.tt.folds.outerFoldNumber;
+            else
+                defaultWorkers = 1;
+                fprintf('TAv2_TrainTest: number_basis=-1 but autorun.tt.used/c.tt.folds not ready; falling back defaultWorkers=1\n');
+            end
+        end
     end
+
     fprintf('TAv2_TrainTest: defaultWorkers hint=%g before parallelRuntimeSetup\n', defaultWorkers);
+
     poolInfo = parallelRuntimeSetup(defaultWorkers);
+
     fprintf('TAv2_TrainTest: poolInfo enabled=%d requestedWorkers=%g actualWorkers=%g status=%s usedProfileFile=%s\n', ...
         poolInfo.enabled, poolInfo.requestedWorkers, poolInfo.actualWorkers, ...
         char(poolInfo.status), char(poolInfo.usedProfileFile));
+
     w.parCore.parforUsed = double(poolInfo.enabled);
     w.parCore.number_basis = poolInfo.requestedWorkers;
     w.parCore.number = poolInfo.actualWorkers;
     w.parCore.enabled = poolInfo.enabled;
     w.parCore.status = char(poolInfo.status);
     w.parCore.usedProfileFile = char(poolInfo.usedProfileFile);
+
+    if ~exist('autorun', 'var') || ~isstruct(autorun)
+        autorun = struct();
+    end
+    if ~isfield(autorun, 'tt') || ~isstruct(autorun.tt)
+        autorun.tt = struct();
+    end
     autorun.tt.parCore = w.parCore;
     
     % FBCSP TM
