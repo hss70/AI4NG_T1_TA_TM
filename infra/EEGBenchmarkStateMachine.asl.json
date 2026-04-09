@@ -1,0 +1,249 @@
+{
+    "Comment": "Benchmark matrix runner for EEG MATLAB Runtime on ECS Fargate",
+    "StartAt": "ValidateInput",
+    "States": {
+        "ValidateInput": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "And": [
+                        {
+                            "Variable": "$.benchmarkId",
+                            "IsPresent": true
+                        },
+                        {
+                            "Variable": "$.resultsBucket",
+                            "IsPresent": true
+                        },
+                        {
+                            "Variable": "$.userId",
+                            "IsPresent": true
+                        },
+                        {
+                            "Variable": "$.sessionName",
+                            "IsPresent": true
+                        },
+                        {
+                            "Variable": "$.sessionId",
+                            "IsPresent": true
+                        },
+                        {
+                            "Variable": "$.inputFile",
+                            "IsPresent": true
+                        },
+                        {
+                            "Variable": "$.configs",
+                            "IsPresent": true
+                        }
+                    ],
+                    "Next": "RunBenchmarkMatrix"
+                }
+            ],
+            "Default": "InvalidInput"
+        },
+        "RunBenchmarkMatrix": {
+            "Type": "Map",
+            "ItemsPath": "$.configs",
+            "MaxConcurrencyPath": "$.maxConcurrency",
+            "Parameters": {
+                "benchmarkId.$": "$.benchmarkId",
+                "resultsBucket.$": "$.resultsBucket",
+                "userId.$": "$.userId",
+                "sessionName.$": "$.sessionName",
+                "sessionId.$": "$.sessionId",
+                "inputFile.$": "$.inputFile",
+                "config.$": "$$.Map.Item.Value"
+            },
+            "Iterator": {
+                "StartAt": "LaunchBenchmarkTask",
+                "States": {
+                    "LaunchBenchmarkTask": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::ecs:runTask.sync",
+                        "Parameters": {
+                            "LaunchType": "FARGATE",
+                            "Cluster": "${BenchmarkEcsClusterArn}",
+                            "TaskDefinition": "${BenchmarkTaskDefinitionArn}",
+                            "NetworkConfiguration": {
+                                "AwsvpcConfiguration": {
+                                    "Subnets": [
+                                        "${PrivateSubnetId1}",
+                                        "${PrivateSubnetId2}"
+                                    ],
+                                    "SecurityGroups": [
+                                        "${PrivateSecurityGroupId}"
+                                    ],
+                                    "AssignPublicIp": "DISABLED"
+                                }
+                            },
+                            "Overrides": {
+                                "Cpu.$": "$.config.cpu",
+                                "Memory.$": "$.config.memory",
+                                "EphemeralStorage": {
+                                    "SizeInGiB.$": "$.config.ephemeralStorageGiB"
+                                },
+                                "ContainerOverrides": [
+                                    {
+                                        "Name": "eeg-classifier",
+                                        "Environment": [
+                                            {
+                                                "Name": "BENCHMARK_MODE",
+                                                "Value": "1"
+                                            },
+                                            {
+                                                "Name": "BENCHMARK_ID",
+                                                "Value.$": "$.benchmarkId"
+                                            },
+                                            {
+                                                "Name": "BENCHMARK_LABEL",
+                                                "Value.$": "$.config.label"
+                                            },
+                                            {
+                                                "Name": "BENCHMARK_RUN_NUMBER",
+                                                "Value.$": "States.Format('{}', $.config.runNumber)"
+                                            },
+                                            {
+                                                "Name": "BENCHMARK_OUTPUT_KEY",
+                                                "Value.$": "States.Format('benchmarks/{}/{}/run-{}.json', $.benchmarkId, $.config.label, $.config.runNumber)"
+                                            },
+                                            {
+                                                "Name": "BENCHMARK_TASK_CPU",
+                                                "Value.$": "$.config.cpu"
+                                            },
+                                            {
+                                                "Name": "BENCHMARK_TASK_MEMORY",
+                                                "Value.$": "$.config.memory"
+                                            },
+                                            {
+                                                "Name": "INPUT_FILE",
+                                                "Value.$": "$.inputFile"
+                                            },
+                                            {
+                                                "Name": "USER_ID",
+                                                "Value.$": "$.userId"
+                                            },
+                                            {
+                                                "Name": "SESSION_NAME",
+                                                "Value.$": "$.sessionName"
+                                            },
+                                            {
+                                                "Name": "SESSION_ID",
+                                                "Value.$": "States.JsonToString($.sessionId)"
+                                            },
+                                            {
+                                                "Name": "RESULTS_BUCKET",
+                                                "Value.$": "$.resultsBucket"
+                                            },
+                                            {
+                                                "Name": "PARALLEL_ENABLED",
+                                                "Value.$": "$.config.parallelEnabled"
+                                            },
+                                            {
+                                                "Name": "PARALLEL_WORKERS",
+                                                "Value.$": "$.config.parallelWorkers"
+                                            },
+                                            {
+                                                "Name": "PARALLEL_PROFILE_FILE",
+                                                "Value": ""
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        },
+                        "ResultPath": "$.ecsResult",
+                        "Next": "CheckBenchmarkArtifact",
+                        "Retry": [
+                            {
+                                "ErrorEquals": [
+                                    "States.ALL"
+                                ],
+                                "IntervalSeconds": 15,
+                                "MaxAttempts": 2,
+                                "BackoffRate": 2
+                            }
+                        ],
+                        "Catch": [
+                            {
+                                "ErrorEquals": [
+                                    "States.ALL"
+                                ],
+                                "ResultPath": "$.error",
+                                "Next": "BenchmarkRunFailed"
+                            }
+                        ]
+                    },
+                    "CheckBenchmarkArtifact": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::aws-sdk:s3:headObject",
+                        "Parameters": {
+                            "Bucket.$": "$.resultsBucket",
+                            "Key.$": "States.Format('benchmarks/{}/{}/run-{}.json', $.benchmarkId, $.config.label, $.config.runNumber)"
+                        },
+                        "ResultPath": "$.artifactCheck",
+                        "Next": "BenchmarkRunSucceeded",
+                        "Retry": [
+                            {
+                                "ErrorEquals": [
+                                    "S3.NotFound"
+                                ],
+                                "IntervalSeconds": 5,
+                                "MaxAttempts": 12,
+                                "BackoffRate": 1.5
+                            }
+                        ],
+                        "Catch": [
+                            {
+                                "ErrorEquals": [
+                                    "States.ALL"
+                                ],
+                                "ResultPath": "$.error",
+                                "Next": "BenchmarkRunFailed"
+                            }
+                        ]
+                    },
+                    "BenchmarkRunSucceeded": {
+                        "Type": "Pass",
+                        "Parameters": {
+                            "label.$": "$.config.label",
+                            "cpu.$": "$.config.cpu",
+                            "memory.$": "$.config.memory",
+                            "ephemeralStorageGiB.$": "$.config.ephemeralStorageGiB",
+                            "parallelEnabled.$": "$.config.parallelEnabled",
+                            "parallelWorkers.$": "$.config.parallelWorkers",
+                            "runNumber.$": "$.config.runNumber",
+                            "artifactKey.$": "States.Format('benchmarks/{}/{}/run-{}.json', $.benchmarkId, $.config.label, $.config.runNumber)",
+                            "status": "SUCCESS"
+                        },
+                        "End": true
+                    },
+                    "BenchmarkRunFailed": {
+                        "Type": "Pass",
+                        "Parameters": {
+                            "label.$": "$.config.label",
+                            "cpu.$": "$.config.cpu",
+                            "memory.$": "$.config.memory",
+                            "ephemeralStorageGiB.$": "$.config.ephemeralStorageGiB",
+                            "parallelEnabled.$": "$.config.parallelEnabled",
+                            "parallelWorkers.$": "$.config.parallelWorkers",
+                            "runNumber.$": "$.config.runNumber",
+                            "status": "FAILED",
+                            "error.$": "States.JsonToString($.error)"
+                        },
+                        "End": true
+                    }
+                }
+            },
+            "ResultPath": "$.benchmarkResults",
+            "Next": "Done"
+        },
+        "Done": {
+            "Type": "Succeed"
+        },
+        "InvalidInput": {
+            "Type": "Fail",
+            "Cause": "Missing required benchmark input",
+            "Error": "InvalidInput"
+        }
+    }
+}

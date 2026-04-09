@@ -929,7 +929,54 @@ Resources:
       LogGroupName: !Sub /aws/stepfunctions/${AWS::StackName}-ProcessingStateMachine
       RetentionInDays: 30
 
+  BenchmarkStepFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/stepfunctions/${AWS::StackName}-BenchmarkStateMachine
+      RetentionInDays: 30
+
   # --- Step Functions ---
+  BenchmarkStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: EEGBenchmarkStateMachine.asl.json
+      DefinitionSubstitutions:
+        BenchmarkEcsClusterArn: !GetAtt EEGFargateCluster.Arn
+        BenchmarkTaskDefinitionArn: !Ref EEGFargateTaskDefinition
+        PrivateSecurityGroupId: !Ref PrivateSG
+        PrivateSubnetId1: !Ref PrivateSubnetId1
+        PrivateSubnetId2: !Ref PrivateSubnetId2
+        ResultsBucket: !Ref EEGResultsBucket
+      Role: !GetAtt EEGStepFunctionRole.Arn
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt BenchmarkStepFunctionLogGroup.Arn
+      Tracing:
+        Enabled: true
+      Tags:
+        AI4NG: "true"
+        BenchmarkPipeline: "true"
+
+  BenchmarkStepFunctionFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-Benchmark-StepFunction-Failures
+      AlarmDescription: Alert when benchmark Step Function executions fail
+      MetricName: ExecutionsFailed
+      Namespace: AWS/States
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: StateMachineArn
+          Value: !Ref BenchmarkStateMachine
+      AlarmActions:
+        - !Ref ProcessingNotificationTopic
   ProcessingStateMachine:
     Type: AWS::Serverless::StateMachine
     Properties:
@@ -1021,3 +1068,14 @@ Outputs:
     Description: URL for device registration API
     Export:
       Name: DeviceRegistrationApiUrl
+  BenchmarkStateMachineArn:
+    Value: !Ref BenchmarkStateMachine
+    Description: ARN of the benchmark state machine
+    Export:
+      Name: EEGBenchmarkStateMachineArn
+
+  BenchmarkStateMachineLogGroupName:
+    Value: !Ref BenchmarkStepFunctionLogGroup
+    Description: Log group for the benchmark state machine
+    Export:
+      Name: EEGBenchmarkStateMachineLogGroupName
