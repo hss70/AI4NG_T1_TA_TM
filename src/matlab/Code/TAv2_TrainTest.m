@@ -149,10 +149,11 @@ end
       else
         w.parCore.number = w.parCore.number_basis;
       end
-      if isempty(gcp('nocreate')) || (w.parCore.reOpenIfOpen == 1)
-        delete(gcp('nocreate'))     % parpool close
-        parpool (w.parCore.location, w.parCore.number)       % open cores
-      end
+      ensureParpool(w.parCore.location, w.parCore.number, w.parCore.reOpenIfOpen);
+      % if isempty(gcp('nocreate')) || (w.parCore.reOpenIfOpen == 1)
+      %   delete(gcp('nocreate'))     % parpool close
+      %   parpool (w.parCore.location, w.parCore.number)       % open cores
+      % end
     end
     autorun.tt.parCore = w.parCore;
     

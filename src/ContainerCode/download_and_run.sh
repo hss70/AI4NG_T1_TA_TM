@@ -237,6 +237,10 @@ export BENCHMARK_OUTPUT_KEY="${BENCHMARK_OUTPUT_KEY:-}"
 export BENCHMARK_TASK_CPU="${BENCHMARK_TASK_CPU:-}"
 export BENCHMARK_TASK_MEMORY="${BENCHMARK_TASK_MEMORY:-}"
 
+ACTUAL_CORES_NPROC=$(nproc 2>/dev/null || echo "")
+CPUINFO_COUNT=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || echo "")
+log "Parallel diag: requestedWorkers=${PARALLEL_WORKERS}, nproc=${ACTUAL_CORES_NPROC}, cpuinfo=${CPUINFO_COUNT}, benchmarkCpu=${BENCHMARK_TASK_CPU}, benchmarkMemory=${BENCHMARK_TASK_MEMORY}"
+
 run_timed "mkdirs" "TIMING_MKDIRS_MS" mkdir -p \
   "$WORK_DIR/Dependents" \
   "$WORK_PATH/CSV/$USER_ID/$SESSION_NAME" \
