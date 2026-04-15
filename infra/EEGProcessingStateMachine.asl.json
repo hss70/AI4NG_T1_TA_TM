@@ -88,8 +88,8 @@
                     }
                 },
                 "Overrides": {
-                    "Cpu": "8192",
-                    "Memory": "49152",
+                    "Cpu": "16384",
+                    "Memory": "57344",
                     "ContainerOverrides": [
                         {
                             "Name": "eeg-classifier",

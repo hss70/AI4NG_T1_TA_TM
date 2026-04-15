@@ -130,7 +130,7 @@ for i = 1:length(subjects)
         numTwos = nnz(csvData(:,nCols) == 2);
         
         if(numOnes <30 || numTwos <30)
-            error('Not enough triggers for MI Training. We require 30 Left triggers and 30 Right triggers. Found %d Left and %d Right in %s', numOnes, numTwos, csvFilePathS);
+            error('Not enough triggers for MI Training. We require 30 Left triggers and 30 Right triggers. Found %d Left and %d Right in %s', numOnes, numTwos, csvFilePath);
         end
         
         %Column swap so that trigger is in column n-1 and classifier in n
