@@ -58,7 +58,7 @@ compileMatlabCodeLinux
 
 **Verify Linux Compatibility:**
 ```bash
-file ClassifierTraining/Code/output/FBCSP_Training
+file MIClassifierTraining/Code/output/FBCSP_Training
 # Should show: ELF 64-bit LSB executable, x86-64
 ```
 
@@ -113,7 +113,7 @@ docker push <account-id>.dkr.ecr.eu-west-2.amazonaws.com/eeg-classifier:latest
 
 ## 🟩 Complete Workflow
 
-1. **Make MATLAB changes** in `ClassifierTraining/Code/`
+1. **Make MATLAB changes** in `MIClassifierTraining/Code/`
 2. **Compile on Linux** using `./compile_matlab.sh`
 3. **Test Docker build** locally
 4. **Commit and push** - GitHub Actions will deploy automatically
@@ -128,7 +128,7 @@ docker push <account-id>.dkr.ecr.eu-west-2.amazonaws.com/eeg-classifier:latest
 - Verify all dependencies are in the path
 
 **Docker Build Issues:**
-- Ensure compiled binaries exist in `ClassifierTraining/Code/output/`
+- Ensure compiled binaries exist in `MIClassifierTraining/Code/output/`
 - Check that binaries are Linux-compatible (ELF format)
 
 **Runtime Issues:**

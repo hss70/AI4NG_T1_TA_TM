@@ -44,7 +44,7 @@ cd('src/matlab/code/')
 
 2️⃣ Compile using `mcc`:
 ```matlab
-mcc -m FBCSP_Training.m -a ./Standard-10-20-Cap81.locs -d ../ContainerCode/ClassifierTraining/output
+mcc -m FBCSP_Training.m -a ./Standard-10-20-Cap81.locs -d ../ContainerCode/MIClassifierTraining/output
 ```
 
 This will generate:

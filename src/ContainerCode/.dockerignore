@@ -11,12 +11,12 @@ readme.md
 # Ignore the MATLAB test directory completely
 matlabTest/
 
-# Ignore all MATLAB source, Simulink, and temp files inside ClassifierTraining
-ClassifierTraining/Code/**/*.m
-ClassifierTraining/Code/**/*.asv
-ClassifierTraining/Code/**/*.slx
-ClassifierTraining/Code/**/*.slxc
-ClassifierTraining/Code/slprj/
+# Ignore all MATLAB source, Simulink, and temp files inside MIClassifierTraining
+MIClassifierTraining/Code/**/*.m
+MIClassifierTraining/Code/**/*.asv
+MIClassifierTraining/Code/**/*.slx
+MIClassifierTraining/Code/**/*.slxc
+MIClassifierTraining/Code/slprj/
 
 # Ignore the Windows-specific compiled files (not needed for Linux build)
-ClassifierTraining/Code/**/*.mexw64
+MIClassifierTraining/Code/**/*.mexw64
