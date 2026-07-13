@@ -331,7 +331,7 @@ jq -n \
   --argjson endTime "$MATLAB_ENDED_EPOCH" \
   --arg resultsPath "$RESULTS_PATH" \
   --argjson exitCode "$MATLAB_EXIT_CODE" \
-  --argjson outputFiles "$(find /app/output -type f | jq -R . | jq -s .)" \
+  --argjson outputFiles "$(find /app/output -type f -printf '%P\n' | jq -R . | jq -s .)"
   '
   {
     userId: $userId,
