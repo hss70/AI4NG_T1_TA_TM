@@ -106,14 +106,32 @@ async function updateStatusTable(sessionId, status, duration, manifest) {
     await ddbClient.send(new UpdateItemCommand(updateParams));
 }
 
-async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
-    const { UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
+async function storeFileMetadata(
+    sessionName,
+    sessionId,
+    userId,
+    manifest
+) {
+    const {
+        UpdateItemCommand
+    } = require("@aws-sdk/client-dynamodb");
 
     for (const file of manifest.outputFiles) {
-        const fullPath = `${userId}/${sessionName}/${file}`;
-        const parts = fullPath.split('/');
-        const fileName = parts[parts.length - 1];
-        const extension = fileName.includes('.') ? fileName.split('.').pop() : '';
+        const relativePath = file
+            .replace(/\\/g, '/')
+            .replace(/^\/?app\/output\//, '')
+            .replace(/^\/+/, '');
+
+        const fullPath =
+            `${userId}/${sessionName}/${relativePath}`;
+
+        const parts = relativePath.split('/');
+        const fileName = parts.at(-1) ?? '';
+
+        const extensionIndex = fileName.lastIndexOf('.');
+        const extension = extensionIndex >= 0
+            ? fileName.slice(extensionIndex + 1).toLowerCase()
+            : '';
 
         await ddbClient.send(new UpdateItemCommand({
             TableName: process.env.FILES_TABLE,
@@ -121,13 +139,28 @@ async function storeFileMetadata(sessionName, sessionId, userId, manifest) {
                 sessionName: { S: sessionName },
                 filePath: { S: fullPath }
             },
-            UpdateExpression: "SET sessionId = :sessionId, userId = :userId, createdAt = :createdAt, extension = :extension, fileName = :fileName",
+            UpdateExpression:
+                "SET sessionId = :sessionId, " +
+                "userId = :userId, " +
+                "createdAt = :createdAt, " +
+                "extension = :extension, " +
+                "fileName = :fileName",
             ExpressionAttributeValues: {
-                ":sessionId": { N: sessionId.toString() },
-                ":userId": { S: userId },
-                ":createdAt": { N: manifest.endTime.toString() },
-                ":extension": { S: extension },
-                ":fileName": { S: fileName }
+                ":sessionId": {
+                    N: sessionId.toString()
+                },
+                ":userId": {
+                    S: userId
+                },
+                ":createdAt": {
+                    N: manifest.endTime.toString()
+                },
+                ":extension": {
+                    S: extension
+                },
+                ":fileName": {
+                    S: fileName
+                }
             }
         }));
     }

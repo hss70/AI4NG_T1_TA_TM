@@ -116,38 +116,48 @@ if [[ $EXIT_CODE -ne 0 ]]; then
 fi
 
 MANIFEST="/app/output/manifest.json"
-echo '{' > "$MANIFEST"
-echo '  "userId": "'"$USER_ID"'",' >> "$MANIFEST"
-echo '  "sessionName": "'"$SESSION_NAME"'",' >> "$MANIFEST"
-echo '  "sessionId": "'"$SESSION_ID_CLEAN"'",' >> "$MANIFEST"
-echo '  "inputFile": "'"$INPUT_FILE"'",' >> "$MANIFEST"
-echo '  "startTime": '"$matlab_start_epoch"',' >> "$MANIFEST"
-echo '  "endTime": '"$matlab_end_epoch"',' >> "$MANIFEST"
-echo '  "resultsPath": "'"$RESULTS_PATH"'",' >> "$MANIFEST"
-echo '  "exitCode": '"$EXIT_CODE"',' >> "$MANIFEST"
-echo '  "outputFiles": [' >> "$MANIFEST"
 
 copy_output_start_ms=$(now_ms)
 cp -r "$OUTPUT_DIR"/* /app/output/ 2>/dev/null || true
 copy_output_end_ms=$(now_ms)
 log_timing "copy_output_files" "$((copy_output_end_ms - copy_output_start_ms))"
 
-first_file=true
-while IFS= read -r -d '' file; do
-    if [ -f "$file" ]; then
-        if [ "$first_file" = false ]; then
-            echo ',' >> "$MANIFEST"
-        fi
-        relative_path="${file#/app/output/}"
-        echo -n '    "'"$relative_path"'"' >> "$MANIFEST"
-        first_file=false
-    fi
-done < <(find /app/output -type f -print0 2>/dev/null)
+log "Generating output manifest"
 
-echo '' >> "$MANIFEST"
-echo '  ]' >> "$MANIFEST"
-echo '}' >> "$MANIFEST"
+manifest_start_ms=$(now_ms)
 
+# Collect output files relative to /app/output.
+# Exclude the manifest itself.
+OUTPUT_FILES_JSON=$(
+  find /app/output -type f ! -name 'manifest.json' -printf '%P\n' |
+    jq -R . |
+    jq -s .
+)
+
+jq -n \
+  --arg userId "$USER_ID" \
+  --arg sessionName "$SESSION_NAME" \
+  --arg sessionId "$SESSION_ID_CLEAN" \
+  --arg inputFile "$INPUT_FILE" \
+  --argjson startTime "$matlab_start_epoch" \
+  --argjson endTime "$matlab_end_epoch" \
+  --arg resultsPath "$RESULTS_PATH" \
+  --argjson exitCode "$EXIT_CODE" \
+  --argjson outputFiles "$OUTPUT_FILES_JSON" \
+  '{
+    userId: $userId,
+    sessionName: $sessionName,
+    sessionId: $sessionId,
+    inputFile: $inputFile,
+    startTime: $startTime,
+    endTime: $endTime,
+    resultsPath: $resultsPath,
+    exitCode: $exitCode,
+    outputFiles: $outputFiles
+  }' > "$MANIFEST"
+
+manifest_end_ms=$(now_ms)
+log_timing "generate_manifest" "$((manifest_end_ms - manifest_start_ms))"
 log "Uploading results to $RESULTS_BUCKET/$RESULTS_PATH/"
 run_timed "s3_upload_results" aws s3 cp /app/output/ "s3://$RESULTS_BUCKET/$RESULTS_PATH/" --recursive
 
